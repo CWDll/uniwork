@@ -73,13 +73,13 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-950">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-xl bg-blue-600 text-white">
+        <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white sm:size-10">
               <BriefcaseBusiness className="size-5" />
             </div>
-            <div>
-              <p className="text-xl font-black tracking-tight text-blue-700">
+            <div className="min-w-0">
+              <p className="truncate text-lg font-black tracking-tight text-blue-700 sm:text-xl">
                 Uniwork
               </p>
               <p className="hidden text-xs font-semibold text-slate-500 sm:block">
@@ -111,33 +111,35 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto grid w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 md:py-10 lg:grid-cols-[1fr_380px] lg:px-8">
-          <div>
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
-              <Sparkles className="size-4" />
+      <section className="overflow-hidden border-b border-slate-200 bg-white">
+        <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-6 md:py-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8">
+          <div className="min-w-0">
+            <div className="mb-4 inline-flex max-w-full items-center gap-2 rounded-full bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 sm:mb-5 sm:text-sm">
+              <Sparkles className="size-4 shrink-0" />
               D-2/D-4 유학생 중심 채용
             </div>
-            <div className="grid items-center gap-8 lg:grid-cols-[0.9fr_1.1fr]">
-              <div>
-                <h1 className="max-w-xl text-4xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
+            <div className="grid min-w-0 items-center gap-5 sm:gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="min-w-0">
+                <h1 className="max-w-xl text-3xl font-black leading-tight tracking-tight text-slate-950 sm:text-5xl">
                   Find a safer part-time job in Korea
                 </h1>
-                <p className="mt-4 max-w-lg text-base font-medium leading-7 text-slate-600">
+                <p className="mt-3 max-w-lg text-sm font-medium leading-6 text-slate-600 sm:mt-4 sm:text-base sm:leading-7">
                   Uniwork는 외국인 유학생의 비자, 학교, 가능 근무시간을
                   고려해 지원 가능한 채용공고와 행정 상담 흐름을 연결합니다.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-emerald-50 p-5">
+              <div className="min-w-0 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-emerald-50 p-4 sm:p-5">
                 <div className="flex items-center justify-between">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-sm font-bold text-slate-500">
                       Profile check
                     </p>
-                    <p className="mt-1 text-2xl font-black">72% ready</p>
+                    <p className="mt-1 text-xl font-black sm:text-2xl">
+                      72% ready
+                    </p>
                   </div>
-                  <div className="grid size-14 place-items-center rounded-2xl bg-blue-600 text-white">
+                  <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white sm:size-14">
                     <ShieldCheck className="size-7" />
                   </div>
                 </div>
@@ -152,11 +154,11 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-7 grid gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-[1fr_180px_180px_auto]">
-              <label className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-3">
-                <Search className="size-5 text-slate-400" />
+            <div className="mt-5 grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-7 md:grid-cols-[minmax(0,1fr)_180px_180px_auto]">
+              <label className="flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 px-3 py-3">
+                <Search className="size-5 shrink-0 text-slate-400" />
                 <input
-                  className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400"
+                  className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400"
                   placeholder="Job title, company, keyword"
                 />
               </label>
@@ -195,12 +197,12 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[1fr_340px] lg:px-8">
-        <div>
-          <div className="flex gap-2 overflow-x-auto pb-2">
+      <section className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
+        <div className="min-w-0">
+          <div className="flex max-w-full gap-2 overflow-x-auto pb-2">
             {categories.map((category) => (
               <button
-                className="whitespace-nowrap rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 first:bg-blue-600 first:text-white"
+                className="shrink-0 whitespace-nowrap rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 first:bg-blue-600 first:text-white"
                 key={category}
               >
                 {category}
@@ -209,14 +211,14 @@ export default function Home() {
           </div>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4">
-              <div>
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-4">
+              <div className="min-w-0">
                 <h2 className="text-lg font-black">Featured Jobs</h2>
                 <p className="text-sm font-medium text-slate-500">
                   지원 가능성을 먼저 확인할 수 있는 공고
                 </p>
               </div>
-              <Button variant="ghost" size="sm">
+              <Button className="shrink-0" variant="ghost" size="sm">
                 View all
               </Button>
             </div>
@@ -224,15 +226,15 @@ export default function Home() {
             <div className="divide-y divide-slate-100">
               {jobs.map((job) => (
                 <article
-                  className="grid gap-4 px-4 py-5 transition hover:bg-slate-50 sm:grid-cols-[64px_1fr_auto]"
+                  className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)] gap-3 px-4 py-4 transition hover:bg-slate-50 sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:gap-4 sm:py-5"
                   key={job.title}
                 >
-                  <div className="grid size-16 place-items-center rounded-xl bg-blue-50 text-lg font-black text-blue-700">
+                  <div className="grid size-12 place-items-center rounded-xl bg-blue-50 text-base font-black text-blue-700 sm:size-16 sm:text-lg">
                     {job.logo}
                   </div>
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-black text-slate-950">
+                  <div className="min-w-0">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                      <h3 className="min-w-0 text-base font-black leading-snug text-slate-950">
                         {job.title}
                       </h3>
                       {job.featured ? (
@@ -244,7 +246,7 @@ export default function Home() {
                     <p className="mt-1 text-sm font-semibold text-slate-600">
                       {job.company}
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+                    <div className="mt-3 flex min-w-0 flex-wrap gap-2 text-xs font-bold text-slate-500">
                       <span className="rounded-md bg-slate-100 px-2 py-1">
                         {job.location}
                       </span>
@@ -259,7 +261,7 @@ export default function Home() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 sm:flex-col sm:items-end">
+                  <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:flex-col sm:items-end">
                     <Button variant="outline" size="icon">
                       <Heart className="size-4" />
                     </Button>
@@ -271,7 +273,7 @@ export default function Home() {
           </div>
         </div>
 
-        <aside className="grid gap-4">
+        <aside className="grid min-w-0 gap-4 lg:block lg:space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
             <h2 className="text-lg font-black">Log In</h2>
             <div className="mt-4 grid gap-3">
