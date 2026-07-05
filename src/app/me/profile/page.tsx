@@ -1,13 +1,43 @@
-import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { redirect } from "next/navigation";
 
-export default function SeekerProfilePage() {
+import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { SeekerProfileForm } from "@/components/profile/seeker-profile-form";
+import { createClient } from "@/lib/supabase/server";
+
+export default async function SeekerProfilePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?next=/me/profile");
+  }
+
+  const { data: profile } = await supabase
+    .from("seeker_profiles")
+    .select(
+      "nationality, visa_type, alien_registration_status, school, major, korean_level, english_level, preferred_locations, preferred_job_types, available_times",
+    )
+    .eq("user_id", user.id)
+    .maybeSingle();
+
   return (
     <DashboardShell area="me">
-      <PlaceholderPage
-        description="비자, 학교, 전공, 언어 수준, 근무 가능 시간, 희망 지역을 입력하는 구직자 프로필 화면입니다."
-        title="Seeker profile"
-      />
+      <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+        <p className="text-sm font-black uppercase tracking-wide text-blue-700">
+          Seeker profile
+        </p>
+        <h1 className="mt-3 text-3xl font-black tracking-tight">
+          비자와 근무 가능 조건을 입력합니다
+        </h1>
+        <p className="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-600">
+          D-2/D-4 유학생을 중심으로 지원 가능성을 판단하기 위한 기본 정보를
+          저장합니다. 외국인등록번호나 여권번호 원본은 받지 않습니다.
+        </p>
+      </div>
+
+      <SeekerProfileForm profile={profile} />
     </DashboardShell>
   );
 }

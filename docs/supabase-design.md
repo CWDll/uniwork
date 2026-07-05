@@ -203,6 +203,18 @@ Buckets:
   - `/company`: `company`, `admin`
   - `/admin`: `admin`
 
+## Manual E2E Checklist
+
+1. `/signup`에서 seeker 계정 생성
+2. Supabase email confirmation이 켜져 있으면 이메일 인증 완료
+3. Supabase Dashboard > Authentication > Users에서 계정 생성 확인
+4. Table Editor > `profiles`에서 같은 user id의 row 생성 확인
+5. `/login`에서 로그인
+6. seeker는 `/me`로 이동하는지 확인
+7. `/me/profile`에서 국적, 비자, 학교, 언어 수준 저장
+8. Table Editor > `seeker_profiles`에서 row 생성/수정 확인
+9. 로그아웃 후 `/me/profile` 접근 시 `/login?next=/me/profile`로 이동하는지 확인
+
 ## Dashboard Project Creation Settings
 
 Supabase Dashboard의 `Create a new project` 화면에서는 다음처럼 시작한다.
