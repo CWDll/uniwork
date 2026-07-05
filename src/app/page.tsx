@@ -5,112 +5,22 @@ import {
   Building2,
   Clock3,
   FileCheck2,
-  Heart,
   Languages,
   MapPin,
-  Menu,
   Search,
   ShieldCheck,
   Sparkles,
-  UserRound,
 } from "lucide-react";
 import type { ReactElement } from "react";
 
+import { PublicShell } from "@/components/layout/public-shell";
+import { JobCard } from "@/components/marketing/job-card";
 import { Button } from "@/components/ui/button";
-
-const categories = [
-  "All Jobs",
-  "Cafe & Service",
-  "Office",
-  "Translation",
-  "Marketing",
-  "Education",
-];
-
-const jobs = [
-  {
-    company: "Hankuk Language Center",
-    logo: "HL",
-    title: "Korean-English Campus Supporter",
-    location: "Seoul Mapo-gu",
-    type: "Part-time",
-    visa: "D-2 / D-4",
-    category: "Education",
-    wage: "13,000 KRW / hour",
-    featured: true,
-  },
-  {
-    company: "Blue Bottle Korea",
-    logo: "BB",
-    title: "Weekend Cafe Crew",
-    location: "Seoul Seongsu",
-    type: "Part-time",
-    visa: "D-2 review",
-    category: "Cafe & Service",
-    wage: "12,500 KRW / hour",
-    featured: true,
-  },
-  {
-    company: "K-Beauty Global",
-    logo: "KG",
-    title: "SNS Translation Assistant",
-    location: "Remote",
-    type: "Contract",
-    visa: "D-2 / F review",
-    category: "Marketing",
-    wage: "Project based",
-    featured: false,
-  },
-];
-
-const tips = [
-  "D-2/D-4 시간제 취업 허가 여부를 먼저 확인하세요.",
-  "외국인등록번호 원본은 플랫폼에 입력하지 않습니다.",
-  "지원 전 근무시간과 시급을 공고 상세에서 확인하세요.",
-];
+import { applicationTips, categories, jobs } from "@/data/seed";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-950">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white sm:size-10">
-              <BriefcaseBusiness className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-lg font-black tracking-tight text-blue-700 sm:text-xl">
-                Uniwork
-              </p>
-              <p className="hidden text-xs font-semibold text-slate-500 sm:block">
-                Jobs for foreign students in Korea
-              </p>
-            </div>
-          </div>
-
-          <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-700 md:flex">
-            <a className="text-blue-700" href="#">
-              Jobs
-            </a>
-            <a href="#">Community</a>
-            <a href="#">Visa Guide</a>
-            <a href="#">For Companies</a>
-          </nav>
-
-          <div className="hidden items-center gap-2 md:flex">
-            <Button variant="outline" size="sm">
-              <UserRound className="size-4" />
-              Log in
-            </Button>
-            <Button size="sm">Sign up</Button>
-          </div>
-
-          <Button className="md:hidden" variant="ghost" size="icon">
-            <Menu className="size-5" />
-          </Button>
-        </div>
-      </header>
-
+    <PublicShell>
       <section className="overflow-hidden border-b border-slate-200 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-6 md:py-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8">
           <div className="min-w-0">
@@ -225,49 +135,7 @@ export default function Home() {
 
             <div className="divide-y divide-slate-100">
               {jobs.map((job) => (
-                <article
-                  className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)] gap-3 px-4 py-4 transition hover:bg-slate-50 sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:gap-4 sm:py-5"
-                  key={job.title}
-                >
-                  <div className="grid size-12 place-items-center rounded-xl bg-blue-50 text-base font-black text-blue-700 sm:size-16 sm:text-lg">
-                    {job.logo}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <h3 className="min-w-0 text-base font-black leading-snug text-slate-950">
-                        {job.title}
-                      </h3>
-                      {job.featured ? (
-                        <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
-                          Pick
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-sm font-semibold text-slate-600">
-                      {job.company}
-                    </p>
-                    <div className="mt-3 flex min-w-0 flex-wrap gap-2 text-xs font-bold text-slate-500">
-                      <span className="rounded-md bg-slate-100 px-2 py-1">
-                        {job.location}
-                      </span>
-                      <span className="rounded-md bg-slate-100 px-2 py-1">
-                        {job.type}
-                      </span>
-                      <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-700">
-                        {job.visa}
-                      </span>
-                      <span className="rounded-md bg-slate-100 px-2 py-1">
-                        {job.wage}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:flex-col sm:items-end">
-                    <Button variant="outline" size="icon">
-                      <Heart className="size-4" />
-                    </Button>
-                    <Button size="sm">Apply</Button>
-                  </div>
-                </article>
+                <JobCard job={job} key={job.title} />
               ))}
             </div>
           </div>
@@ -296,7 +164,7 @@ export default function Home() {
               <h2 className="text-lg font-black">Application Tips</h2>
             </div>
             <div className="mt-4 grid gap-3">
-              {tips.map((tip) => (
+              {applicationTips.map((tip) => (
                 <p
                   className="rounded-xl bg-slate-50 px-3 py-3 text-sm font-semibold leading-6 text-slate-600"
                   key={tip}
@@ -315,7 +183,7 @@ export default function Home() {
           </div>
         </aside>
       </section>
-    </main>
+    </PublicShell>
   );
 }
 

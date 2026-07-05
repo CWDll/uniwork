@@ -22,6 +22,17 @@ Open [http://localhost:3000](http://localhost:3000).
 ## Docs
 
 - [Initial product design](docs/initial-design.md)
+- [Supabase Auth and schema plan](docs/supabase-design.md)
+
+## Current Route Skeleton
+
+- `/`: seeker-first public home
+- `/jobs`: job search and listing
+- `/corp`: company landing
+- `/auth`, `/login`, `/signup`: auth entry points
+- `/me`: seeker workspace
+- `/company`: company workspace
+- `/admin`: operations console
 
 ## Product Notes
 
