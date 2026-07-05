@@ -190,3 +190,23 @@ Buckets:
 5. signup/login form을 Supabase Auth에 연결
 6. `profiles` row 생성 트리거 또는 server action 구현
 7. RLS policy 적용
+
+## Dashboard Project Creation Settings
+
+Supabase Dashboard의 `Create a new project` 화면에서는 다음처럼 시작한다.
+
+- Organization: `CWDll's Org`
+- Project name: `uniwork`
+- Database password: 강한 임의 비밀번호 생성 후 1Password/키체인 등에 보관
+- Region: 한국 사용자가 중심이면 `Northeast Asia (Seoul)` 우선. 없으면 가장 가까운 Asia-Pacific 리전 선택
+- Enable Data API: on
+- Automatically expose new tables: off 권장
+- Enable automatic RLS: on 권장
+- GitHub 연결: 지금은 선택사항. schema는 repo의 `supabase/migrations`로 관리한다.
+
+프로젝트 생성 후 필요한 값:
+
+- Project Settings > API > Project URL
+- Project Settings > API > anon public key
+
+이 두 값을 `.env.local`에 넣는다.
