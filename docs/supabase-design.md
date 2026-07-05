@@ -183,13 +183,25 @@ Buckets:
 
 ## Next Implementation Order
 
-1. Supabase project 생성
-2. `.env.local`에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. Supabase browser/server client helper 추가
-4. Auth callback route 추가
-5. signup/login form을 Supabase Auth에 연결
-6. `profiles` row 생성 트리거 또는 server action 구현
-7. RLS policy 적용
+1. Supabase project 생성 완료
+2. `.env.local`에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` 연결 완료
+3. `0001_initial_schema.sql` 적용 완료
+4. `0002_auth_profile_trigger.sql` 적용 필요
+5. signup/login form을 Supabase Auth에 연결 완료
+6. `profiles` row 생성 트리거 구현 완료
+7. 역할별 route protection 구현 완료
+
+## Auth Implementation Notes
+
+- 로그인/회원가입은 `src/app/auth/actions.ts`의 server action으로 처리한다.
+- 회원가입 시 `role`, `name`을 Supabase Auth user metadata에 저장한다.
+- `0002_auth_profile_trigger.sql`의 `public.handle_new_user()`가 `auth.users` insert를 받아 `public.profiles` row를 자동 생성한다.
+- 공개 회원가입으로 만들 수 있는 role은 `seeker`, `company`만 허용한다.
+- `/me`, `/company`, `/admin` 보호는 Next.js 16의 `proxy.ts`에서 처리한다.
+- 접근 규칙:
+  - `/me`: `seeker`, `admin`
+  - `/company`: `company`, `admin`
+  - `/admin`: `admin`
 
 ## Dashboard Project Creation Settings
 

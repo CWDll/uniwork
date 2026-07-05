@@ -1,8 +1,8 @@
 import { Building2, GraduationCap } from "lucide-react";
 import type { ReactElement } from "react";
 
+import { SignupForm } from "@/components/auth/signup-form";
 import { PublicShell } from "@/components/layout/public-shell";
-import { Button } from "@/components/ui/button";
 
 export default function SignupPage() {
   return (
@@ -27,35 +27,7 @@ export default function SignupPage() {
           </div>
         </aside>
 
-        <form className="rounded-2xl border border-slate-200 bg-white p-6">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-              Role
-              <select className="h-11 rounded-md border border-slate-200 px-3">
-                <option>Seeker</option>
-                <option>Company</option>
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-              Name
-              <input className="h-11 rounded-md border border-slate-200 px-3" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
-              Email
-              <input className="h-11 rounded-md border border-slate-200 px-3" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
-              Password
-              <input
-                className="h-11 rounded-md border border-slate-200 px-3"
-                type="password"
-              />
-            </label>
-          </div>
-          <Button className="mt-6 h-11 w-full" type="button">
-            Create account
-          </Button>
-        </form>
+        <SignupForm />
       </section>
     </PublicShell>
   );
