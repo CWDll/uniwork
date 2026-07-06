@@ -297,6 +297,148 @@ async function main() {
       "Expected verified company to be public.",
     );
 
+    const applicationInsert = await seekerClient
+      .from("job_applications")
+      .insert({
+        job_id: jobInsert.data.id,
+        seeker_id: seekerUser.id,
+        message: "I can work weekends and evenings.",
+        status: "submitted",
+      })
+      .select("id, status")
+      .single();
+
+    assertNoError(applicationInsert, "insert application as seeker");
+    assert(
+      applicationInsert.data.status === "submitted",
+      "Expected application status to be submitted.",
+    );
+
+    const duplicateApplication = await seekerClient
+      .from("job_applications")
+      .insert({
+        job_id: jobInsert.data.id,
+        seeker_id: seekerUser.id,
+        message: "Duplicate application should fail.",
+      });
+
+    assert(
+      duplicateApplication.error,
+      "Expected duplicate application to be blocked.",
+    );
+
+    const companyApplications = await companyClient
+      .from("job_applications")
+      .select("id, seeker_id, status, message")
+      .eq("job_id", jobInsert.data.id);
+
+    assertNoError(companyApplications, "read applications as company owner");
+    assert(
+      companyApplications.data?.length === 1,
+      "Expected company owner to read one related application.",
+    );
+
+    const applicantProfile = await companyClient
+      .from("seeker_profiles")
+      .select("user_id, visa_type, school")
+      .eq("user_id", seekerUser.id)
+      .single();
+
+    assertNoError(applicantProfile, "read applicant seeker profile as company owner");
+    assert(
+      applicantProfile.data.visa_type === "D-2",
+      "Expected company owner to read applicant visa summary.",
+    );
+
+    const updateApplication = await companyClient
+      .from("job_applications")
+      .update({ status: "reviewing" })
+      .eq("id", applicationInsert.data.id)
+      .select("id, status")
+      .single();
+
+    assertNoError(updateApplication, "update related application as company owner");
+    assert(
+      updateApplication.data.status === "reviewing",
+      "Expected company owner to update application status.",
+    );
+
+    const seekerApplication = await seekerClient
+      .from("job_applications")
+      .select("id, status")
+      .eq("id", applicationInsert.data.id)
+      .single();
+
+    assertNoError(seekerApplication, "read own application as seeker");
+    assert(
+      seekerApplication.data.status === "reviewing",
+      "Expected seeker to read company-updated application status.",
+    );
+
+    const consentInsert = await seekerClient
+      .from("consents")
+      .insert({
+        user_id: seekerUser.id,
+        purpose: "administrative_request_review",
+        data_scope: {
+          profile: true,
+          visa: true,
+        },
+        recipient_type: "operator_and_assigned_partner",
+        status: "agreed",
+      })
+      .select("id")
+      .single();
+
+    assertNoError(consentInsert, "insert admin request consent as seeker");
+
+    const adminRequestInsert = await seekerClient
+      .from("admin_requests")
+      .insert({
+        seeker_id: seekerUser.id,
+        type: "part_time_work_permission",
+        consent_id: consentInsert.data.id,
+        memo: "Please review my part-time work permission documents.",
+        status: "received",
+      })
+      .select("id, status")
+      .single();
+
+    assertNoError(adminRequestInsert, "insert admin request as seeker");
+    assert(
+      adminRequestInsert.data.status === "received",
+      "Expected admin request to start as received.",
+    );
+
+    const adminRequestRead = await adminClient
+      .from("admin_requests")
+      .select("id, seeker_id, status")
+      .eq("id", adminRequestInsert.data.id)
+      .single();
+
+    assertNoError(adminRequestRead, "read admin request as admin");
+    assert(
+      adminRequestRead.data.seeker_id === seekerUser.id,
+      "Expected admin to read seeker admin request.",
+    );
+
+    const adminRequestUpdate = await adminClient
+      .from("admin_requests")
+      .update({
+        status: "reviewing",
+        memo: "Operator review started.",
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", adminRequestInsert.data.id)
+      .select("id, status")
+      .single();
+
+    assertNoError(adminRequestUpdate, "update admin request as admin");
+    assert(
+      adminRequestUpdate.data.status === "reviewing",
+      "Expected admin request status to be reviewing.",
+    );
+
     console.log("Supabase E2E verification passed.");
     console.log("- Auth trigger created seeker/company profiles.");
     console.log("- Admin profile promotion and route role foundation are valid.");
@@ -305,6 +447,9 @@ async function main() {
     console.log("- Seeker profile upsert works.");
     console.log("- Non-company company creation is blocked.");
     console.log("- Admin can publish a job, and published jobs are publicly readable.");
+    console.log("- Seeker can apply to published jobs.");
+    console.log("- Company owner can read applicant details and update application status.");
+    console.log("- Seeker can create admin requests and admin can update them.");
   } finally {
     for (const userId of createdUserIds.reverse()) {
       const deleteResult = await admin.auth.admin.deleteUser(userId);
