@@ -7,7 +7,7 @@ export default async function AdminRequestsPage() {
   const supabase = await createClient();
   const { data: requests } = await supabase
     .from("admin_requests")
-    .select("id, seeker_id, type, status, memo, created_at, updated_at")
+    .select("id, seeker_id, assigned_partner_id, type, status, memo, created_at, updated_at")
     .order("created_at", { ascending: false });
 
   const seekerIds = Array.from(new Set(requests?.map((request) => request.seeker_id) ?? []));
@@ -22,6 +22,11 @@ export default async function AdminRequestsPage() {
           .select("user_id, nationality, visa_type, school, korean_level")
           .in("user_id", seekerIds)
       : { data: [] };
+  const { data: partners } = await supabase
+    .from("profiles")
+    .select("id, name, email")
+    .eq("role", "partner")
+    .order("created_at", { ascending: false });
 
   const profileById = new Map(profiles?.map((profile) => [profile.id, profile]) ?? []);
   const seekerProfileById = new Map(
@@ -54,6 +59,9 @@ export default async function AdminRequestsPage() {
             requests.map((request) => {
               const profile = profileById.get(request.seeker_id);
               const seekerProfile = seekerProfileById.get(request.seeker_id);
+              const assignedPartner = partners?.find(
+                (partner) => partner.id === request.assigned_partner_id,
+              );
 
               return (
                 <article className="grid gap-4 px-5 py-4" key={request.id}>
@@ -70,6 +78,10 @@ export default async function AdminRequestsPage() {
                         {seekerProfile?.nationality || "-"} ·{" "}
                         {seekerProfile?.visa_type || "visa unknown"} ·{" "}
                         {seekerProfile?.school || "school unknown"}
+                      </p>
+                      <p className="mt-2 text-sm font-semibold text-blue-700">
+                        Assigned partner:{" "}
+                        {assignedPartner?.name || assignedPartner?.email || "unassigned"}
                       </p>
                       {request.memo ? (
                         <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-medium leading-6 text-slate-700">
@@ -106,6 +118,21 @@ export default async function AdminRequestsPage() {
                           defaultValue={request.memo ?? ""}
                           name="memo"
                         />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-slate-700">
+                        Partner
+                        <select
+                          className="h-10 rounded-md border border-slate-200 px-3"
+                          defaultValue={request.assigned_partner_id ?? ""}
+                          name="assigned_partner_id"
+                        >
+                          <option value="">Unassigned</option>
+                          {partners?.map((partner) => (
+                            <option key={partner.id} value={partner.id}>
+                              {partner.name || partner.email}
+                            </option>
+                          ))}
+                        </select>
                       </label>
                       <Button size="sm" type="submit">
                         Update

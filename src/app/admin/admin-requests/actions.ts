@@ -9,6 +9,7 @@ export async function updateAdminRequestAction(formData: FormData) {
   const requestId = String(formData.get("request_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   const memo = String(formData.get("memo") ?? "").trim();
+  const partnerId = String(formData.get("assigned_partner_id") ?? "").trim();
 
   const allowedStatuses = [
     "received",
@@ -26,6 +27,7 @@ export async function updateAdminRequestAction(formData: FormData) {
   await supabase
     .from("admin_requests")
     .update({
+      assigned_partner_id: partnerId || null,
       status,
       memo,
       updated_at: new Date().toISOString(),

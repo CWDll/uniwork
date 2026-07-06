@@ -1,13 +1,106 @@
+import { updateUserRoleAction } from "@/app/admin/users/actions";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
 
-export default function AdminUsersPage() {
+const roles = ["seeker", "company", "partner", "admin"];
+
+export default async function AdminUsersPage() {
+  const supabase = await createClient();
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, role, email, name, phone, locale, created_at, updated_at")
+    .order("created_at", { ascending: false });
+
+  const roleCounts = roles.map((role) => ({
+    role,
+    count: profiles?.filter((profile) => profile.role === role).length ?? 0,
+  }));
+
   return (
     <DashboardShell area="admin">
-      <PlaceholderPage
-        description="운영자가 구직자, 기업, 행정사 계정을 조회하고 권한을 관리하는 화면입니다."
-        title="User management"
-      />
+      <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
+        <p className="text-sm font-black uppercase tracking-wide text-blue-700">
+          User management
+        </p>
+        <h1 className="mt-3 text-3xl font-black tracking-tight">
+          사용자 역할과 행정사 파트너 계정을 관리합니다
+        </h1>
+        <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
+          Supabase Auth로 가입된 사용자의 프로필 역할을 운영자가 조정합니다.
+          partner 역할은 행정 요청 배정 대상이 됩니다.
+        </p>
+      </div>
+
+      <div className="mb-5 grid gap-3 sm:grid-cols-4">
+        {roleCounts.map((item) => (
+          <article
+            className="rounded-2xl border border-slate-200 bg-white p-4"
+            key={item.role}
+          >
+            <p className="text-sm font-bold text-slate-500">{item.role}</p>
+            <p className="mt-1 text-2xl font-black">{item.count}</p>
+          </article>
+        ))}
+      </div>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <h2 className="text-lg font-black">Users {profiles?.length ?? 0}</h2>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {profiles && profiles.length > 0 ? (
+            profiles.map((profile) => (
+              <article
+                className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_260px]"
+                key={profile.id}
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-black">
+                      {profile.name || profile.email}
+                    </h3>
+                    <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
+                      {profile.role}
+                    </span>
+                  </div>
+                  <p className="mt-1 break-all text-sm font-semibold text-slate-500">
+                    {profile.email}
+                  </p>
+                  <p className="mt-2 text-xs font-bold text-slate-400">
+                    Joined {new Date(profile.created_at).toLocaleString("ko-KR")}
+                  </p>
+                </div>
+
+                <form action={updateUserRoleAction} className="grid gap-2">
+                  <input name="user_id" type="hidden" value={profile.id} />
+                  <label className="grid gap-2 text-sm font-bold text-slate-700">
+                    Role
+                    <select
+                      className="h-10 rounded-md border border-slate-200 px-3"
+                      defaultValue={profile.role}
+                      name="role"
+                    >
+                      {roles.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button size="sm" type="submit">
+                    Update role
+                  </Button>
+                </form>
+              </article>
+            ))
+          ) : (
+            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
+              아직 사용자가 없습니다.
+            </div>
+          )}
+        </div>
+      </section>
     </DashboardShell>
   );
 }

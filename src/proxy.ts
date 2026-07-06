@@ -6,7 +6,7 @@ const protectedPrefixes = ["/me", "/company", "/admin"];
 const roleHome = {
   admin: "/admin",
   company: "/company",
-  partner: "/admin",
+  partner: "/admin/admin-requests",
   seeker: "/me",
 } as const;
 
@@ -18,6 +18,10 @@ function isProtectedPath(pathname: string) {
 
 function allowedForPath(pathname: string, role: string) {
   if (pathname.startsWith("/admin")) {
+    if (role === "partner") {
+      return pathname === "/admin/admin-requests";
+    }
+
     return role === "admin";
   }
 

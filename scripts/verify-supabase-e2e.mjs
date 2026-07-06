@@ -168,6 +168,22 @@ async function main() {
       createdUserIds,
     });
 
+    const partnerUser = await createConfirmedUser({
+      email: `partner-${suffix}@uniwork.test`,
+      password,
+      role: "admin",
+      name: "Uniwork Test Partner",
+      createdUserIds,
+    });
+
+    const partnerProfileUpdate = await admin
+      .from("profiles")
+      .update({ role: "partner", updated_at: new Date().toISOString() })
+      .eq("id", partnerUser.id);
+
+    assertNoError(partnerProfileUpdate, "promote partner profile");
+    await waitForProfile(partnerUser.id, "partner");
+
     const companyClient = await signIn(companyUser.email, password);
     const companyInsert = await companyClient
       .from("companies")
@@ -425,6 +441,7 @@ async function main() {
     const adminRequestUpdate = await adminClient
       .from("admin_requests")
       .update({
+        assigned_partner_id: partnerUser.id,
         status: "reviewing",
         memo: "Operator review started.",
         updated_at: new Date().toISOString(),
@@ -439,6 +456,34 @@ async function main() {
       "Expected admin request status to be reviewing.",
     );
 
+    const partnerClient = await signIn(partnerUser.email, password);
+    const partnerRequestRead = await partnerClient
+      .from("admin_requests")
+      .select("id, seeker_id, status, assigned_partner_id")
+      .eq("id", adminRequestInsert.data.id)
+      .single();
+
+    assertNoError(partnerRequestRead, "read assigned admin request as partner");
+    assert(
+      partnerRequestRead.data.assigned_partner_id === partnerUser.id,
+      "Expected partner to read assigned admin request.",
+    );
+
+    const partnerSeekerProfile = await partnerClient
+      .from("seeker_profiles")
+      .select("user_id, visa_type, school")
+      .eq("user_id", seekerUser.id)
+      .single();
+
+    assertNoError(
+      partnerSeekerProfile,
+      "read assigned request seeker profile as partner",
+    );
+    assert(
+      partnerSeekerProfile.data.visa_type === "D-2",
+      "Expected partner to read assigned seeker visa summary.",
+    );
+
     console.log("Supabase E2E verification passed.");
     console.log("- Auth trigger created seeker/company profiles.");
     console.log("- Admin profile promotion and route role foundation are valid.");
@@ -450,6 +495,8 @@ async function main() {
     console.log("- Seeker can apply to published jobs.");
     console.log("- Company owner can read applicant details and update application status.");
     console.log("- Seeker can create admin requests and admin can update them.");
+    console.log("- Admin can assign admin requests to partners.");
+    console.log("- Partners can read assigned requests and seeker summaries.");
   } finally {
     for (const userId of createdUserIds.reverse()) {
       const deleteResult = await admin.auth.admin.deleteUser(userId);
