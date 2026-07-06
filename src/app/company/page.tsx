@@ -17,21 +17,23 @@ export default async function CompanyPage() {
     redirect("/login?next=/company");
   }
 
-  const { data: company } = await supabase
+  const { data: companies } = await supabase
     .from("companies")
     .select("id, name, verification_status")
     .eq("owner_id", user.id)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
-  const { count: jobCount } = company
+  const companyIds = companies?.map((company) => company.id) ?? [];
+
+  const { count: jobCount } = companyIds.length > 0
     ? await supabase
         .from("jobs")
         .select("id", { count: "exact", head: true })
-        .eq("company_id", company.id)
+        .in("company_id", companyIds)
     : { count: 0 };
 
-  const { data: jobs } = company
-    ? await supabase.from("jobs").select("id").eq("company_id", company.id)
+  const { data: jobs } = companyIds.length > 0
+    ? await supabase.from("jobs").select("id").in("company_id", companyIds)
     : { data: [] };
 
   const jobIds = jobs?.map((job) => job.id) ?? [];
@@ -43,15 +45,16 @@ export default async function CompanyPage() {
           .in("job_id", jobIds)
       : { count: 0 };
 
-  const { count: draftCount } = company
+  const { count: draftCount } = companyIds.length > 0
     ? await supabase
         .from("jobs")
         .select("id", { count: "exact", head: true })
-        .eq("company_id", company.id)
+        .in("company_id", companyIds)
         .eq("status", "draft")
     : { count: 0 };
 
   const metrics = [
+    { label: "Companies", value: companyIds.length, icon: BriefcaseBusiness },
     { label: "Job posts", value: jobCount ?? 0, icon: BriefcaseBusiness },
     { label: "Applicants", value: applicantCount ?? 0, icon: UsersRound },
     { label: "Drafts", value: draftCount ?? 0, icon: ClipboardList },
@@ -64,12 +67,15 @@ export default async function CompanyPage() {
           Company dashboard
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">
-          {company?.name ?? "기업 정보를 먼저 저장해주세요"}
+          {companyIds.length > 0
+            ? `${companyIds.length}개 회사/지점 관리 중`
+            : "회사/지점을 먼저 등록해주세요"}
         </h1>
         <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
-          기업 공고 등록은 MVP 단계에서 무료이며, 운영자 승인 후 노출됩니다.
+          한 구인자 계정에서 여러 회사 또는 지점을 등록하고, 각 공고를 특정
+          회사/지점에 연결합니다.
         </p>
-        {!company ? (
+        {companyIds.length === 0 ? (
           <Link
             className={cn(buttonVariants({ className: "mt-5" }))}
             href="/company/settings"
@@ -77,13 +83,20 @@ export default async function CompanyPage() {
             기업 정보 저장하기
           </Link>
         ) : (
-          <p className="mt-5 inline-flex rounded-md bg-slate-100 px-3 py-2 text-sm font-black text-slate-600">
-            Verification: {company.verification_status}
-          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            {companies?.slice(0, 4).map((company) => (
+              <span
+                className="rounded-md bg-slate-100 px-3 py-2 text-sm font-black text-slate-600"
+                key={company.id}
+              >
+                {company.name}: {company.verification_status}
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
+      <div className="mt-5 grid gap-4 md:grid-cols-4">
         {metrics.map((metric) => {
           const Icon = metric.icon;
 

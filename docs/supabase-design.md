@@ -80,6 +80,8 @@ Initial rules:
 - `created_at timestamptz default now()`
 - `updated_at timestamptz default now()`
 
+Important: `owner_id` is intentionally **not unique**. One company-role user can own multiple company or branch records.
+
 ### jobs
 
 - `id uuid primary key`
@@ -187,10 +189,9 @@ Buckets:
 2. `.env.local`에 `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` 연결 완료
 3. `0001_initial_schema.sql` 적용 완료
 4. `0002_auth_profile_trigger.sql` 적용 필요
-5. `0003_company_owner_unique.sql` 적용 필요
-6. signup/login form을 Supabase Auth에 연결 완료
-7. `profiles` row 생성 트리거 구현 완료
-8. 역할별 route protection 구현 완료
+5. signup/login form을 Supabase Auth에 연결 완료
+6. `profiles` row 생성 트리거 구현 완료
+7. 역할별 route protection 구현 완료
 
 ## Auth Implementation Notes
 
@@ -221,11 +222,12 @@ Buckets:
 1. `/signup`에서 company 계정 생성
 2. 이메일 인증 후 `/login`에서 로그인
 3. company role 사용자가 `/company`로 이동하는지 확인
-4. `/company/settings`에서 기업 정보 저장
-5. Table Editor > `companies`에서 `owner_id`가 로그인 user id인 row 확인
-6. `/company/jobs`에서 공고 초안 생성
-7. Table Editor > `jobs`에서 `company_id`가 해당 기업 row인 draft 공고 확인
-8. 로그아웃 후 `/company/jobs` 접근 시 `/login?next=/company/jobs`로 이동하는지 확인
+4. `/company/settings`에서 회사/지점 정보 2개 이상 저장 가능 여부 확인
+5. Table Editor > `companies`에서 같은 `owner_id`를 가진 여러 row 확인
+6. `/company/jobs`에서 회사/지점 하나를 선택해 공고 초안 생성
+7. Table Editor > `jobs`에서 `company_id`가 선택한 회사/지점 row인 draft 공고 확인
+8. 다른 회사/지점도 선택해 별도 공고 생성 가능 여부 확인
+9. 로그아웃 후 `/company/jobs` 접근 시 `/login?next=/company/jobs`로 이동하는지 확인
 
 ## Dashboard Project Creation Settings
 

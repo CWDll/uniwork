@@ -6,7 +6,18 @@ import { useFormStatus } from "react-dom";
 import { createCompanyJobAction } from "@/app/company/jobs/actions";
 import { Button } from "@/components/ui/button";
 
-export function CompanyJobForm({ disabled }: { disabled: boolean }) {
+type CompanyOption = {
+  id: string;
+  name: string;
+};
+
+export function CompanyJobForm({
+  companies,
+  disabled,
+}: {
+  companies: CompanyOption[];
+  disabled: boolean;
+}) {
   const [state, formAction] = useActionState(createCompanyJobAction, {});
 
   return (
@@ -24,6 +35,20 @@ export function CompanyJobForm({ disabled }: { disabled: boolean }) {
       </div>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
+        <label className="grid gap-2 text-sm font-bold text-slate-700 md:col-span-2">
+          Company / branch
+          <select
+            className="h-11 rounded-md border border-slate-200 px-3"
+            disabled={disabled}
+            name="company_id"
+          >
+            {companies.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+        </label>
         <Field disabled={disabled} label="Title" name="title" />
         <Field disabled={disabled} label="Location" name="location" />
         <label className="grid gap-2 text-sm font-bold text-slate-700">

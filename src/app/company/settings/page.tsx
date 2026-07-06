@@ -14,13 +14,11 @@ export default async function CompanySettingsPage() {
     redirect("/login?next=/company/settings");
   }
 
-  const { data: company } = await supabase
+  const { data: companies } = await supabase
     .from("companies")
-    .select(
-      "name, business_number, industry, address, manager_name, manager_phone",
-    )
+    .select("id, name, business_number, industry, address, verification_status")
     .eq("owner_id", user.id)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
   return (
     <DashboardShell area="company">
@@ -29,15 +27,49 @@ export default async function CompanySettingsPage() {
           Company settings
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">
-          기업 정보를 저장합니다
+          회사와 지점을 등록합니다
         </h1>
         <p className="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-600">
-          기업명과 담당자 정보를 저장해야 채용공고를 작성할 수 있습니다.
-          사업자번호는 MVP 단계에서는 검증 상태 표시용으로만 보관합니다.
+          한 구인자 계정은 여러 회사 또는 지점을 소유할 수 있습니다. 공고는
+          등록된 회사/지점 중 하나에 연결됩니다.
         </p>
       </div>
 
-      <CompanySettingsForm company={company} />
+      <CompanySettingsForm />
+
+      <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <h2 className="text-lg font-black">Registered companies</h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">
+            대표가 여러 지점을 운영하는 경우 모두 등록할 수 있습니다.
+          </p>
+        </div>
+        <div className="divide-y divide-slate-100">
+          {companies && companies.length > 0 ? (
+            companies.map((company) => (
+              <article
+                className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+                key={company.id}
+              >
+                <div>
+                  <h3 className="font-black">{company.name}</h3>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {company.industry || "-"} · {company.address || "-"} ·{" "}
+                    {company.business_number || "business number pending"}
+                  </p>
+                </div>
+                <span className="h-max rounded-md bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
+                  {company.verification_status}
+                </span>
+              </article>
+            ))
+          ) : (
+            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
+              아직 등록된 회사/지점이 없습니다.
+            </div>
+          )}
+        </div>
+      </section>
     </DashboardShell>
   );
 }

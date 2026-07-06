@@ -9,7 +9,7 @@ type CompanyState = {
   message?: string;
 };
 
-export async function saveCompanyAction(
+export async function createCompanyAction(
   _prevState: CompanyState,
   formData: FormData,
 ): Promise<CompanyState> {
@@ -29,7 +29,7 @@ export async function saveCompanyAction(
     return { error: "기업명은 필수입니다." };
   }
 
-  const payload = {
+  const { error } = await supabase.from("companies").insert({
     owner_id: user.id,
     name,
     business_number: String(formData.get("business_number") ?? "").trim(),
@@ -37,12 +37,7 @@ export async function saveCompanyAction(
     address: String(formData.get("address") ?? "").trim(),
     manager_name: String(formData.get("manager_name") ?? "").trim(),
     manager_phone: String(formData.get("manager_phone") ?? "").trim(),
-    updated_at: new Date().toISOString(),
-  };
-
-  const { error } = await supabase
-    .from("companies")
-    .upsert(payload, { onConflict: "owner_id" });
+  });
 
   if (error) {
     return { error: error.message };
@@ -52,5 +47,5 @@ export async function saveCompanyAction(
   revalidatePath("/company/settings");
   revalidatePath("/company/jobs");
 
-  return { message: "기업 정보가 저장되었습니다." };
+  return { message: "회사/지점 정보가 추가되었습니다." };
 }

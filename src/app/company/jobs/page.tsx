@@ -17,19 +17,24 @@ export default async function CompanyJobsPage() {
     redirect("/login?next=/company/jobs");
   }
 
-  const { data: company } = await supabase
+  const { data: companies } = await supabase
     .from("companies")
     .select("id, name, verification_status")
     .eq("owner_id", user.id)
-    .maybeSingle();
+    .order("created_at", { ascending: false });
 
-  const { data: jobs } = company
+  const companyIds = companies?.map((company) => company.id) ?? [];
+  const companyNameById = new Map(
+    companies?.map((company) => [company.id, company.name]) ?? [],
+  );
+
+  const { data: jobs } = companyIds.length > 0
     ? await supabase
         .from("jobs")
         .select(
-          "id, title, location, employment_type, category, status, created_at",
+          "id, company_id, title, location, employment_type, category, status, created_at",
         )
-        .eq("company_id", company.id)
+        .in("company_id", companyIds)
         .order("created_at", { ascending: false })
     : { data: [] };
 
@@ -48,7 +53,7 @@ export default async function CompanyJobsPage() {
         </p>
       </div>
 
-      {!company ? (
+      {companyIds.length === 0 ? (
         <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
           <h2 className="text-lg font-black text-amber-900">
             기업 정보가 먼저 필요합니다
@@ -65,13 +70,13 @@ export default async function CompanyJobsPage() {
         </div>
       ) : null}
 
-      <CompanyJobForm disabled={!company} />
+      <CompanyJobForm companies={companies ?? []} disabled={companyIds.length === 0} />
 
       <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-black">My job drafts</h2>
           <p className="mt-1 text-sm font-medium text-slate-500">
-            {company?.name ?? "Company"}의 공고 목록
+            등록된 모든 회사/지점의 공고 목록
           </p>
         </div>
         <div className="divide-y divide-slate-100">
@@ -84,8 +89,9 @@ export default async function CompanyJobsPage() {
                 <div className="min-w-0">
                   <h3 className="font-black">{job.title}</h3>
                   <p className="mt-1 text-sm font-semibold text-slate-500">
-                    {job.location || "-"} · {job.employment_type || "-"} ·{" "}
-                    {job.category || "-"}
+                    {companyNameById.get(job.company_id) ?? "Company"} ·{" "}
+                    {job.location || "-"} ·{" "}
+                    {job.employment_type || "-"} · {job.category || "-"}
                   </p>
                 </div>
                 <span className="h-max rounded-md bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">

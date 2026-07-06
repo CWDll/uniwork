@@ -23,14 +23,21 @@ export async function createCompanyJobAction(
     return { error: "로그인이 필요합니다." };
   }
 
+  const companyId = String(formData.get("company_id") ?? "").trim();
+
+  if (!companyId) {
+    return { error: "공고를 등록할 회사/지점을 선택해주세요." };
+  }
+
   const { data: company } = await supabase
     .from("companies")
     .select("id")
     .eq("owner_id", user.id)
+    .eq("id", companyId)
     .maybeSingle();
 
   if (!company) {
-    return { error: "먼저 기업 정보를 저장해주세요." };
+    return { error: "선택한 회사/지점을 찾을 수 없습니다." };
   }
 
   const title = String(formData.get("title") ?? "").trim();
