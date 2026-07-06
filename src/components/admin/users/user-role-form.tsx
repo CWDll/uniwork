@@ -18,12 +18,15 @@ export function UserRoleForm({
   const [state, formAction] = useActionState(updateUserRoleAction, {});
 
   return (
-    <form action={formAction} className="grid gap-2">
+    <form
+      action={formAction}
+      className="grid gap-2 rounded-xl bg-slate-50 p-3 lg:bg-transparent lg:p-0"
+    >
       <input name="user_id" type="hidden" value={userId} />
       <label className="grid gap-2 text-sm font-bold text-slate-700">
         Role
         <select
-          className="h-10 rounded-md border border-slate-200 px-3"
+          className="h-11 rounded-md border border-slate-200 bg-white px-3"
           defaultValue={role}
           name="role"
         >
@@ -53,7 +56,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button disabled={pending} size="sm" type="submit">
+    <Button className="w-full" disabled={pending} size="sm" type="submit">
       {pending ? "Updating..." : "Update role"}
     </Button>
   );

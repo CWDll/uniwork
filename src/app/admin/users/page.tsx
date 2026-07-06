@@ -22,7 +22,7 @@ export default async function AdminUsersPage() {
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
           User management
         </p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight">
+        <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
           사용자 역할과 행정사 파트너 계정을 관리합니다
         </h1>
         <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
@@ -31,7 +31,7 @@ export default async function AdminUsersPage() {
         </p>
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         {roleCounts.map((item) => (
           <article
             className="rounded-2xl border border-slate-200 bg-white p-4"
@@ -51,12 +51,12 @@ export default async function AdminUsersPage() {
           {profiles && profiles.length > 0 ? (
             profiles.map((profile) => (
               <article
-                className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_260px]"
+                className="grid gap-4 px-4 py-4 sm:px-5 lg:grid-cols-[minmax(0,1fr)_260px]"
                 key={profile.id}
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-black">
+                    <h3 className="break-words font-black">
                       {profile.name || profile.email}
                     </h3>
                     <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">

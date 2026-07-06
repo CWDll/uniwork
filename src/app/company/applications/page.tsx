@@ -1,6 +1,5 @@
-import { updateApplicationStatusAction } from "@/app/company/applications/actions";
+import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function CompanyApplicationsPage() {
@@ -60,7 +59,7 @@ export default async function CompanyApplicationsPage() {
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
           Applicants
         </p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight">
+        <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
           지원자 목록과 상태를 관리합니다
         </h1>
         <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
@@ -83,18 +82,21 @@ export default async function CompanyApplicationsPage() {
               const seekerProfile = seekerProfileById.get(application.seeker_id);
 
               return (
-                <article className="grid gap-4 px-5 py-4" key={application.id}>
+                <article
+                  className="grid gap-4 px-4 py-4 sm:px-5"
+                  key={application.id}
+                >
                   <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-black">
+                        <h3 className="break-words font-black">
                           {profile?.name || profile?.email || "Applicant"}
                         </h3>
                         <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
                           {application.status}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">
+                      <p className="mt-1 break-words text-sm font-semibold text-slate-500">
                         {job?.title ?? "Job"} · {company?.name ?? "Company"}
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-600">
@@ -109,26 +111,7 @@ export default async function CompanyApplicationsPage() {
                         </p>
                       ) : null}
                     </div>
-                    <div className="flex flex-wrap gap-2 lg:justify-end">
-                      <ApplicationStatusButton
-                        applicationId={application.id}
-                        status="reviewing"
-                      >
-                        Reviewing
-                      </ApplicationStatusButton>
-                      <ApplicationStatusButton
-                        applicationId={application.id}
-                        status="accepted"
-                      >
-                        Accept
-                      </ApplicationStatusButton>
-                      <ApplicationStatusButton
-                        applicationId={application.id}
-                        status="rejected"
-                      >
-                        Reject
-                      </ApplicationStatusButton>
-                    </div>
+                    <ApplicationStatusForm applicationId={application.id} />
                   </div>
                 </article>
               );
@@ -141,25 +124,5 @@ export default async function CompanyApplicationsPage() {
         </div>
       </section>
     </DashboardShell>
-  );
-}
-
-function ApplicationStatusButton({
-  applicationId,
-  children,
-  status,
-}: {
-  applicationId: string;
-  children: React.ReactNode;
-  status: string;
-}) {
-  return (
-    <form action={updateApplicationStatusAction}>
-      <input name="application_id" type="hidden" value={applicationId} />
-      <input name="status" type="hidden" value={status} />
-      <Button size="sm" type="submit" variant={status === "accepted" ? "default" : "outline"}>
-        {children}
-      </Button>
-    </form>
   );
 }

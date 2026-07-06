@@ -38,7 +38,7 @@ export default async function AdminRequestsPage() {
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
           Administrative request operations
         </p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight">
+        <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
           행정 요청을 검토하고 상태를 변경합니다
         </h1>
         <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
@@ -63,16 +63,16 @@ export default async function AdminRequestsPage() {
               );
 
               return (
-                <article className="grid gap-4 px-5 py-4" key={request.id}>
+                <article className="grid gap-4 px-4 py-4 sm:px-5" key={request.id}>
                   <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-black">{request.type}</h3>
+                        <h3 className="break-words font-black">{request.type}</h3>
                         <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
                           {request.status}
                         </span>
                       </div>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">
+                      <p className="mt-1 break-words text-sm font-semibold text-slate-500">
                         {profile?.name || profile?.email || "Seeker"} ·{" "}
                         {seekerProfile?.nationality || "-"} ·{" "}
                         {seekerProfile?.visa_type || "visa unknown"} ·{" "}

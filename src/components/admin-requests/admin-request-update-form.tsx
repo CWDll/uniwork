@@ -28,12 +28,15 @@ export function AdminRequestUpdateForm({
   const [state, formAction] = useActionState(updateAdminRequestAction, {});
 
   return (
-    <form action={formAction} className="grid gap-3">
+    <form
+      action={formAction}
+      className="grid gap-3 rounded-xl bg-slate-50 p-3 lg:bg-transparent lg:p-0"
+    >
       <input name="request_id" type="hidden" value={requestId} />
       <label className="grid gap-2 text-sm font-bold text-slate-700">
         Status
         <select
-          className="h-10 rounded-md border border-slate-200 px-3"
+          className="h-11 rounded-md border border-slate-200 bg-white px-3"
           defaultValue={status}
           name="status"
         >
@@ -48,7 +51,7 @@ export function AdminRequestUpdateForm({
       <label className="grid gap-2 text-sm font-bold text-slate-700">
         Operator memo
         <textarea
-          className="min-h-24 rounded-md border border-slate-200 px-3 py-2"
+          className="min-h-24 rounded-md border border-slate-200 bg-white px-3 py-2"
           defaultValue={memo ?? ""}
           name="memo"
         />
@@ -56,7 +59,7 @@ export function AdminRequestUpdateForm({
       <label className="grid gap-2 text-sm font-bold text-slate-700">
         Partner
         <select
-          className="h-10 rounded-md border border-slate-200 px-3"
+          className="h-11 rounded-md border border-slate-200 bg-white px-3"
           defaultValue={assignedPartnerId ?? ""}
           name="assigned_partner_id"
         >
@@ -87,7 +90,7 @@ function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
-    <Button disabled={pending} size="sm" type="submit">
+    <Button className="w-full" disabled={pending} size="sm" type="submit">
       {pending ? "Updating..." : "Update"}
     </Button>
   );
