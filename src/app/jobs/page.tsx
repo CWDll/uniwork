@@ -5,9 +5,60 @@ import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
 import { PageHeading } from "@/components/marketing/page-heading";
 import { Button } from "@/components/ui/button";
-import { categories, jobs } from "@/data/seed";
+import { categories } from "@/data/seed";
+import { createClient } from "@/lib/supabase/server";
 
-export default function JobsPage() {
+export default async function JobsPage() {
+  const supabase = await createClient();
+  const { data: dbJobs } = await supabase
+    .from("jobs")
+    .select(
+      "id, company_id, title, location, employment_type, category, wage_type, wage_amount, visa_support_type, status, created_at",
+    )
+    .eq("status", "published")
+    .order("published_at", { ascending: false, nullsFirst: false });
+
+  const companyIds = Array.from(
+    new Set(dbJobs?.map((job) => job.company_id) ?? []),
+  );
+  const { data: companies } =
+    companyIds.length > 0
+      ? await supabase
+          .from("companies")
+          .select("id, name")
+          .in("id", companyIds)
+      : { data: [] };
+
+  const companyNameById = new Map<string, string>(
+    companies?.map((company) => [String(company.id), String(company.name)]) ??
+      [],
+  );
+
+  const jobs =
+    dbJobs?.map((job) => {
+      const company = companyNameById.get(String(job.company_id)) ?? "Company";
+      const initials = company
+        .split(/\s+/)
+        .map((part: string) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+
+      return {
+        company,
+        featured: false,
+        location: job.location || "-",
+        logo: initials || "UW",
+        title: job.title,
+        type: job.employment_type || "-",
+        visa: job.visa_support_type || "D-2/D-4 review",
+        wage:
+          job.wage_amount && job.wage_type
+            ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
+            : "Wage negotiable",
+      };
+    }) ?? [];
+
   return (
     <PublicShell>
       <section className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
@@ -50,9 +101,14 @@ export default function JobsPage() {
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="divide-y divide-slate-100">
-              {jobs.map((job) => (
-                <JobCard job={job} key={job.title} />
-              ))}
+              {jobs.length > 0 ? (
+                jobs.map((job) => <JobCard job={job} key={job.title} />)
+              ) : (
+                <div className="px-5 py-10 text-sm font-semibold text-slate-500">
+                  아직 공개된 공고가 없습니다. 기업 공고가 운영자 승인을 받으면
+                  이곳에 표시됩니다.
+                </div>
+              )}
             </div>
           </div>
         </div>
