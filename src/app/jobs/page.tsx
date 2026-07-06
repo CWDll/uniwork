@@ -45,6 +45,7 @@ export default async function JobsPage() {
         .toUpperCase();
 
       return {
+        id: job.id,
         company,
         featured: false,
         location: job.location || "-",
@@ -102,7 +103,7 @@ export default async function JobsPage() {
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="divide-y divide-slate-100">
               {jobs.length > 0 ? (
-                jobs.map((job) => <JobCard job={job} key={job.title} />)
+                jobs.map((job) => <JobCard job={job} key={job.id} />)
               ) : (
                 <div className="px-5 py-10 text-sm font-semibold text-slate-500">
                   아직 공개된 공고가 없습니다. 기업 공고가 운영자 승인을 받으면

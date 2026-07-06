@@ -1,8 +1,12 @@
 import { Heart } from "lucide-react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type Job = {
+  id?: string;
   company: string;
   logo: string;
   title: string;
@@ -14,6 +18,8 @@ type Job = {
 };
 
 export function JobCard({ job }: { job: Job }) {
+  const href = job.id ? `/jobs/${job.id}` : "/jobs";
+
   return (
     <article className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)] gap-3 px-4 py-4 transition hover:bg-slate-50 sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:gap-4 sm:py-5">
       <div className="grid size-12 place-items-center rounded-xl bg-blue-50 text-base font-black text-blue-700 sm:size-16 sm:text-lg">
@@ -21,9 +27,18 @@ export function JobCard({ job }: { job: Job }) {
       </div>
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h3 className="min-w-0 text-base font-black leading-snug text-slate-950">
-            {job.title}
-          </h3>
+          {job.id ? (
+            <Link
+              className="min-w-0 text-base font-black leading-snug text-slate-950 hover:text-blue-700"
+              href={href}
+            >
+              {job.title}
+            </Link>
+          ) : (
+            <h3 className="min-w-0 text-base font-black leading-snug text-slate-950">
+              {job.title}
+            </h3>
+          )}
           {job.featured ? (
             <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
               Pick
@@ -48,7 +63,12 @@ export function JobCard({ job }: { job: Job }) {
         <Button variant="outline" size="icon">
           <Heart className="size-4" />
         </Button>
-        <Button size="sm">Apply</Button>
+        <Link
+          className={cn(buttonVariants({ size: "sm" }), "min-w-20")}
+          href={href}
+        >
+          Apply
+        </Link>
       </div>
     </article>
   );
