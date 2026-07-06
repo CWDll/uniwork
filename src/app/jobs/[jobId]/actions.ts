@@ -5,7 +5,15 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-export async function applyToJobAction(formData: FormData) {
+type ApplyState = {
+  error?: string;
+  message?: string;
+};
+
+export async function applyToJobAction(
+  _prevState: ApplyState,
+  formData: FormData,
+): Promise<ApplyState> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -14,7 +22,7 @@ export async function applyToJobAction(formData: FormData) {
   const jobId = String(formData.get("job_id") ?? "").trim();
 
   if (!jobId) {
-    return;
+    return { error: "공고 정보를 찾을 수 없습니다." };
   }
 
   if (!user) {
@@ -28,7 +36,7 @@ export async function applyToJobAction(formData: FormData) {
     .maybeSingle();
 
   if (profile?.role !== "seeker") {
-    return;
+    return { error: "구직자 계정으로만 지원할 수 있습니다." };
   }
 
   const { data: job } = await supabase
@@ -39,7 +47,7 @@ export async function applyToJobAction(formData: FormData) {
     .maybeSingle();
 
   if (!job) {
-    return;
+    return { error: "지원 가능한 공개 공고를 찾을 수 없습니다." };
   }
 
   const message = String(formData.get("message") ?? "").trim();
@@ -51,12 +59,16 @@ export async function applyToJobAction(formData: FormData) {
   });
 
   if (error) {
-    return;
+    if (error.code === "23505") {
+      return { error: "이미 지원한 공고입니다." };
+    }
+
+    return { error: error.message };
   }
 
   revalidatePath("/me/applications");
   revalidatePath(`/jobs/${job.id}`);
   revalidatePath("/company/applications");
 
-  return;
+  return { message: "지원이 완료되었습니다." };
 }

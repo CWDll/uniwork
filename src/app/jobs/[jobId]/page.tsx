@@ -1,10 +1,10 @@
-import { ArrowLeft, BriefcaseBusiness, MapPin, Send } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, MapPin } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { applyToJobAction } from "@/app/jobs/[jobId]/actions";
+import { JobApplicationForm } from "@/components/jobs/job-application-form";
 import { PublicShell } from "@/components/layout/public-shell";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -135,18 +135,7 @@ export default async function JobDetailPage({
               이미 지원한 공고입니다. 상태: {existingApplication.status}
             </div>
           ) : user ? (
-            <form action={applyToJobAction} className="mt-5 grid gap-3">
-              <input name="job_id" type="hidden" value={job.id} />
-              <textarea
-                className="min-h-28 rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium outline-none focus:border-blue-500"
-                name="message"
-                placeholder="기업에게 전달할 간단한 메시지"
-              />
-              <Button type="submit">
-                <Send className="size-4" />
-                지원하기
-              </Button>
-            </form>
+            <JobApplicationForm jobId={job.id} />
           ) : (
             <Link
               className={cn(buttonVariants({ className: "mt-5 w-full" }))}

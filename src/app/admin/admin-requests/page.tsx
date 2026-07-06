@@ -1,6 +1,5 @@
-import { updateAdminRequestAction } from "@/app/admin/admin-requests/actions";
+import { AdminRequestUpdateForm } from "@/components/admin-requests/admin-request-update-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminRequestsPage() {
@@ -94,50 +93,13 @@ export default async function AdminRequestsPage() {
                       </p>
                     </div>
 
-                    <form action={updateAdminRequestAction} className="grid gap-3">
-                      <input name="request_id" type="hidden" value={request.id} />
-                      <label className="grid gap-2 text-sm font-bold text-slate-700">
-                        Status
-                        <select
-                          className="h-10 rounded-md border border-slate-200 px-3"
-                          defaultValue={request.status}
-                          name="status"
-                        >
-                          <option value="received">received</option>
-                          <option value="reviewing">reviewing</option>
-                          <option value="partner_needed">partner_needed</option>
-                          <option value="assigned">assigned</option>
-                          <option value="completed">completed</option>
-                          <option value="rejected">rejected</option>
-                        </select>
-                      </label>
-                      <label className="grid gap-2 text-sm font-bold text-slate-700">
-                        Operator memo
-                        <textarea
-                          className="min-h-24 rounded-md border border-slate-200 px-3 py-2"
-                          defaultValue={request.memo ?? ""}
-                          name="memo"
-                        />
-                      </label>
-                      <label className="grid gap-2 text-sm font-bold text-slate-700">
-                        Partner
-                        <select
-                          className="h-10 rounded-md border border-slate-200 px-3"
-                          defaultValue={request.assigned_partner_id ?? ""}
-                          name="assigned_partner_id"
-                        >
-                          <option value="">Unassigned</option>
-                          {partners?.map((partner) => (
-                            <option key={partner.id} value={partner.id}>
-                              {partner.name || partner.email}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <Button size="sm" type="submit">
-                        Update
-                      </Button>
-                    </form>
+                    <AdminRequestUpdateForm
+                      assignedPartnerId={request.assigned_partner_id}
+                      memo={request.memo}
+                      partners={partners ?? []}
+                      requestId={request.id}
+                      status={request.status}
+                    />
                   </div>
                 </article>
               );
