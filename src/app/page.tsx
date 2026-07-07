@@ -15,13 +15,44 @@ import Link from "next/link";
 import type { ReactElement } from "react";
 
 import { LoginForm } from "@/components/auth/login-form";
+import { JobCategoryFilters } from "@/components/jobs/job-category-filters";
 import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
 import { Button } from "@/components/ui/button";
-import { applicationTips, categories } from "@/data/seed";
+import { applicationTips } from "@/data/seed";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function Home() {
+type HomeSearchParams = {
+  category?: string;
+};
+
+function getParam(value: string | undefined) {
+  return value?.trim() ?? "";
+}
+
+function getHomeCategoryHref(category: string) {
+  if (category === "All Jobs") {
+    return "/";
+  }
+
+  return `/?category=${encodeURIComponent(category)}`;
+}
+
+function getJobsCategoryHref(category: string) {
+  if (category === "All Jobs") {
+    return "/jobs";
+  }
+
+  return `/jobs?category=${encodeURIComponent(category)}`;
+}
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<HomeSearchParams>;
+}) {
+  const params = await searchParams;
+  const category = getParam(params.category);
   const supabase = await createClient();
   const {
     data: { user },
@@ -34,12 +65,18 @@ export default async function Home() {
         .maybeSingle()
     : { data: null };
 
-  const { data: dbJobs } = await supabase
+  let featuredJobsQuery = supabase
     .from("jobs")
     .select(
-      "id, company_id, title, location, employment_type, wage_type, wage_amount, visa_support_type, published_at",
+      "id, company_id, title, location, employment_type, category, wage_type, wage_amount, visa_support_type, published_at",
     )
-    .eq("status", "published")
+    .eq("status", "published");
+
+  if (category && category !== "All Jobs") {
+    featuredJobsQuery = featuredJobsQuery.eq("category", category);
+  }
+
+  const { data: dbJobs } = await featuredJobsQuery
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(3);
 
@@ -204,28 +241,28 @@ export default async function Home() {
 
       <section className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="min-w-0">
-          <div className="flex max-w-full gap-2 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <button
-                className="shrink-0 whitespace-nowrap rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 first:bg-blue-600 first:text-white"
-                key={category}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
+          <JobCategoryFilters
+            activeCategory={category}
+            defaultOpen
+            getHref={getHomeCategoryHref}
+          />
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-4">
               <div className="min-w-0">
                 <h2 className="text-lg font-black">Featured Jobs</h2>
                 <p className="text-sm font-medium text-slate-500">
-                  지원 가능성을 먼저 확인할 수 있는 공고
+                  {category
+                    ? `${category} 카테고리의 공개 공고`
+                    : "지원 가능성을 먼저 확인할 수 있는 공고"}
                 </p>
               </div>
-              <Button className="shrink-0" variant="ghost" size="sm">
+              <Link
+                className="shrink-0 text-sm font-black text-slate-600 hover:text-blue-700"
+                href={getJobsCategoryHref(category || "All Jobs")}
+              >
                 View all
-              </Button>
+              </Link>
             </div>
 
             <div className="divide-y divide-slate-100">

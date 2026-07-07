@@ -1,12 +1,3 @@
-export const categories = [
-  "All Jobs",
-  "Cafe & Service",
-  "Office",
-  "Translation",
-  "Marketing",
-  "Education",
-];
-
 export const applicationTips = [
   "D-2/D-4 시간제 취업 허가 여부를 먼저 확인하세요.",
   "외국인등록번호 원본은 플랫폼에 입력하지 않습니다.",

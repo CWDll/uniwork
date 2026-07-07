@@ -1,13 +1,12 @@
 import { BriefcaseBusiness, MapPin, Search } from "lucide-react";
 import Link from "next/link";
 
+import { JobCategoryFilters } from "@/components/jobs/job-category-filters";
 import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
 import { PageHeading } from "@/components/marketing/page-heading";
 import { Button } from "@/components/ui/button";
-import { categories } from "@/data/seed";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
 
 type JobsSearchParams = {
   category?: string;
@@ -218,24 +217,16 @@ export default async function JobsPage({
             description="D-2/D-4 유학생의 시간제 취업 조건과 기업 요구사항을 함께 확인할 수 있도록 공고 구조를 설계합니다."
           />
 
-          <div className="mt-5 flex max-w-full gap-2 overflow-x-auto pb-2">
-            {categories.map((category) => (
-              <Link
-                className={cn(
-                  "shrink-0 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700",
-                  (!params.category && category === "All Jobs") ||
-                    params.category === category
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "hover:border-blue-200 hover:text-blue-700",
-                )}
-                href={buildJobsHref(params, {
-                  category: category === "All Jobs" ? "" : category,
-                })}
-                key={category}
-              >
-                {category}
-              </Link>
-            ))}
+          <div className="mt-5">
+            <JobCategoryFilters
+              activeCategory={category}
+              defaultOpen={hasFilters}
+              getHref={(nextCategory) =>
+                buildJobsHref(params, {
+                  category: nextCategory === "All Jobs" ? "" : nextCategory,
+                })
+              }
+            />
           </div>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
