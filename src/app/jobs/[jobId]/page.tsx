@@ -1,10 +1,11 @@
-import { ArrowLeft, BriefcaseBusiness, MapPin } from "lucide-react";
+import { AlertCircle, ArrowLeft, BriefcaseBusiness, CheckCircle2, MapPin } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { JobApplicationForm } from "@/components/jobs/job-application-form";
 import { PublicShell } from "@/components/layout/public-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { getJobEligibility, type JobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +47,26 @@ export default async function JobDetailPage({
         .eq("seeker_id", user.id)
         .maybeSingle()
     : { data: null };
+  const { data: seekerProfile } = user
+    ? await supabase
+        .from("seeker_profiles")
+        .select("visa_type")
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const { data: visaRule } = seekerProfile?.visa_type
+    ? await supabase
+        .from("visa_eligibility_rules")
+        .select("visa_type, can_apply, needs_review, blocked_reason")
+        .eq("visa_type", seekerProfile.visa_type)
+        .maybeSingle()
+    : { data: null };
+  const eligibility = getJobEligibility({
+    isSignedIn: Boolean(user),
+    jobVisaSupportType: job.visa_support_type,
+    rule: visaRule,
+    visaType: seekerProfile?.visa_type,
+  });
 
   const wage =
     job.wage_amount && job.wage_type
@@ -134,19 +155,70 @@ export default async function JobDetailPage({
             <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
               이미 지원한 공고입니다. 상태: {existingApplication.status}
             </div>
+          ) : user && eligibility.canApply ? (
+            <>
+              <EligibilityPanel eligibility={eligibility} />
+              <JobApplicationForm jobId={job.id} />
+            </>
           ) : user ? (
-            <JobApplicationForm jobId={job.id} />
+            <>
+              <EligibilityPanel eligibility={eligibility} />
+              <Link
+                className={cn(buttonVariants({ className: "mt-4 w-full" }))}
+                href={
+                  eligibility.status === "profile_required"
+                    ? "/me/profile"
+                    : "/me/admin-requests"
+                }
+              >
+                {eligibility.status === "profile_required"
+                  ? "프로필 입력하기"
+                  : "행정 검토 요청하기"}
+              </Link>
+            </>
           ) : (
-            <Link
-              className={cn(buttonVariants({ className: "mt-5 w-full" }))}
-              href={`/login?next=/jobs/${job.id}`}
-            >
-              로그인 후 지원하기
-            </Link>
+            <>
+              <EligibilityPanel eligibility={eligibility} />
+              <Link
+                className={cn(buttonVariants({ className: "mt-5 w-full" }))}
+                href={`/login?next=/jobs/${job.id}`}
+              >
+                로그인 후 지원하기
+              </Link>
+            </>
           )}
         </aside>
       </section>
     </PublicShell>
+  );
+}
+
+function EligibilityPanel({ eligibility }: { eligibility: JobEligibility }) {
+  const Icon = eligibility.canApply ? CheckCircle2 : AlertCircle;
+
+  return (
+    <div
+      className={cn(
+        "mt-5 rounded-xl border p-4",
+        eligibility.status === "eligible" &&
+          "border-emerald-100 bg-emerald-50 text-emerald-900",
+        eligibility.status === "review_required" &&
+          "border-amber-100 bg-amber-50 text-amber-900",
+        eligibility.status === "blocked" && "border-red-100 bg-red-50 text-red-900",
+        eligibility.status === "profile_required" &&
+          "border-slate-200 bg-slate-50 text-slate-800",
+        eligibility.status === "sign_in_required" &&
+          "border-blue-100 bg-blue-50 text-blue-900",
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <Icon className="size-5 shrink-0" />
+        <p className="font-black">{eligibility.label}</p>
+      </div>
+      <p className="mt-2 text-sm font-semibold leading-6">
+        {eligibility.description}
+      </p>
+    </div>
   );
 }
 

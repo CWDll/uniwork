@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
+import type { JobEligibility } from "@/lib/jobs/eligibility";
 import { cn } from "@/lib/utils";
 
 type Job = {
@@ -15,6 +16,7 @@ type Job = {
   visa: string;
   wage: string;
   featured: boolean;
+  eligibility?: JobEligibility;
 };
 
 export function JobCard({ job }: { job: Job }) {
@@ -44,6 +46,9 @@ export function JobCard({ job }: { job: Job }) {
               Pick
             </span>
           ) : null}
+          {job.eligibility ? (
+            <EligibilityBadge eligibility={job.eligibility} />
+          ) : null}
         </div>
         <p className="mt-1 text-sm font-semibold text-slate-600">
           {job.company}
@@ -63,13 +68,27 @@ export function JobCard({ job }: { job: Job }) {
         <Button variant="outline" size="icon">
           <Heart className="size-4" />
         </Button>
-        <Link
-          className={cn(buttonVariants({ size: "sm" }), "min-w-20")}
-          href={href}
-        >
-          Apply
+        <Link className={cn(buttonVariants({ size: "sm" }), "min-w-20")} href={href}>
+          {job.eligibility?.status === "blocked" ? "Details" : "Apply"}
         </Link>
       </div>
     </article>
+  );
+}
+
+function EligibilityBadge({ eligibility }: { eligibility: JobEligibility }) {
+  return (
+    <span
+      className={cn(
+        "rounded-md px-2 py-1 text-xs font-black",
+        eligibility.status === "eligible" && "bg-emerald-50 text-emerald-700",
+        eligibility.status === "review_required" && "bg-amber-50 text-amber-700",
+        eligibility.status === "blocked" && "bg-red-50 text-red-700",
+        eligibility.status === "profile_required" && "bg-slate-100 text-slate-600",
+        eligibility.status === "sign_in_required" && "bg-blue-50 text-blue-700",
+      )}
+    >
+      {eligibility.label}
+    </span>
   );
 }

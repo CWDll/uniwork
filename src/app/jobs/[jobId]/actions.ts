@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getJobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
 
 type ApplyState = {
@@ -41,13 +42,36 @@ export async function applyToJobAction(
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, status")
+    .select("id, status, visa_support_type")
     .eq("id", jobId)
     .eq("status", "published")
     .maybeSingle();
 
   if (!job) {
     return { error: "지원 가능한 공개 공고를 찾을 수 없습니다." };
+  }
+
+  const { data: seekerProfile } = await supabase
+    .from("seeker_profiles")
+    .select("visa_type")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const { data: visaRule } = seekerProfile?.visa_type
+    ? await supabase
+        .from("visa_eligibility_rules")
+        .select("visa_type, can_apply, needs_review, blocked_reason")
+        .eq("visa_type", seekerProfile.visa_type)
+        .maybeSingle()
+    : { data: null };
+  const eligibility = getJobEligibility({
+    isSignedIn: true,
+    jobVisaSupportType: job.visa_support_type,
+    rule: visaRule,
+    visaType: seekerProfile?.visa_type,
+  });
+
+  if (!eligibility.canApply) {
+    return { error: eligibility.description };
   }
 
   const message = String(formData.get("message") ?? "").trim();

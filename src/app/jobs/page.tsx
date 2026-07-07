@@ -6,6 +6,7 @@ import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
 import { PageHeading } from "@/components/marketing/page-heading";
 import { Button } from "@/components/ui/button";
+import { getJobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
 
 type JobsSearchParams = {
@@ -63,6 +64,23 @@ export default async function JobsPage({
   const visaSupportType = getParam(params.visa_support_type);
   const wageType = getParam(params.wage_type);
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: seekerProfile } = user
+    ? await supabase
+        .from("seeker_profiles")
+        .select("visa_type")
+        .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const { data: visaRule } = seekerProfile?.visa_type
+    ? await supabase
+        .from("visa_eligibility_rules")
+        .select("visa_type, can_apply, needs_review, blocked_reason")
+        .eq("visa_type", seekerProfile.visa_type)
+        .maybeSingle()
+    : { data: null };
 
   let companyIdsMatchingKeyword: string[] = [];
 
@@ -176,6 +194,12 @@ export default async function JobsPage({
           job.wage_amount && job.wage_type
             ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
             : "Wage negotiable",
+        eligibility: getJobEligibility({
+          isSignedIn: Boolean(user),
+          jobVisaSupportType: job.visa_support_type,
+          rule: visaRule,
+          visaType: seekerProfile?.visa_type,
+        }),
       };
     }) ?? [];
   const hasFilters = Boolean(
