@@ -81,10 +81,10 @@ Framework Preset: Next.js
 Install Command: npm install
 Build Command: npm run build
 Output Directory: .next
-Node.js: 20.19+ or 22.x recommended
+Node.js: 20.x
 ```
 
-The current local Node version can build the app, but the Next.js dependency tree warns below Node `20.19.0`. For deployment, use Node `20.19+` or `22.x`.
+Use Node `20.19.0` locally through `.nvmrc`. Vercel is pinned to Node `20.x` through `package.json`.
 
 ## PWA Production Check
 
