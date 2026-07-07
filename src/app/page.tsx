@@ -11,14 +11,82 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
+import Link from "next/link";
 import type { ReactElement } from "react";
 
+import { LoginForm } from "@/components/auth/login-form";
 import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
 import { Button } from "@/components/ui/button";
-import { applicationTips, categories, jobs } from "@/data/seed";
+import { applicationTips, categories } from "@/data/seed";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Home() {
+export default async function Home() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("role, name, email")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  const { data: dbJobs } = await supabase
+    .from("jobs")
+    .select(
+      "id, company_id, title, location, employment_type, wage_type, wage_amount, visa_support_type, published_at",
+    )
+    .eq("status", "published")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(3);
+
+  const companyIds = Array.from(
+    new Set(dbJobs?.map((job) => job.company_id) ?? []),
+  );
+  const { data: companies } =
+    companyIds.length > 0
+      ? await supabase.from("companies").select("id, name").in("id", companyIds)
+      : { data: [] };
+  const companyNameById = new Map(
+    companies?.map((company) => [String(company.id), String(company.name)]) ?? [],
+  );
+  const featuredJobs =
+    dbJobs?.map((job) => {
+      const company = companyNameById.get(String(job.company_id)) ?? "Company";
+      const logo = company
+        .split(/\s+/)
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+
+      return {
+        id: job.id,
+        company,
+        featured: Boolean(job.published_at),
+        location: job.location || "-",
+        logo: logo || "UW",
+        title: job.title,
+        type: job.employment_type || "-",
+        visa: job.visa_support_type || "D-2/D-4 review",
+        wage:
+          job.wage_amount && job.wage_type
+            ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
+            : "Wage negotiable",
+      };
+    }) ?? [];
+  const dashboardHref =
+    profile?.role === "admin"
+      ? "/admin"
+      : profile?.role === "company"
+        ? "/company"
+        : profile?.role === "partner"
+          ? "/admin/admin-requests"
+          : "/me";
+
   return (
     <PublicShell>
       <section className="overflow-hidden border-b border-slate-200 bg-white">
@@ -46,7 +114,7 @@ export default function Home() {
                       Profile check
                     </p>
                     <p className="mt-1 text-xl font-black sm:text-2xl">
-                      72% ready
+                      Visa-aware matching
                     </p>
                   </div>
                   <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-blue-600 text-white sm:size-14">
@@ -54,7 +122,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="mt-5 h-3 overflow-hidden rounded-full bg-white">
-                  <div className="h-full w-[72%] rounded-full bg-blue-600" />
+                  <div className="h-full w-full rounded-full bg-blue-600" />
                 </div>
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
                   <StatusPill icon={<BadgeCheck />} label="D-2" />
@@ -134,28 +202,37 @@ export default function Home() {
             </div>
 
             <div className="divide-y divide-slate-100">
-              {jobs.map((job) => (
-                <JobCard job={job} key={job.title} />
-              ))}
+              {featuredJobs.length > 0 ? (
+                featuredJobs.map((job) => <JobCard job={job} key={job.id} />)
+              ) : (
+                <div className="px-5 py-10 text-sm font-semibold text-slate-500">
+                  아직 공개된 공고가 없습니다. 기업 공고가 운영자 승인을 받으면
+                  이곳에 표시됩니다.
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         <aside className="grid min-w-0 gap-4 lg:block lg:space-y-4">
           <div className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-lg font-black">Log In</h2>
-            <div className="mt-4 grid gap-3">
-              <input
-                className="h-11 rounded-md border border-slate-200 px-3 text-sm font-semibold outline-none focus:border-blue-400"
-                placeholder="Email"
-              />
-              <input
-                className="h-11 rounded-md border border-slate-200 px-3 text-sm font-semibold outline-none focus:border-blue-400"
-                placeholder="Password"
-                type="password"
-              />
-              <Button className="h-11">Log In</Button>
-            </div>
+            {user ? (
+              <>
+                <h2 className="text-lg font-black">My Uniwork</h2>
+                <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                  {profile?.name || profile?.email || user.email} 계정으로 로그인되어
+                  있습니다.
+                </p>
+                <Link className="mt-4 inline-flex" href={dashboardHref}>
+                  <Button className="h-11">Go to dashboard</Button>
+                </Link>
+              </>
+            ) : (
+              <>
+                <h2 className="text-lg font-black">Log In</h2>
+                <LoginForm />
+              </>
+            )}
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-5">

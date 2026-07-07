@@ -1,15 +1,44 @@
 import { FileText, ShieldAlert, UsersRound } from "lucide-react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { adminRequestStatuses } from "@/data/seed";
+import { createClient } from "@/lib/supabase/server";
 
-const metrics = [
-  { label: "Users", value: "1,024", icon: UsersRound },
-  { label: "Pending jobs", value: "8", icon: ShieldAlert },
-  { label: "Admin requests", value: "23", icon: FileText },
+const requestStatusLabels = [
+  { key: "received", label: "접수" },
+  { key: "reviewing", label: "운영자 검토" },
+  { key: "assigned", label: "행정사 배정" },
+  { key: "completed", label: "완료" },
 ];
 
-export default function AdminPage() {
+export default async function AdminPage() {
+  const supabase = await createClient();
+  const [
+    { count: userCount },
+    { count: pendingJobCount },
+    { count: adminRequestCount },
+    { data: adminRequests },
+  ] = await Promise.all([
+    supabase.from("profiles").select("id", { count: "exact", head: true }),
+    supabase
+      .from("jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "draft"),
+    supabase
+      .from("admin_requests")
+      .select("id", { count: "exact", head: true }),
+    supabase.from("admin_requests").select("status"),
+  ]);
+
+  const metrics = [
+    { label: "Users", value: userCount ?? 0, icon: UsersRound },
+    { label: "Pending jobs", value: pendingJobCount ?? 0, icon: ShieldAlert },
+    { label: "Admin requests", value: adminRequestCount ?? 0, icon: FileText },
+  ];
+  const statusCounts = new Map<string, number>();
+  adminRequests?.forEach((request) => {
+    statusCounts.set(request.status, (statusCounts.get(request.status) ?? 0) + 1);
+  });
+
   return (
     <DashboardShell area="admin">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
@@ -38,7 +67,9 @@ export default function AdminPage() {
               <p className="mt-4 text-sm font-bold text-slate-500">
                 {metric.label}
               </p>
-              <p className="mt-1 text-3xl font-black">{metric.value}</p>
+              <p className="mt-1 text-3xl font-black">
+                {metric.value.toLocaleString("ko-KR")}
+              </p>
             </article>
           );
         })}
@@ -47,10 +78,12 @@ export default function AdminPage() {
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-black">Admin request pipeline</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {adminRequestStatuses.map((status) => (
+          {requestStatusLabels.map((status) => (
             <div className="rounded-xl bg-slate-50 p-4" key={status.label}>
               <p className="text-sm font-bold text-slate-500">{status.label}</p>
-              <p className="mt-2 text-2xl font-black">{status.value}</p>
+              <p className="mt-2 text-2xl font-black">
+                {(statusCounts.get(status.key) ?? 0).toLocaleString("ko-KR")}
+              </p>
             </div>
           ))}
         </div>
