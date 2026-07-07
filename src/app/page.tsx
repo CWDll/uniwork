@@ -242,9 +242,11 @@ export default async function Home({
       <section className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 sm:py-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="min-w-0">
           <JobCategoryFilters
-            activeCategory={category}
+            activeFilters={{ category }}
             defaultOpen
-            getHref={getHomeCategoryHref}
+            getHref={(updates) =>
+              getHomeCategoryHref(updates.category || "All Jobs")
+            }
           />
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">

@@ -11,8 +11,12 @@ import { createClient } from "@/lib/supabase/server";
 type JobsSearchParams = {
   category?: string;
   employment_type?: string;
+  korean_requirement?: string;
   location?: string;
+  min_wage?: string;
   q?: string;
+  visa_support_type?: string;
+  wage_type?: string;
 };
 
 const employmentTypes = ["Part-time", "Contract", "Internship", "Full-time"];
@@ -54,6 +58,10 @@ export default async function JobsPage({
   const locationFilter = getFilterText(location);
   const employmentType = getParam(params.employment_type);
   const category = getParam(params.category);
+  const koreanRequirement = getParam(params.korean_requirement);
+  const minWage = Number(getParam(params.min_wage));
+  const visaSupportType = getParam(params.visa_support_type);
+  const wageType = getParam(params.wage_type);
   const supabase = await createClient();
 
   let companyIdsMatchingKeyword: string[] = [];
@@ -105,6 +113,25 @@ export default async function JobsPage({
     jobsQuery = jobsQuery.eq("category", category);
   }
 
+  if (visaSupportType) {
+    jobsQuery = jobsQuery.ilike("visa_support_type", `%${visaSupportType}%`);
+  }
+
+  if (wageType) {
+    jobsQuery = jobsQuery.eq("wage_type", wageType);
+  }
+
+  if (koreanRequirement) {
+    jobsQuery = jobsQuery.ilike(
+      "korean_requirement",
+      `%${getFilterText(koreanRequirement)}%`,
+    );
+  }
+
+  if (Number.isFinite(minWage) && minWage > 0) {
+    jobsQuery = jobsQuery.gte("wage_amount", minWage);
+  }
+
   const { data: dbJobs } = await jobsQuery.order("published_at", {
     ascending: false,
     nullsFirst: false,
@@ -151,7 +178,16 @@ export default async function JobsPage({
             : "Wage negotiable",
       };
     }) ?? [];
-  const hasFilters = Boolean(q || location || employmentType || category);
+  const hasFilters = Boolean(
+    q ||
+      location ||
+      employmentType ||
+      category ||
+      visaSupportType ||
+      wageType ||
+      koreanRequirement ||
+      (Number.isFinite(minWage) && minWage > 0),
+  );
 
   return (
     <PublicShell>
@@ -198,6 +234,35 @@ export default async function JobsPage({
             {category ? (
               <input name="category" type="hidden" value={category} />
             ) : null}
+            {visaSupportType ? (
+              <input
+                name="visa_support_type"
+                type="hidden"
+                value={visaSupportType}
+              />
+            ) : null}
+            {wageType ? (
+              <input name="wage_type" type="hidden" value={wageType} />
+            ) : null}
+            {koreanRequirement ? (
+              <input
+                name="korean_requirement"
+                type="hidden"
+                value={koreanRequirement}
+              />
+            ) : null}
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              Minimum wage
+              <input
+                className="h-11 rounded-xl border-0 bg-slate-50 px-3 text-sm font-bold text-slate-600 outline-none"
+                defaultValue={
+                  Number.isFinite(minWage) && minWage > 0 ? String(minWage) : ""
+                }
+                inputMode="numeric"
+                name="min_wage"
+                placeholder="12000"
+              />
+            </label>
             <Button className="h-11 rounded-xl">Apply filters</Button>
             {hasFilters ? (
               <Link
@@ -219,13 +284,17 @@ export default async function JobsPage({
 
           <div className="mt-5">
             <JobCategoryFilters
-              activeCategory={category}
+              activeFilters={{
+                category,
+                employment_type: employmentType,
+                korean_requirement: koreanRequirement,
+                location,
+                visa_support_type: visaSupportType,
+                wage_type: wageType,
+              }}
               defaultOpen={hasFilters}
-              getHref={(nextCategory) =>
-                buildJobsHref(params, {
-                  category: nextCategory === "All Jobs" ? "" : nextCategory,
-                })
-              }
+              getHref={(updates) => buildJobsHref(params, updates)}
+              showAdvanced
             />
           </div>
 
