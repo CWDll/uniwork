@@ -1,5 +1,5 @@
 import { BriefcaseBusiness, MapPin, Search } from "lucide-react";
-import type { ReactElement } from "react";
+import Link from "next/link";
 
 import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
@@ -7,16 +7,109 @@ import { PageHeading } from "@/components/marketing/page-heading";
 import { Button } from "@/components/ui/button";
 import { categories } from "@/data/seed";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
-export default async function JobsPage() {
+type JobsSearchParams = {
+  category?: string;
+  employment_type?: string;
+  location?: string;
+  q?: string;
+};
+
+const employmentTypes = ["Part-time", "Contract", "Internship", "Full-time"];
+
+function getParam(value: string | undefined) {
+  return value?.trim() ?? "";
+}
+
+function getFilterText(value: string) {
+  return value.replace(/[%(),]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function buildJobsHref(params: JobsSearchParams, updates: JobsSearchParams) {
+  const nextParams = new URLSearchParams();
+  const merged = { ...params, ...updates };
+
+  for (const [key, value] of Object.entries(merged)) {
+    const normalized = getParam(value);
+
+    if (normalized && normalized !== "All Jobs") {
+      nextParams.set(key, normalized);
+    }
+  }
+
+  const query = nextParams.toString();
+
+  return query ? `/jobs?${query}` : "/jobs";
+}
+
+export default async function JobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<JobsSearchParams>;
+}) {
+  const params = await searchParams;
+  const q = getParam(params.q);
+  const location = getParam(params.location);
+  const queryFilter = getFilterText(q);
+  const locationFilter = getFilterText(location);
+  const employmentType = getParam(params.employment_type);
+  const category = getParam(params.category);
   const supabase = await createClient();
-  const { data: dbJobs } = await supabase
+
+  let companyIdsMatchingKeyword: string[] = [];
+
+  if (queryFilter) {
+    const { data: matchingCompanies } = await supabase
+      .from("companies")
+      .select("id")
+      .ilike("name", `%${queryFilter}%`)
+      .limit(50);
+
+    companyIdsMatchingKeyword =
+      matchingCompanies?.map((company) => String(company.id)) ?? [];
+  }
+
+  let jobsQuery = supabase
     .from("jobs")
     .select(
       "id, company_id, title, location, employment_type, category, wage_type, wage_amount, visa_support_type, status, created_at",
     )
-    .eq("status", "published")
-    .order("published_at", { ascending: false, nullsFirst: false });
+    .eq("status", "published");
+
+  if (queryFilter) {
+    const keywordFilters = [
+      `title.ilike.%${queryFilter}%`,
+      `description.ilike.%${queryFilter}%`,
+      `location.ilike.%${queryFilter}%`,
+      `category.ilike.%${queryFilter}%`,
+    ];
+
+    if (companyIdsMatchingKeyword.length > 0) {
+      keywordFilters.push(
+        `company_id.in.(${companyIdsMatchingKeyword.join(",")})`,
+      );
+    }
+
+    jobsQuery = jobsQuery.or(keywordFilters.join(","));
+  }
+
+  if (locationFilter) {
+    jobsQuery = jobsQuery.ilike("location", `%${locationFilter}%`);
+  }
+
+  if (employmentType) {
+    jobsQuery = jobsQuery.eq("employment_type", employmentType);
+  }
+
+  if (category && category !== "All Jobs") {
+    jobsQuery = jobsQuery.eq("category", category);
+  }
+
+  const { data: dbJobs } = await jobsQuery.order("published_at", {
+    ascending: false,
+    nullsFirst: false,
+  });
 
   const companyIds = Array.from(
     new Set(dbJobs?.map((job) => job.company_id) ?? []),
@@ -59,27 +152,63 @@ export default async function JobsPage() {
             : "Wage negotiable",
       };
     }) ?? [];
+  const hasFilters = Boolean(q || location || employmentType || category);
 
   return (
     <PublicShell>
       <section className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
         <aside className="rounded-2xl border border-slate-200 bg-white p-4 lg:sticky lg:top-20 lg:h-max">
           <h2 className="text-lg font-black">Search jobs</h2>
-          <div className="mt-4 grid gap-3">
+          <form action="/jobs" className="mt-4 grid gap-3">
             <label className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-3">
               <Search className="size-4 text-slate-400" />
               <input
+                defaultValue={q}
                 className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
+                name="q"
                 placeholder="Keyword"
               />
             </label>
-            <Filter label="Location" icon={<MapPin className="size-4" />} />
-            <Filter
-              label="Employment type"
-              icon={<BriefcaseBusiness className="size-4" />}
-            />
+            <label className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-3">
+              <MapPin className="size-4 text-slate-400" />
+              <input
+                defaultValue={location}
+                className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
+                name="location"
+                placeholder="Location"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              <span className="flex items-center gap-2 text-slate-500">
+                <BriefcaseBusiness className="size-4" />
+                Employment type
+              </span>
+              <select
+                className="h-11 rounded-xl border-0 bg-slate-50 px-3 text-sm font-bold text-slate-600 outline-none"
+                defaultValue={employmentType}
+                name="employment_type"
+              >
+                <option value="">All types</option>
+                {employmentTypes.map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {category ? (
+              <input name="category" type="hidden" value={category} />
+            ) : null}
             <Button className="h-11 rounded-xl">Apply filters</Button>
-          </div>
+            {hasFilters ? (
+              <Link
+                className="text-center text-sm font-black text-slate-500 hover:text-blue-700"
+                href="/jobs"
+              >
+                Reset filters
+              </Link>
+            ) : null}
+          </form>
         </aside>
 
         <div className="min-w-0">
@@ -91,23 +220,40 @@ export default async function JobsPage() {
 
           <div className="mt-5 flex max-w-full gap-2 overflow-x-auto pb-2">
             {categories.map((category) => (
-              <button
-                className="shrink-0 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 first:bg-blue-600 first:text-white"
+              <Link
+                className={cn(
+                  "shrink-0 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700",
+                  (!params.category && category === "All Jobs") ||
+                    params.category === category
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "hover:border-blue-200 hover:text-blue-700",
+                )}
+                href={buildJobsHref(params, {
+                  category: category === "All Jobs" ? "" : category,
+                })}
                 key={category}
               >
                 {category}
-              </button>
+              </Link>
             ))}
           </div>
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+              <h2 className="text-lg font-black">Jobs {jobs.length}</h2>
+              {hasFilters ? (
+                <p className="text-sm font-semibold text-slate-500">
+                  필터가 적용된 결과입니다.
+                </p>
+              ) : null}
+            </div>
             <div className="divide-y divide-slate-100">
               {jobs.length > 0 ? (
                 jobs.map((job) => <JobCard job={job} key={job.id} />)
               ) : (
                 <div className="px-5 py-10 text-sm font-semibold text-slate-500">
-                  아직 공개된 공고가 없습니다. 기업 공고가 운영자 승인을 받으면
-                  이곳에 표시됩니다.
+                  조건에 맞는 공개 공고가 없습니다. 검색어 또는 필터를 조정해
+                  주세요.
                 </div>
               )}
             </div>
@@ -115,17 +261,5 @@ export default async function JobsPage() {
         </div>
       </section>
     </PublicShell>
-  );
-}
-
-function Filter({ label, icon }: { label: string; icon: ReactElement }) {
-  return (
-    <button className="flex h-11 items-center justify-between rounded-xl bg-slate-50 px-3 text-sm font-bold text-slate-600">
-      <span className="flex items-center gap-2 text-slate-500">
-        {icon}
-        {label}
-      </span>
-      <span>⌄</span>
-    </button>
   );
 }

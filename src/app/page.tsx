@@ -132,18 +132,45 @@ export default async function Home() {
               </div>
             </div>
 
-            <div className="mt-5 grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-7 md:grid-cols-[minmax(0,1fr)_180px_180px_auto]">
+            <form
+              action="/jobs"
+              className="mt-5 grid min-w-0 gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:mt-7 md:grid-cols-[minmax(0,1fr)_180px_180px_auto]"
+            >
               <label className="flex min-w-0 items-center gap-3 rounded-xl bg-slate-50 px-3 py-3">
                 <Search className="size-5 shrink-0 text-slate-400" />
                 <input
                   className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-slate-400"
+                  name="q"
                   placeholder="Job title, company, keyword"
                 />
               </label>
-              <FilterButton icon={<MapPin />} label="Location" />
-              <FilterButton icon={<BriefcaseBusiness />} label="Job type" />
+              <label className="flex h-12 items-center gap-2 rounded-xl bg-slate-50 px-3 text-sm font-bold text-slate-600">
+                <span className="text-slate-400 [&>svg]:size-4">
+                  <MapPin />
+                </span>
+                <input
+                  className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-slate-400"
+                  name="location"
+                  placeholder="Location"
+                />
+              </label>
+              <label className="flex h-12 items-center gap-2 rounded-xl bg-slate-50 px-3 text-sm font-bold text-slate-600">
+                <span className="text-slate-400 [&>svg]:size-4">
+                  <BriefcaseBusiness />
+                </span>
+                <select
+                  className="min-w-0 flex-1 bg-transparent outline-none"
+                  name="employment_type"
+                >
+                  <option value="">Job type</option>
+                  <option value="Part-time">Part-time</option>
+                  <option value="Contract">Contract</option>
+                  <option value="Internship">Internship</option>
+                  <option value="Full-time">Full-time</option>
+                </select>
+              </label>
               <Button className="h-12 rounded-xl">Search Jobs</Button>
-            </div>
+            </form>
           </div>
 
           <aside className="hidden rounded-2xl border border-slate-200 bg-slate-950 p-5 text-white lg:block">
@@ -276,23 +303,5 @@ function StatusPill({
       <span className="text-blue-600 [&>svg]:size-4">{icon}</span>
       {label}
     </div>
-  );
-}
-
-function FilterButton({
-  icon,
-  label,
-}: {
-  icon: ReactElement;
-  label: string;
-}) {
-  return (
-    <button className="flex h-12 items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 text-sm font-bold text-slate-600">
-      <span className="flex items-center gap-2">
-        <span className="text-slate-400 [&>svg]:size-4">{icon}</span>
-        {label}
-      </span>
-      <span className="text-slate-400">⌄</span>
-    </button>
   );
 }

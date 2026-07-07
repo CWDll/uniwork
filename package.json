@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "check:deploy": "node scripts/check-deployment-readiness.mjs",
+    "seed:sample-jobs": "node scripts/seed-sample-jobs.mjs",
     "verify:production": "node scripts/verify-production-smoke.mjs",
     "verify:supabase": "node scripts/verify-supabase-e2e.mjs"
   },
