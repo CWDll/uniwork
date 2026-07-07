@@ -13,9 +13,19 @@ type AuthState = {
 const roleRedirects = {
   admin: "/admin",
   company: "/company",
-  partner: "/admin",
+  partner: "/admin/admin-requests",
   seeker: "/me",
 } as const;
+
+function getSafeNextPath(value: FormDataEntryValue | null) {
+  const next = String(value ?? "").trim();
+
+  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+    return null;
+  }
+
+  return next;
+}
 
 function getDashboardPath(role?: string | null) {
   if (role && role in roleRedirects) {
@@ -31,6 +41,7 @@ export async function loginAction(
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const next = getSafeNextPath(formData.get("next"));
 
   if (!email || !password) {
     return { error: "이메일과 비밀번호를 모두 입력해주세요." };
@@ -56,7 +67,7 @@ export async function loginAction(
     .eq("id", user?.id)
     .maybeSingle();
 
-  redirect(getDashboardPath(profile?.role));
+  redirect(next ?? getDashboardPath(profile?.role));
 }
 
 export async function signupAction(

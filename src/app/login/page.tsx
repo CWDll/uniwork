@@ -3,7 +3,17 @@ import Link from "next/link";
 import { LoginForm } from "@/components/auth/login-form";
 import { PublicShell } from "@/components/layout/public-shell";
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string; message?: string; next?: string }>;
+}) {
+  const params = await searchParams;
+  const next =
+    params.next && params.next.startsWith("/") && !params.next.startsWith("//")
+      ? params.next
+      : undefined;
+
   return (
     <PublicShell>
       <section className="mx-auto w-full max-w-md px-4 py-8 sm:px-6">
@@ -12,7 +22,17 @@ export default function LoginPage() {
           <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
             이메일과 비밀번호로 로그인하면 역할에 맞는 대시보드로 이동합니다.
           </p>
-          <LoginForm />
+          {params.error ? (
+            <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+              {params.error}
+            </p>
+          ) : null}
+          {params.message ? (
+            <p className="mt-4 rounded-md bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700">
+              {params.message}
+            </p>
+          ) : null}
+          <LoginForm next={next} />
           <p className="mt-5 text-center text-sm font-semibold text-slate-600">
             No account?{" "}
             <Link className="text-blue-700" href="/signup">

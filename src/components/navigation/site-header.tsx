@@ -1,7 +1,9 @@
 import Link from "next/link";
-import { BriefcaseBusiness, Menu, UserRound } from "lucide-react";
+import { BriefcaseBusiness, LayoutDashboard, LogOut, Menu, UserRound } from "lucide-react";
 
+import { logoutAction } from "@/app/auth/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -11,7 +13,33 @@ const navItems = [
   { href: "/admin", label: "Admin" },
 ];
 
-export function SiteHeader() {
+const dashboardByRole = {
+  admin: "/admin",
+  company: "/company",
+  partner: "/admin/admin-requests",
+  seeker: "/me",
+} as const;
+
+export async function SiteHeader() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: profile } = user
+    ? await supabase
+        .from("profiles")
+        .select("role, name, email")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+
+  const dashboardHref =
+    profile?.role && profile.role in dashboardByRole
+      ? dashboardByRole[profile.role as keyof typeof dashboardByRole]
+      : "/me";
+  const displayName = profile?.name || user?.email || "My account";
+
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
@@ -37,22 +65,50 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-2 md:flex">
-          <Link
-            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-            href="/login"
-          >
-            <UserRound className="size-4" />
-            Log in
-          </Link>
-          <Link className={cn(buttonVariants({ size: "sm" }))} href="/signup">
-            Sign up
-          </Link>
-        </div>
+        {user ? (
+          <div className="hidden min-w-0 items-center gap-2 md:flex">
+            <Link
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              href={dashboardHref}
+            >
+              <LayoutDashboard className="size-4" />
+              <span className="max-w-36 truncate">{displayName}</span>
+            </Link>
+            <form action={logoutAction}>
+              <Button size="sm" type="submit" variant="ghost">
+                <LogOut className="size-4" />
+                Log out
+              </Button>
+            </form>
+          </div>
+        ) : (
+          <div className="hidden items-center gap-2 md:flex">
+            <Link
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+              href="/login"
+            >
+              <UserRound className="size-4" />
+              Log in
+            </Link>
+            <Link className={cn(buttonVariants({ size: "sm" }))} href="/signup">
+              Sign up
+            </Link>
+          </div>
+        )}
 
-        <Button className="md:hidden" variant="ghost" size="icon">
-          <Menu className="size-5" />
-        </Button>
+        {user ? (
+          <Link
+            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
+            href={dashboardHref}
+            aria-label="My dashboard"
+          >
+            <UserRound className="size-5" />
+          </Link>
+        ) : (
+          <Button className="md:hidden" variant="ghost" size="icon">
+            <Menu className="size-5" />
+          </Button>
+        )}
       </div>
     </header>
   );

@@ -6,11 +6,12 @@ import { useFormStatus } from "react-dom";
 import { loginAction } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
 
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [state, formAction] = useActionState(loginAction, {});
 
   return (
     <form action={formAction} className="mt-6 grid gap-4">
+      {next ? <input name="next" type="hidden" value={next} /> : null}
       <label className="grid gap-2 text-sm font-bold text-slate-700">
         Email
         <input
