@@ -81,10 +81,10 @@ Framework Preset: Next.js
 Install Command: npm install
 Build Command: npm run build
 Output Directory: .next
-Node.js: 20.x
+Node.js: 24.x
 ```
 
-Use Node `20.19.0` locally through `.nvmrc`. Vercel is pinned to Node `20.x` through `package.json`.
+Use Node `24.18.0` locally through `.nvmrc`. Vercel is pinned to Node `24.x` through `package.json`.
 
 ## PWA Production Check
 
