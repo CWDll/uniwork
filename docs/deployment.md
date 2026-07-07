@@ -67,10 +67,12 @@ npm run lint
 npm run build
 npm run check:deploy
 npm run verify:supabase
+npm run verify:production -- https://your-production-domain.com
 ```
 
 `verify:supabase` creates temporary test users and rows, verifies RLS/auth flows, then removes the test users.
 `check:deploy` verifies required public environment variables, PWA files, and a Supabase public REST/RLS read.
+`verify:production` checks deployed health/PWA metadata and verifies that Supabase accepts the production auth callback URL.
 
 ## Vercel Build Settings
 
