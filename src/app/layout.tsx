@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { PwaRegister } from "@/components/pwa/pwa-register";
+import { getSiteUrl } from "@/lib/site";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,6 +24,10 @@ export const metadata: Metadata = {
   title: "Uniwork | Foreign student jobs in Korea",
   description:
     "외국인 유학생을 위한 아르바이트 구인구직과 행정 상담 연결 서비스",
+  metadataBase: getSiteUrl(),
+  alternates: {
+    canonical: "/",
+  },
   formatDetection: {
     telephone: false,
   },

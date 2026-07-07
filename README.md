@@ -23,6 +23,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 - [Initial product design](docs/initial-design.md)
 - [Supabase Auth and schema plan](docs/supabase-design.md)
+- [Deployment guide](docs/deployment.md)
 
 ## Current Route Skeleton
 
