@@ -65,10 +65,12 @@ Run these locally before deploying:
 ```bash
 npm run lint
 npm run build
+npm run check:deploy
 npm run verify:supabase
 ```
 
 `verify:supabase` creates temporary test users and rows, verifies RLS/auth flows, then removes the test users.
+`check:deploy` verifies required public environment variables, PWA files, and a Supabase public REST/RLS read.
 
 ## Vercel Build Settings
 
@@ -92,6 +94,7 @@ After deployment, open these URLs:
 https://your-production-domain.com/manifest.webmanifest
 https://your-production-domain.com/sw.js
 https://your-production-domain.com/icons/icon-512.png
+https://your-production-domain.com/api/health
 ```
 
 Expected:
@@ -99,6 +102,7 @@ Expected:
 - manifest returns `display: standalone`
 - service worker returns HTTP 200
 - app icons return HTTP 200
+- health endpoint returns `{"status":"ok"}`
 - Chrome desktop/mobile shows install option after the page is loaded
 
 ## Store Packaging Direction

@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "check:deploy": "node scripts/check-deployment-readiness.mjs",
     "verify:supabase": "node scripts/verify-supabase-e2e.mjs"
   },
   "dependencies": {
