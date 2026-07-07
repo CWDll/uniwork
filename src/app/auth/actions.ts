@@ -10,13 +10,6 @@ type AuthState = {
   message?: string;
 };
 
-const roleRedirects = {
-  admin: "/admin",
-  company: "/company",
-  partner: "/admin/admin-requests",
-  seeker: "/me",
-} as const;
-
 function getSafeNextPath(value: FormDataEntryValue | null) {
   const next = String(value ?? "").trim();
 
@@ -25,14 +18,6 @@ function getSafeNextPath(value: FormDataEntryValue | null) {
   }
 
   return next;
-}
-
-function getDashboardPath(role?: string | null) {
-  if (role && role in roleRedirects) {
-    return roleRedirects[role as keyof typeof roleRedirects];
-  }
-
-  return "/me";
 }
 
 export async function loginAction(
@@ -57,17 +42,7 @@ export async function loginAction(
     return { error: error.message };
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user?.id)
-    .maybeSingle();
-
-  redirect(next ?? getDashboardPath(profile?.role));
+  redirect(next ?? "/");
 }
 
 export async function signupAction(
@@ -113,11 +88,11 @@ export async function signupAction(
     };
   }
 
-  redirect(getDashboardPath(safeRole));
+  redirect("/");
 }
 
 export async function logoutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  redirect("/login");
+  redirect("/");
 }
