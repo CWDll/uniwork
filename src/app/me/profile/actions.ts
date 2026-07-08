@@ -16,6 +16,14 @@ function toArray(value: FormDataEntryValue | null) {
     .filter(Boolean);
 }
 
+function getVisaReviewStatus(visaType: string) {
+  if (visaType === "D-2" || visaType === "D-4" || visaType === "F-2") {
+    return "needs_review";
+  }
+
+  return "blocked";
+}
+
 export async function saveSeekerProfileAction(
   _prevState: ProfileState,
   formData: FormData,
@@ -41,8 +49,7 @@ export async function saveSeekerProfileAction(
     user_id: user.id,
     nationality: String(formData.get("nationality") ?? "").trim(),
     visa_type: visaType,
-    visa_review_status:
-      visaType === "D-2" || visaType === "D-4" ? "needs_review" : "blocked",
+    visa_review_status: getVisaReviewStatus(visaType),
     alien_registration_status: String(
       formData.get("alien_registration_status") ?? "",
     ),

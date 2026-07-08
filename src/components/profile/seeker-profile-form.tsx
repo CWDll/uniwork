@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
+import { AlertCircle, CheckCircle2, Clock3, ShieldAlert } from "lucide-react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { saveSeekerProfileAction } from "@/app/me/profile/actions";
@@ -28,12 +29,17 @@ export function SeekerProfileForm({
   profile: SeekerProfile | null;
 }) {
   const [state, formAction] = useActionState(saveSeekerProfileAction, {});
+  const [visaType, setVisaType] = useState(profile?.visa_type ?? "D-2");
+  const visaGuidance = getVisaGuidance(visaType);
+  const isStudentVisa = visaType === "D-2" || visaType === "D-4";
 
   return (
     <form
       action={formAction}
       className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
     >
+      <VisaGuidancePanel guidance={visaGuidance} />
+
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Nationality" name="nationality" value={profile?.nationality} />
         <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -42,6 +48,7 @@ export function SeekerProfileForm({
             className="h-11 rounded-md border border-slate-200 px-3"
             defaultValue={profile?.visa_type ?? "D-2"}
             name="visa_type"
+            onChange={(event) => setVisaType(event.target.value)}
           >
             <option value="D-2">D-2</option>
             <option value="D-4">D-4</option>
@@ -105,16 +112,32 @@ export function SeekerProfileForm({
           value={profile?.preferred_job_types?.join(", ")}
         />
         <Field
+          helper={isStudentVisa ? "예: Mon-Fri 18:00-22:00, 최대 주 20시간" : undefined}
           label="Weekday availability"
           name="weekday_availability"
           value={profile?.available_times?.weekday}
         />
         <Field
+          helper={isStudentVisa ? "예: Sat 10:00-18:00" : undefined}
           label="Weekend availability"
           name="weekend_availability"
           value={profile?.available_times?.weekend}
         />
       </div>
+
+      {isStudentVisa ? (
+        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <p className="text-sm font-black text-blue-900">D-2/D-4 확인 항목</p>
+          <div className="mt-3 grid gap-2 text-sm font-semibold leading-6 text-blue-900 sm:grid-cols-2">
+            {studentChecklist.map((item) => (
+              <span className="flex items-start gap-2" key={item}>
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {state.error ? (
         <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
@@ -129,6 +152,101 @@ export function SeekerProfileForm({
 
       <SubmitButton />
     </form>
+  );
+}
+
+type VisaGuidance = {
+  description: string;
+  icon: typeof CheckCircle2;
+  label: string;
+  tone: "success" | "warning" | "danger";
+};
+
+const visaGuidanceByType: Record<string, VisaGuidance> = {
+  "D-2": {
+    description:
+      "유학생 시간제 취업 검토 대상입니다. 학교, 외국인등록 상태, 근무 가능 시간을 정확히 입력하면 지원 가능성이 더 잘 표시됩니다.",
+    icon: CheckCircle2,
+    label: "D-2 지원 가능성 검토",
+    tone: "success",
+  },
+  "D-4": {
+    description:
+      "어학연수생 시간제 취업 검토 대상입니다. 체류 기간과 학교 확인이 필요할 수 있어 운영자 확인 흐름을 거칩니다.",
+    icon: CheckCircle2,
+    label: "D-4 지원 가능성 검토",
+    tone: "success",
+  },
+  "F-2": {
+    description:
+      "세부 조건에 따라 가능 여부가 달라질 수 있어 MVP에서는 운영자 검토 후 지원 흐름으로 안내합니다.",
+    icon: Clock3,
+    label: "F-2 운영자 검토 필요",
+    tone: "warning",
+  },
+  "F-1": {
+    description:
+      "현재 MVP에서는 일반 지원을 제한합니다. 필요하면 행정 검토 요청으로 별도 확인을 진행합니다.",
+    icon: ShieldAlert,
+    label: "F-1 지원 제한",
+    tone: "danger",
+  },
+  "F-3": {
+    description:
+      "현재 MVP에서는 일반 지원을 제한합니다. 필요하면 행정 검토 요청으로 별도 확인을 진행합니다.",
+    icon: ShieldAlert,
+    label: "F-3 지원 제한",
+    tone: "danger",
+  },
+  "F-4": {
+    description:
+      "현재 MVP에서는 일반 지원을 제한합니다. 필요하면 행정 검토 요청으로 별도 확인을 진행합니다.",
+    icon: ShieldAlert,
+    label: "F-4 지원 제한",
+    tone: "danger",
+  },
+};
+
+const studentChecklist = [
+  "학교/전공 정보",
+  "외국인등록 상태",
+  "평일/주말 근무 가능 시간",
+  "한국어 가능 수준",
+];
+
+function getVisaGuidance(visaType: string) {
+  return (
+    visaGuidanceByType[visaType] ?? {
+      description: "선택한 체류자격은 운영자 검토가 필요합니다.",
+      icon: AlertCircle,
+      label: "검토 필요",
+      tone: "warning" as const,
+    }
+  );
+}
+
+function VisaGuidancePanel({ guidance }: { guidance: VisaGuidance }) {
+  const Icon = guidance.icon;
+
+  return (
+    <div
+      className={[
+        "mb-5 rounded-2xl border p-4",
+        guidance.tone === "success"
+          ? "border-emerald-100 bg-emerald-50 text-emerald-900"
+          : "",
+        guidance.tone === "warning"
+          ? "border-amber-100 bg-amber-50 text-amber-900"
+          : "",
+        guidance.tone === "danger" ? "border-red-100 bg-red-50 text-red-900" : "",
+      ].join(" ")}
+    >
+      <div className="flex items-center gap-2">
+        <Icon className="size-5 shrink-0" />
+        <p className="font-black">{guidance.label}</p>
+      </div>
+      <p className="mt-2 text-sm font-semibold leading-6">{guidance.description}</p>
+    </div>
   );
 }
 
