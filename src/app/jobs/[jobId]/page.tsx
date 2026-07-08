@@ -6,6 +6,7 @@ import { JobApplicationForm } from "@/components/jobs/job-application-form";
 import { PublicShell } from "@/components/layout/public-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getJobEligibility, type JobEligibility } from "@/lib/jobs/eligibility";
+import { getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -72,6 +73,10 @@ export default async function JobDetailPage({
     job.wage_amount && job.wage_type
       ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
       : "협의";
+  const existingApplicationStatus = getStatusMeta(
+    "application",
+    existingApplication?.status,
+  );
 
   return (
     <PublicShell>
@@ -153,7 +158,7 @@ export default async function JobDetailPage({
 
           {existingApplication ? (
             <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
-              이미 지원한 공고입니다. 상태: {existingApplication.status}
+              이미 지원한 공고입니다. 상태: {existingApplicationStatus.label}
             </div>
           ) : user && eligibility.canApply ? (
             <>

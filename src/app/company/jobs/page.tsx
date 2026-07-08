@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { CompanyJobForm } from "@/components/company/company-job-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -81,24 +82,28 @@ export default async function CompanyJobsPage() {
         </div>
         <div className="divide-y divide-slate-100">
           {jobs && jobs.length > 0 ? (
-            jobs.map((job) => (
-              <article
-                className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
-                key={job.id}
-              >
-                <div className="min-w-0">
-                  <h3 className="font-black">{job.title}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
-                    {companyNameById.get(job.company_id) ?? "Company"} ·{" "}
-                    {job.location || "-"} ·{" "}
-                    {job.employment_type || "-"} · {job.category || "-"}
-                  </p>
-                </div>
-                <span className="h-max rounded-md bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                  {job.status}
-                </span>
-              </article>
-            ))
+            jobs.map((job) => {
+              const status = getStatusMeta("job", job.status);
+
+              return (
+                <article
+                  className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+                  key={job.id}
+                >
+                  <div className="min-w-0">
+                    <h3 className="font-black">{job.title}</h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      {companyNameById.get(job.company_id) ?? "Company"} ·{" "}
+                      {job.location || "-"} · {job.employment_type || "-"} ·{" "}
+                      {job.category || "-"}
+                    </p>
+                  </div>
+                  <span className={getStatusBadgeClassName("job", job.status)}>
+                    {status.label}
+                  </span>
+                </article>
+              );
+            })
           ) : (
             <div className="px-5 py-8 text-sm font-semibold text-slate-500">
               아직 작성한 공고가 없습니다.

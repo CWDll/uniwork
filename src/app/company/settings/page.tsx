@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { CompanySettingsForm } from "@/components/company/company-settings-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function CompanySettingsPage() {
@@ -46,23 +47,35 @@ export default async function CompanySettingsPage() {
         </div>
         <div className="divide-y divide-slate-100">
           {companies && companies.length > 0 ? (
-            companies.map((company) => (
-              <article
-                className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
-                key={company.id}
-              >
-                <div>
-                  <h3 className="font-black">{company.name}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">
-                    {company.industry || "-"} · {company.address || "-"} ·{" "}
-                    {company.business_number || "business number pending"}
-                  </p>
-                </div>
-                <span className="h-max rounded-md bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                  {company.verification_status}
-                </span>
-              </article>
-            ))
+            companies.map((company) => {
+              const status = getStatusMeta(
+                "companyVerification",
+                company.verification_status,
+              );
+
+              return (
+                <article
+                  className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+                  key={company.id}
+                >
+                  <div>
+                    <h3 className="font-black">{company.name}</h3>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      {company.industry || "-"} · {company.address || "-"} ·{" "}
+                      {company.business_number || "사업자번호 미입력"}
+                    </p>
+                  </div>
+                  <span
+                    className={getStatusBadgeClassName(
+                      "companyVerification",
+                      company.verification_status,
+                    )}
+                  >
+                    {status.label}
+                  </span>
+                </article>
+              );
+            })
           ) : (
             <div className="px-5 py-8 text-sm font-semibold text-slate-500">
               아직 등록된 회사/지점이 없습니다.

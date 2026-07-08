@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -84,14 +85,29 @@ export default async function CompanyPage() {
           </Link>
         ) : (
           <div className="mt-5 flex flex-wrap gap-2">
-            {companies?.slice(0, 4).map((company) => (
-              <span
-                className="rounded-md bg-slate-100 px-3 py-2 text-sm font-black text-slate-600"
-                key={company.id}
-              >
-                {company.name}: {company.verification_status}
-              </span>
-            ))}
+            {companies?.slice(0, 4).map((company) => {
+              const status = getStatusMeta(
+                "companyVerification",
+                company.verification_status,
+              );
+
+              return (
+                <span
+                  className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-sm font-black text-slate-700"
+                  key={company.id}
+                >
+                  {company.name}
+                  <span
+                    className={getStatusBadgeClassName(
+                      "companyVerification",
+                      company.verification_status,
+                    )}
+                  >
+                    {status.label}
+                  </span>
+                </span>
+              );
+            })}
           </div>
         )}
       </div>

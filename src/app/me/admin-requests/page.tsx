@@ -1,5 +1,6 @@
 import { AdminRequestForm } from "@/components/admin-requests/admin-request-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SeekerAdminRequestsPage() {
@@ -42,24 +43,33 @@ export default async function SeekerAdminRequestsPage() {
           </div>
           <div className="divide-y divide-slate-100">
             {requests && requests.length > 0 ? (
-              requests.map((request) => (
-                <article className="px-5 py-4" key={request.id}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-black">{request.type}</h3>
-                    <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
-                      {request.status}
-                    </span>
-                  </div>
-                  {request.memo ? (
-                    <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-600">
-                      {request.memo}
+              requests.map((request) => {
+                const status = getStatusMeta("adminRequest", request.status);
+
+                return (
+                  <article className="px-5 py-4" key={request.id}>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black">{request.type}</h3>
+                      <span
+                        className={getStatusBadgeClassName(
+                          "adminRequest",
+                          request.status,
+                        )}
+                      >
+                        {status.label}
+                      </span>
+                    </div>
+                    {request.memo ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-600">
+                        {request.memo}
+                      </p>
+                    ) : null}
+                    <p className="mt-3 text-xs font-bold text-slate-400">
+                      Created {new Date(request.created_at).toLocaleString("ko-KR")}
                     </p>
-                  ) : null}
-                  <p className="mt-3 text-xs font-bold text-slate-400">
-                    Created {new Date(request.created_at).toLocaleString("ko-KR")}
-                  </p>
-                </article>
-              ))
+                  </article>
+                );
+              })
             ) : (
               <div className="px-5 py-8 text-sm font-semibold text-slate-500">
                 아직 접수한 행정 요청이 없습니다.

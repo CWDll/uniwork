@@ -1,5 +1,6 @@
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function CompanyApplicationsPage() {
@@ -80,6 +81,7 @@ export default async function CompanyApplicationsPage() {
               const company = job ? companyById.get(job.company_id) : null;
               const profile = profileById.get(application.seeker_id);
               const seekerProfile = seekerProfileById.get(application.seeker_id);
+              const status = getStatusMeta("application", application.status);
 
               return (
                 <article
@@ -92,8 +94,13 @@ export default async function CompanyApplicationsPage() {
                         <h3 className="break-words font-black">
                           {profile?.name || profile?.email || "Applicant"}
                         </h3>
-                        <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
-                          {application.status}
+                        <span
+                          className={getStatusBadgeClassName(
+                            "application",
+                            application.status,
+                          )}
+                        >
+                          {status.label}
                         </span>
                       </div>
                       <p className="mt-1 break-words text-sm font-semibold text-slate-500">

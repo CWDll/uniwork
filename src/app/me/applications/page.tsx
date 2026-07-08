@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SeekerApplicationsPage() {
@@ -59,6 +60,7 @@ export default async function SeekerApplicationsPage() {
             applications.map((application) => {
               const job = jobById.get(application.job_id);
               const company = job ? companyById.get(job.company_id) : null;
+              const status = getStatusMeta("application", application.status);
 
               return (
                 <article
@@ -77,8 +79,13 @@ export default async function SeekerApplicationsPage() {
                       </p>
                     ) : null}
                   </div>
-                  <span className="h-max rounded-md bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">
-                    {application.status}
+                  <span
+                    className={getStatusBadgeClassName(
+                      "application",
+                      application.status,
+                    )}
+                  >
+                    {status.label}
                   </span>
                 </article>
               );
