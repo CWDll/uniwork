@@ -107,7 +107,7 @@ export function CompanyJobForm({
       ) : null}
       {state.message ? (
         <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-          {state.message}
+          {state.message} 운영자 승인 전까지는 구직자에게 공개되지 않습니다.
         </p>
       ) : null}
 

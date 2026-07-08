@@ -8,7 +8,44 @@ import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
-export default async function CompanyJobsPage() {
+type CompanyJobsSearchParams = {
+  status?: string;
+};
+
+const jobStatusFilters = [
+  { value: "", label: "전체" },
+  { value: "draft", label: "승인 대기" },
+  { value: "published", label: "공개 중" },
+  { value: "rejected", label: "반려" },
+  { value: "closed", label: "마감" },
+];
+
+function getJobNextStep(status: string) {
+  switch (status) {
+    case "draft":
+      return "운영자 검토 후 공개됩니다.";
+    case "published":
+      return "지원자 현황을 확인하세요.";
+    case "rejected":
+      return "운영자 피드백 확인 후 다시 등록이 필요합니다.";
+    case "closed":
+      return "마감된 공고입니다.";
+    default:
+      return "상태 확인이 필요합니다.";
+  }
+}
+
+function buildCompanyJobsHref(status?: string) {
+  return status ? `/company/jobs?status=${status}` : "/company/jobs";
+}
+
+export default async function CompanyJobsPage({
+  searchParams,
+}: {
+  searchParams: Promise<CompanyJobsSearchParams>;
+}) {
+  const params = await searchParams;
+  const activeStatus = params.status?.trim() ?? "";
   const supabase = await createClient();
   const {
     data: { user },
@@ -29,15 +66,43 @@ export default async function CompanyJobsPage() {
     companies?.map((company) => [company.id, company.name]) ?? [],
   );
 
-  const { data: jobs } = companyIds.length > 0
-    ? await supabase
-        .from("jobs")
-        .select(
-          "id, company_id, title, location, employment_type, category, status, created_at",
-        )
-        .in("company_id", companyIds)
-        .order("created_at", { ascending: false })
-    : { data: [] };
+  const { data: jobs } =
+    companyIds.length > 0
+      ? await (() => {
+          let query = supabase
+            .from("jobs")
+            .select(
+              "id, company_id, title, location, employment_type, category, status, created_at, published_at, closed_at",
+            )
+            .in("company_id", companyIds)
+            .order("created_at", { ascending: false });
+
+          if (activeStatus) {
+            query = query.eq("status", activeStatus);
+          }
+
+          return query;
+        })()
+      : { data: [] };
+  const allJobIds = jobs?.map((job) => job.id) ?? [];
+  const { data: applications } =
+    allJobIds.length > 0
+      ? await supabase
+          .from("job_applications")
+          .select("id, job_id, status")
+          .in("job_id", allJobIds)
+      : { data: [] };
+  const applicationCountByJobId = new Map<string, number>();
+  applications?.forEach((application) => {
+    applicationCountByJobId.set(
+      application.job_id,
+      (applicationCountByJobId.get(application.job_id) ?? 0) + 1,
+    );
+  });
+  const statusCounts = new Map<string, number>();
+  jobs?.forEach((job) => {
+    statusCounts.set(job.status, (statusCounts.get(job.status) ?? 0) + 1);
+  });
 
   return (
     <DashboardShell area="company">
@@ -73,34 +138,104 @@ export default async function CompanyJobsPage() {
 
       <CompanyJobForm companies={companies ?? []} disabled={companyIds.length === 0} />
 
+      <div className="mt-5 grid gap-3 sm:grid-cols-4">
+        {jobStatusFilters.slice(1).map((filter) => {
+          const isActive = activeStatus === filter.value;
+
+          return (
+            <Link
+              className={cn(
+                "rounded-2xl border p-4 transition",
+                isActive
+                  ? "border-blue-200 bg-blue-50"
+                  : "border-slate-200 bg-white hover:bg-slate-50",
+              )}
+              href={buildCompanyJobsHref(isActive ? "" : filter.value)}
+              key={filter.value}
+            >
+              <p className="text-sm font-black text-slate-500">{filter.label}</p>
+              <p className="mt-1 text-2xl font-black">
+                {(statusCounts.get(filter.value) ?? 0).toLocaleString("ko-KR")}
+              </p>
+            </Link>
+          );
+        })}
+      </div>
+
       <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-black">My job drafts</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
-            등록된 모든 회사/지점의 공고 목록
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black">My job posts</h2>
+              <p className="mt-1 text-sm font-medium text-slate-500">
+                {activeStatus
+                  ? `${getStatusMeta("job", activeStatus).label} 공고`
+                  : "등록된 모든 회사/지점의 공고 목록"}
+              </p>
+            </div>
+            {activeStatus ? (
+              <Link
+                className="text-sm font-black text-blue-700 hover:text-blue-900"
+                href="/company/jobs"
+              >
+                전체 보기
+              </Link>
+            ) : null}
+          </div>
         </div>
         <div className="divide-y divide-slate-100">
           {jobs && jobs.length > 0 ? (
             jobs.map((job) => {
               const status = getStatusMeta("job", job.status);
+              const applicationCount = applicationCountByJobId.get(job.id) ?? 0;
 
               return (
                 <article
-                  className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+                  className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_auto]"
                   key={job.id}
                 >
                   <div className="min-w-0">
-                    <h3 className="font-black">{job.title}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black">{job.title}</h3>
+                      <span className={getStatusBadgeClassName("job", job.status)}>
+                        {status.label}
+                      </span>
+                    </div>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
                       {companyNameById.get(job.company_id) ?? "Company"} ·{" "}
                       {job.location || "-"} · {job.employment_type || "-"} ·{" "}
                       {job.category || "-"}
                     </p>
+                    <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-3">
+                      <Info
+                        label="Applicants"
+                        value={`${applicationCount.toLocaleString("ko-KR")}명`}
+                      />
+                      <Info
+                        label="Created"
+                        value={new Date(job.created_at).toLocaleDateString("ko-KR")}
+                      />
+                      <Info label="Next step" value={getJobNextStep(job.status)} />
+                    </div>
                   </div>
-                  <span className={getStatusBadgeClassName("job", job.status)}>
-                    {status.label}
-                  </span>
+                  <div className="flex flex-wrap items-start gap-2 lg:justify-end">
+                    <Link
+                      className={cn(
+                        buttonVariants({ size: "sm", variant: "outline" }),
+                      )}
+                      href={`/company/applications?job=${job.id}`}
+                    >
+                      지원자 보기
+                    </Link>
+                    {job.status === "published" ? (
+                      <Link
+                        className={cn(buttonVariants({ size: "sm" }))}
+                        href={`/jobs/${job.id}`}
+                      >
+                        공개 페이지
+                      </Link>
+                    ) : null}
+                  </div>
                 </article>
               );
             })
@@ -112,5 +247,16 @@ export default async function CompanyJobsPage() {
         </div>
       </section>
     </DashboardShell>
+  );
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
+      <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
+    </div>
   );
 }
