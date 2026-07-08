@@ -23,11 +23,6 @@ export function JobApplicationForm({ jobId }: { jobId: string }) {
           {state.error}
         </p>
       ) : null}
-      {state.message ? (
-        <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-          {state.message}
-        </p>
-      ) : null}
       <SubmitButton />
     </form>
   );

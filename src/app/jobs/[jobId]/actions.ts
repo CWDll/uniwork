@@ -8,7 +8,6 @@ import { createClient } from "@/lib/supabase/server";
 
 type ApplyState = {
   error?: string;
-  message?: string;
 };
 
 export async function applyToJobAction(
@@ -94,5 +93,5 @@ export async function applyToJobAction(
   revalidatePath(`/jobs/${job.id}`);
   revalidatePath("/company/applications");
 
-  return { message: "지원이 완료되었습니다." };
+  redirect(`/me/applications?applied=${job.id}`);
 }
