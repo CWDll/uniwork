@@ -8,11 +8,13 @@ export function JobCategoryFilters({
   defaultOpen = true,
   getHref,
   showAdvanced = false,
+  showProfileFit = false,
 }: {
   activeFilters: JobFilterValues;
   defaultOpen?: boolean;
   getHref: (updates: JobFilterValues) => string;
   showAdvanced?: boolean;
+  showProfileFit?: boolean;
 }) {
   return (
     <details
@@ -41,6 +43,17 @@ export function JobCategoryFilters({
 
           {showAdvanced ? (
             <>
+              {showProfileFit ? (
+                <FilterGroup
+                  activeValue={activeFilters.profile_fit}
+                  allLabel="All fit"
+                  getHref={(value) =>
+                    getHref({ profile_fit: value === "All fit" ? "" : value })
+                  }
+                  label="My fit"
+                  options={profileFitFilters}
+                />
+              ) : null}
               <FilterGroup
                 activeValue={activeFilters.visa_support_type}
                 allLabel="All visas"
@@ -101,6 +114,7 @@ type JobFilterValues = {
   employment_type?: string;
   korean_requirement?: string;
   location?: string;
+  profile_fit?: string;
   visa_support_type?: string;
   wage_type?: string;
 };
@@ -139,7 +153,7 @@ function FilterGroup({
               href={getHref(option)}
               key={option}
             >
-              {option}
+              {getOptionLabel(option)}
             </Link>
           );
         })}
@@ -159,6 +173,14 @@ const categories = [
 
 const visaFilters = ["All visas", "D-2", "D-4", "F"];
 
+const profileFitFilters = [
+  "All fit",
+  "eligible",
+  "review_required",
+  "blocked",
+  "profile_required",
+];
+
 const regionFilters = ["All regions", "Seoul", "Busan", "Remote"];
 
 const employmentFilters = [
@@ -172,3 +194,14 @@ const employmentFilters = [
 const wageFilters = ["All wages", "hourly", "monthly", "project"];
 
 const koreanFilters = ["Any Korean", "TOPIK", "Conversational", "Basic"];
+
+function getOptionLabel(option: string) {
+  const labels: Record<string, string> = {
+    blocked: "지원 제한",
+    eligible: "지원 가능",
+    profile_required: "프로필 필요",
+    review_required: "검토 필요",
+  };
+
+  return labels[option] ?? option;
+}

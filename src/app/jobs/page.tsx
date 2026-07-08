@@ -15,6 +15,7 @@ type JobsSearchParams = {
   korean_requirement?: string;
   location?: string;
   min_wage?: string;
+  profile_fit?: string;
   q?: string;
   visa_support_type?: string;
   wage_type?: string;
@@ -61,6 +62,7 @@ export default async function JobsPage({
   const category = getParam(params.category);
   const koreanRequirement = getParam(params.korean_requirement);
   const minWage = Number(getParam(params.min_wage));
+  const profileFit = getParam(params.profile_fit);
   const visaSupportType = getParam(params.visa_support_type);
   const wageType = getParam(params.wage_type);
   const supabase = await createClient();
@@ -81,6 +83,7 @@ export default async function JobsPage({
         .eq("visa_type", seekerProfile.visa_type)
         .maybeSingle()
     : { data: null };
+  const effectiveProfileFit = user ? profileFit : "";
 
   let companyIdsMatchingKeyword: string[] = [];
 
@@ -171,7 +174,7 @@ export default async function JobsPage({
       [],
   );
 
-  const jobs =
+  const jobsWithEligibility =
     dbJobs?.map((job) => {
       const company = companyNameById.get(String(job.company_id)) ?? "Company";
       const initials = company
@@ -202,6 +205,11 @@ export default async function JobsPage({
         }),
       };
     }) ?? [];
+  const jobs = effectiveProfileFit
+    ? jobsWithEligibility.filter(
+        (job) => job.eligibility.status === effectiveProfileFit,
+      )
+    : jobsWithEligibility;
   const hasFilters = Boolean(
     q ||
       location ||
@@ -210,6 +218,7 @@ export default async function JobsPage({
       visaSupportType ||
       wageType ||
       koreanRequirement ||
+      effectiveProfileFit ||
       (Number.isFinite(minWage) && minWage > 0),
   );
 
@@ -275,6 +284,9 @@ export default async function JobsPage({
                 value={koreanRequirement}
               />
             ) : null}
+            {effectiveProfileFit ? (
+              <input name="profile_fit" type="hidden" value={effectiveProfileFit} />
+            ) : null}
             <label className="grid gap-2 text-sm font-bold text-slate-700">
               Minimum wage
               <input
@@ -313,12 +325,14 @@ export default async function JobsPage({
                 employment_type: employmentType,
                 korean_requirement: koreanRequirement,
                 location,
+                profile_fit: effectiveProfileFit,
                 visa_support_type: visaSupportType,
                 wage_type: wageType,
               }}
               defaultOpen={hasFilters}
               getHref={(updates) => buildJobsHref(params, updates)}
               showAdvanced
+              showProfileFit={Boolean(user)}
             />
           </div>
 
