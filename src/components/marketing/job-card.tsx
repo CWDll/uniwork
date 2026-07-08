@@ -63,6 +63,11 @@ export function JobCard({ job }: { job: Job }) {
           </span>
           <span className="rounded-md bg-slate-100 px-2 py-1">{job.wage}</span>
         </div>
+        {job.eligibility ? (
+          <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-slate-500">
+            {job.eligibility.description}
+          </p>
+        ) : null}
       </div>
       <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:flex-col sm:items-end">
         <Button variant="outline" size="icon">

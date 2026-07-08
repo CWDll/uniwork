@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, MapPin, Search } from "lucide-react";
+import { BriefcaseBusiness, MapPin, Search, ToggleLeft, ToggleRight } from "lucide-react";
 import Link from "next/link";
 
 import { JobCategoryFilters } from "@/components/jobs/job-category-filters";
@@ -8,6 +8,7 @@ import { PageHeading } from "@/components/marketing/page-heading";
 import { Button } from "@/components/ui/button";
 import { getJobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 type JobsSearchParams = {
   category?: string;
@@ -221,6 +222,10 @@ export default async function JobsPage({
       effectiveProfileFit ||
       (Number.isFinite(minWage) && minWage > 0),
   );
+  const eligibleOnlyHref = buildJobsHref(params, {
+    profile_fit: effectiveProfileFit === "eligible" ? "" : "eligible",
+  });
+  const eligibleOnlyEnabled = effectiveProfileFit === "eligible";
 
   return (
     <PublicShell>
@@ -317,6 +322,49 @@ export default async function JobsPage({
             title="지원 가능성을 먼저 확인하는 채용공고"
             description="D-2/D-4 유학생의 시간제 취업 조건과 기업 요구사항을 함께 확인할 수 있도록 공고 구조를 설계합니다."
           />
+
+          {user ? (
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+              <div className="min-w-0">
+                <p className="text-sm font-black text-slate-900">
+                  내가 지원 가능한 공고만 보기
+                </p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                  {seekerProfile?.visa_type
+                    ? `${seekerProfile.visa_type} 프로필 기준으로 바로 지원 가능한 공고를 먼저 봅니다.`
+                    : "비자 프로필을 입력하면 지원 가능한 공고만 빠르게 볼 수 있습니다."}
+                </p>
+              </div>
+              <Link
+                className={cn(
+                  "inline-flex h-10 shrink-0 items-center gap-2 rounded-md px-4 text-sm font-black transition",
+                  eligibleOnlyEnabled
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                )}
+                href={eligibleOnlyHref}
+              >
+                {eligibleOnlyEnabled ? (
+                  <ToggleRight className="size-5" />
+                ) : (
+                  <ToggleLeft className="size-5" />
+                )}
+                {eligibleOnlyEnabled ? "켜짐" : "꺼짐"}
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+              <p className="text-sm font-black text-blue-900">
+                로그인하면 내 비자 기준 필터를 사용할 수 있습니다.
+              </p>
+              <Link
+                className="mt-2 inline-flex text-sm font-black text-blue-700 hover:text-blue-900"
+                href="/login?next=/jobs"
+              >
+                로그인하고 맞춤 공고 보기
+              </Link>
+            </div>
+          )}
 
           <div className="mt-5">
             <JobCategoryFilters
