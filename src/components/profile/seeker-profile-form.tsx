@@ -23,6 +23,41 @@ type SeekerProfile = {
   visa_type: string | null;
 };
 
+const nationalityOptions = [
+  "Vietnam",
+  "Mongolia",
+  "China",
+  "Uzbekistan",
+  "Indonesia",
+  "Japan",
+  "Thailand",
+  "Philippines",
+  "United States",
+  "Other",
+];
+
+const locationOptions = [
+  "Seoul",
+  "Gyeonggi",
+  "Incheon",
+  "Busan",
+  "Daegu",
+  "Daejeon",
+  "Gwangju",
+  "Other",
+];
+
+const jobTypeOptions = [
+  "Cafe & Service",
+  "Restaurant",
+  "Retail",
+  "Office",
+  "Translation",
+  "Marketing",
+  "Education",
+  "Event",
+];
+
 export function SeekerProfileForm({
   profile,
 }: {
@@ -41,7 +76,21 @@ export function SeekerProfileForm({
       <VisaGuidancePanel guidance={visaGuidance} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Nationality" name="nationality" value={profile?.nationality} />
+        <label className="grid gap-2 text-sm font-bold text-slate-700">
+          Nationality
+          <select
+            className="h-11 rounded-md border border-slate-200 px-3"
+            defaultValue={profile?.nationality ?? "Vietnam"}
+            name="nationality"
+            required
+          >
+            {nationalityOptions.map((nationality) => (
+              <option key={nationality} value={nationality}>
+                {nationality}
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           Visa type
           <select
@@ -49,6 +98,7 @@ export function SeekerProfileForm({
             defaultValue={profile?.visa_type ?? "D-2"}
             name="visa_type"
             onChange={(event) => setVisaType(event.target.value)}
+            required
           >
             <option value="D-2">D-2</option>
             <option value="D-4">D-4</option>
@@ -64,20 +114,22 @@ export function SeekerProfileForm({
             className="h-11 rounded-md border border-slate-200 px-3"
             defaultValue={profile?.alien_registration_status ?? "has_card"}
             name="alien_registration_status"
+            required
           >
             <option value="has_card">Has registration card</option>
             <option value="pending">Pending</option>
             <option value="not_yet">Not yet</option>
           </select>
         </label>
-        <Field label="School" name="school" value={profile?.school} />
-        <Field label="Major" name="major" value={profile?.major} />
+        <Field label="School" name="school" required value={profile?.school} />
+        <Field label="Major" name="major" required value={profile?.major} />
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           Korean level
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
             defaultValue={profile?.korean_level ?? "TOPIK 3"}
             name="korean_level"
+            required
           >
             <option>Beginner</option>
             <option>TOPIK 2</option>
@@ -92,6 +144,7 @@ export function SeekerProfileForm({
             className="h-11 rounded-md border border-slate-200 px-3"
             defaultValue={profile?.english_level ?? "Business"}
             name="english_level"
+            required
           >
             <option>Basic</option>
             <option>Business</option>
@@ -99,28 +152,32 @@ export function SeekerProfileForm({
             <option>Native</option>
           </select>
         </label>
-        <Field
-          helper="Comma separated"
+        <CheckboxGroup
+          className="md:col-span-2"
           label="Preferred locations"
           name="preferred_locations"
-          value={profile?.preferred_locations?.join(", ")}
+          options={locationOptions}
+          selected={profile?.preferred_locations ?? []}
         />
-        <Field
-          helper="Comma separated"
+        <CheckboxGroup
+          className="md:col-span-2"
           label="Preferred job types"
           name="preferred_job_types"
-          value={profile?.preferred_job_types?.join(", ")}
+          options={jobTypeOptions}
+          selected={profile?.preferred_job_types ?? []}
         />
         <Field
           helper={isStudentVisa ? "예: Mon-Fri 18:00-22:00, 최대 주 20시간" : undefined}
           label="Weekday availability"
           name="weekday_availability"
+          placeholder="Mon-Fri 18:00-22:00"
           value={profile?.available_times?.weekday}
         />
         <Field
           helper={isStudentVisa ? "예: Sat 10:00-18:00" : undefined}
           label="Weekend availability"
           name="weekend_availability"
+          placeholder="Sat 10:00-18:00"
           value={profile?.available_times?.weekend}
         />
       </div>
@@ -254,11 +311,15 @@ function Field({
   helper,
   label,
   name,
+  placeholder,
+  required,
   value,
 }: {
   helper?: string;
   label: string;
   name: string;
+  placeholder?: string;
+  required?: boolean;
   value?: string | null;
 }) {
   return (
@@ -268,6 +329,8 @@ function Field({
         className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
         defaultValue={value ?? ""}
         name={name}
+        placeholder={placeholder}
+        required={required}
       />
       {helper ? (
         <span className="text-xs font-semibold text-slate-400">{helper}</span>
@@ -276,12 +339,49 @@ function Field({
   );
 }
 
+function CheckboxGroup({
+  className,
+  label,
+  name,
+  options,
+  selected,
+}: {
+  className?: string;
+  label: string;
+  name: string;
+  options: string[];
+  selected: string[];
+}) {
+  return (
+    <fieldset className={["grid gap-2", className ?? ""].join(" ")}>
+      <legend className="text-sm font-bold text-slate-700">{label}</legend>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        {options.map((option) => (
+          <label
+            className="flex min-h-11 items-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-bold text-slate-700"
+            key={option}
+          >
+            <input
+              className="size-4 accent-blue-600"
+              defaultChecked={selected.includes(option)}
+              name={name}
+              type="checkbox"
+              value={option}
+            />
+            {option}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
 
   return (
     <Button className="mt-6 h-11 w-full sm:w-auto" disabled={pending}>
-      {pending ? "Saving..." : "Save profile"}
+      {pending ? "저장 중..." : "프로필 저장"}
     </Button>
   );
 }

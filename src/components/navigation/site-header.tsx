@@ -3,6 +3,7 @@ import { BriefcaseBusiness, LayoutDashboard, LogOut, Menu, UserRound } from "luc
 
 import { logoutAction } from "@/app/auth/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +34,14 @@ export async function SiteHeader() {
         .eq("id", user.id)
         .maybeSingle()
     : { data: null };
+  const { data: profilePhoto } = user
+    ? await supabase
+        .from("profiles")
+        .select("avatar_path")
+        .eq("id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const avatarUrl = getProfilePhotoUrl(supabase, profilePhoto?.avatar_path);
 
   const dashboardHref =
     profile?.role && profile.role in dashboardByRole
@@ -71,7 +80,16 @@ export async function SiteHeader() {
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
               href={dashboardHref}
             >
-              <LayoutDashboard className="size-4" />
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt=""
+                  className="size-5 rounded-full object-cover"
+                  src={avatarUrl}
+                />
+              ) : (
+                <LayoutDashboard className="size-4" />
+              )}
               <span className="max-w-36 truncate">{displayName}</span>
             </Link>
             <form action={logoutAction}>
@@ -102,7 +120,16 @@ export async function SiteHeader() {
             href={dashboardHref}
             aria-label="My dashboard"
           >
-            <UserRound className="size-5" />
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt=""
+                className="size-7 rounded-full object-cover"
+                src={avatarUrl}
+              />
+            ) : (
+              <UserRound className="size-5" />
+            )}
           </Link>
         ) : (
           <Button className="md:hidden" variant="ghost" size="icon">

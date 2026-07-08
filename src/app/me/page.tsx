@@ -2,6 +2,7 @@ import { FileText, Send, ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { createClient } from "@/lib/supabase/server";
 
 type SeekerProfile = {
@@ -70,6 +71,12 @@ export default async function MePage() {
         .select("id", { count: "exact", head: true })
         .eq("seeker_id", user.id),
     ]);
+  const { data: accountProfile } = await supabase
+    .from("profiles")
+    .select("name, email, avatar_path")
+    .eq("id", user.id)
+    .maybeSingle();
+  const avatarUrl = getProfilePhotoUrl(supabase, accountProfile?.avatar_path);
 
   const profileCompletion = getProfileCompletion(profile);
   const cards = [
@@ -99,16 +106,32 @@ export default async function MePage() {
   return (
     <DashboardShell area="me">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
-        <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-          Seeker dashboard
-        </p>
-        <h1 className="mt-3 text-3xl font-black tracking-tight">
-          지원 준비 상태와 행정 요청을 관리합니다
-        </h1>
-        <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
-          프로필 완성도, 지원 내역, 행정 요청 현황을 실제 계정 데이터 기준으로
-          확인합니다.
-        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-slate-100 text-xl font-black text-blue-700">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                alt="Profile photo"
+                className="size-full object-cover"
+                src={avatarUrl}
+              />
+            ) : (
+              (accountProfile?.name || accountProfile?.email || "U").slice(0, 1)
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-black uppercase tracking-wide text-blue-700">
+              Seeker dashboard
+            </p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight">
+              지원 준비 상태와 행정 요청을 관리합니다
+            </h1>
+            <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
+              프로필 완성도, 지원 내역, 행정 요청 현황을 실제 계정 데이터
+              기준으로 확인합니다.
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="mt-5 grid gap-4 md:grid-cols-3">

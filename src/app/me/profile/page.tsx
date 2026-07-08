@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { ProfilePhotoUploader } from "@/components/profile/profile-photo-uploader";
 import { SeekerProfileForm } from "@/components/profile/seeker-profile-form";
+import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SeekerProfilePage() {
@@ -21,6 +23,12 @@ export default async function SeekerProfilePage() {
     )
     .eq("user_id", user.id)
     .maybeSingle();
+  const { data: profilePhoto } = await supabase
+    .from("profiles")
+    .select("avatar_path")
+    .eq("id", user.id)
+    .maybeSingle();
+  const avatarUrl = getProfilePhotoUrl(supabase, profilePhoto?.avatar_path);
 
   return (
     <DashboardShell area="me">
@@ -37,7 +45,10 @@ export default async function SeekerProfilePage() {
         </p>
       </div>
 
-      <SeekerProfileForm profile={profile} />
+      <div className="grid gap-5">
+        <ProfilePhotoUploader avatarUrl={avatarUrl} userId={user.id} />
+        <SeekerProfileForm profile={profile} />
+      </div>
     </DashboardShell>
   );
 }

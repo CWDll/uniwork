@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -106,6 +107,10 @@ export default async function CompanyApplicationsPage({
     seekerIds.length > 0
       ? await supabase.from("profiles").select("id, name, email").in("id", seekerIds)
       : { data: [] };
+  const { data: profilePhotos } =
+    seekerIds.length > 0
+      ? await supabase.from("profiles").select("id, avatar_path").in("id", seekerIds)
+      : { data: [] };
   const { data: seekerProfiles } =
     seekerIds.length > 0
       ? await supabase
@@ -119,6 +124,9 @@ export default async function CompanyApplicationsPage({
   const jobById = new Map(jobs?.map((job) => [job.id, job]) ?? []);
   const companyById = new Map(companies?.map((company) => [company.id, company]) ?? []);
   const profileById = new Map(profiles?.map((profile) => [profile.id, profile]) ?? []);
+  const profilePhotoById = new Map(
+    profilePhotos?.map((profile) => [profile.id, profile.avatar_path]) ?? [],
+  );
   const seekerProfileById = new Map(
     seekerProfiles?.map((profile) => [profile.user_id, profile]) ?? [],
   );
@@ -286,6 +294,10 @@ export default async function CompanyApplicationsPage({
               const job = jobById.get(application.job_id);
               const company = job ? companyById.get(job.company_id) : null;
               const profile = profileById.get(application.seeker_id);
+              const avatarUrl = getProfilePhotoUrl(
+                supabase,
+                profilePhotoById.get(application.seeker_id),
+              );
               const seekerProfile = seekerProfileById.get(application.seeker_id);
               const status = getStatusMeta("application", application.status);
 
@@ -295,7 +307,20 @@ export default async function CompanyApplicationsPage({
                   key={application.id}
                 >
                   <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                    <div className="min-w-0">
+                    <div className="grid min-w-0 gap-3 sm:grid-cols-[56px_minmax(0,1fr)]">
+                      <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-sm font-black text-blue-700">
+                        {avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            alt="Applicant profile photo"
+                            className="size-full object-cover"
+                            src={avatarUrl}
+                          />
+                        ) : (
+                          (profile?.name || profile?.email || "A").slice(0, 1)
+                        )}
+                      </div>
+                      <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="break-words font-black">
                           {profile?.name || profile?.email || "Applicant"}
@@ -338,6 +363,7 @@ export default async function CompanyApplicationsPage({
                           {application.message}
                         </p>
                       ) : null}
+                      </div>
                     </div>
                     <ApplicationStatusForm
                       applicationId={application.id}

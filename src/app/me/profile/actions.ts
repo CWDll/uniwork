@@ -9,11 +9,22 @@ type ProfileState = {
   message?: string;
 };
 
-function toArray(value: FormDataEntryValue | null) {
-  return String(value ?? "")
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
+const allowedVisaTypes = ["D-2", "D-4", "F-1", "F-2", "F-3", "F-4"];
+const allowedRegistrationStatuses = ["has_card", "pending", "not_yet"];
+const allowedKoreanLevels = ["Beginner", "TOPIK 2", "TOPIK 3", "TOPIK 4", "TOPIK 5+"];
+const allowedEnglishLevels = ["Basic", "Business", "Fluent", "Native"];
+
+function toArray(values: FormDataEntryValue[]) {
+  return values
+    .map((value) => String(value).trim())
+    .filter(Boolean)
+    .slice(0, 8);
+}
+
+function getAllowedValue(value: FormDataEntryValue | null, allowed: string[]) {
+  const nextValue = String(value ?? "").trim();
+
+  return allowed.includes(nextValue) ? nextValue : "";
 }
 
 function getVisaReviewStatus(visaType: string) {
@@ -38,30 +49,56 @@ export async function saveSeekerProfileAction(
     return { error: "로그인이 필요합니다." };
   }
 
-  const visaType = String(formData.get("visa_type") ?? "");
+  const visaType = getAllowedValue(formData.get("visa_type"), allowedVisaTypes);
+  const nationality = String(formData.get("nationality") ?? "").trim();
+  const alienRegistrationStatus = getAllowedValue(
+    formData.get("alien_registration_status"),
+    allowedRegistrationStatuses,
+  );
   const school = String(formData.get("school") ?? "").trim();
+  const major = String(formData.get("major") ?? "").trim();
+  const koreanLevel = getAllowedValue(formData.get("korean_level"), allowedKoreanLevels);
+  const englishLevel = getAllowedValue(formData.get("english_level"), allowedEnglishLevels);
+  const preferredLocations = toArray(formData.getAll("preferred_locations"));
+  const preferredJobTypes = toArray(formData.getAll("preferred_job_types"));
+  const weekdayAvailability = String(
+    formData.get("weekday_availability") ?? "",
+  ).trim();
+  const weekendAvailability = String(
+    formData.get("weekend_availability") ?? "",
+  ).trim();
 
-  if (!visaType || !school) {
-    return { error: "비자 유형과 학교명은 필수입니다." };
+  if (!nationality || !visaType || !alienRegistrationStatus || !school || !major) {
+    return { error: "국적, 비자, 외국인등록 상태, 학교, 전공은 필수입니다." };
+  }
+
+  if (!koreanLevel || !englishLevel) {
+    return { error: "한국어와 영어 수준을 선택해주세요." };
+  }
+
+  if (preferredLocations.length === 0 || preferredJobTypes.length === 0) {
+    return { error: "희망 근무 지역과 희망 직무를 최소 1개 이상 선택해주세요." };
+  }
+
+  if (!weekdayAvailability && !weekendAvailability) {
+    return { error: "평일 또는 주말 근무 가능 시간을 입력해주세요." };
   }
 
   const { error } = await supabase.from("seeker_profiles").upsert({
     user_id: user.id,
-    nationality: String(formData.get("nationality") ?? "").trim(),
+    nationality,
     visa_type: visaType,
     visa_review_status: getVisaReviewStatus(visaType),
-    alien_registration_status: String(
-      formData.get("alien_registration_status") ?? "",
-    ),
+    alien_registration_status: alienRegistrationStatus,
     school,
-    major: String(formData.get("major") ?? "").trim(),
-    korean_level: String(formData.get("korean_level") ?? ""),
-    english_level: String(formData.get("english_level") ?? ""),
-    preferred_locations: toArray(formData.get("preferred_locations")),
-    preferred_job_types: toArray(formData.get("preferred_job_types")),
+    major,
+    korean_level: koreanLevel,
+    english_level: englishLevel,
+    preferred_locations: preferredLocations,
+    preferred_job_types: preferredJobTypes,
     available_times: {
-      weekday: String(formData.get("weekday_availability") ?? "").trim(),
-      weekend: String(formData.get("weekend_availability") ?? "").trim(),
+      weekday: weekdayAvailability,
+      weekend: weekendAvailability,
     },
     updated_at: new Date().toISOString(),
   });
