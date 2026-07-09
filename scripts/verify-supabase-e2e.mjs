@@ -435,9 +435,13 @@ async function main() {
 
     const updateApplication = await companyClient
       .from("job_applications")
-      .update({ status: "reviewing" })
+      .update({
+        company_note: "We are reviewing your application and will follow up soon.",
+        status: "reviewing",
+        status_updated_at: new Date().toISOString(),
+      })
       .eq("id", applicationInsert.data.id)
-      .select("id, status")
+      .select("company_note, id, status, status_updated_at")
       .single();
 
     assertNoError(updateApplication, "update related application as company owner");
@@ -445,10 +449,18 @@ async function main() {
       updateApplication.data.status === "reviewing",
       "Expected company owner to update application status.",
     );
+    assert(
+      updateApplication.data.company_note?.includes("reviewing"),
+      "Expected company owner to store an applicant-facing note.",
+    );
+    assert(
+      updateApplication.data.status_updated_at,
+      "Expected status update timestamp to be stored.",
+    );
 
     const seekerApplication = await seekerClient
       .from("job_applications")
-      .select("id, status")
+      .select("company_note, id, status, status_updated_at")
       .eq("id", applicationInsert.data.id)
       .single();
 
@@ -456,6 +468,10 @@ async function main() {
     assert(
       seekerApplication.data.status === "reviewing",
       "Expected seeker to read company-updated application status.",
+    );
+    assert(
+      seekerApplication.data.company_note?.includes("reviewing"),
+      "Expected seeker to read the company note.",
     );
 
     const consentInsert = await seekerClient

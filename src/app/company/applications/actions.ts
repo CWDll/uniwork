@@ -22,6 +22,8 @@ function getSafeReturnTo(value: FormDataEntryValue | null) {
 export async function updateApplicationStatusAction(formData: FormData) {
   const supabase = await createClient();
   const applicationId = String(formData.get("application_id") ?? "").trim();
+  const hasCompanyNote = formData.has("company_note");
+  const companyNote = String(formData.get("company_note") ?? "").trim();
   const returnTo = getSafeReturnTo(formData.get("return_to"));
   const status = String(formData.get("status") ?? "").trim();
 
@@ -29,9 +31,22 @@ export async function updateApplicationStatusAction(formData: FormData) {
     return;
   }
 
+  const payload: {
+    company_note?: string | null;
+    status: string;
+    status_updated_at: string;
+  } = {
+    status,
+    status_updated_at: new Date().toISOString(),
+  };
+
+  if (hasCompanyNote) {
+    payload.company_note = companyNote || null;
+  }
+
   await supabase
     .from("job_applications")
-    .update({ status })
+    .update(payload)
     .eq("id", applicationId);
 
   revalidatePath("/company");

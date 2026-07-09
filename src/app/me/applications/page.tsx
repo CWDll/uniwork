@@ -32,7 +32,9 @@ export default async function SeekerApplicationsPage({
   const { data: applications } = user
     ? await supabase
         .from("job_applications")
-        .select("id, job_id, resume_id, resume_snapshot, status, message, applied_at")
+        .select(
+          "id, job_id, resume_id, resume_snapshot, status, message, company_note, applied_at, status_updated_at",
+        )
         .eq("seeker_id", user.id)
         .order("applied_at", { ascending: false })
     : { data: [] };
@@ -197,6 +199,12 @@ export default async function SeekerApplicationsPage({
                       지원일{" "}
                       {new Date(application.applied_at).toLocaleString("ko-KR")}
                     </p>
+                    {application.status_updated_at ? (
+                      <p className="mt-1 text-xs font-bold text-slate-400">
+                        상태 변경{" "}
+                        {new Date(application.status_updated_at).toLocaleString("ko-KR")}
+                      </p>
+                    ) : null}
                     <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-2">
                       <Info
                         label="Resume"
@@ -210,6 +218,11 @@ export default async function SeekerApplicationsPage({
                     {application.message ? (
                       <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-600">
                         {application.message}
+                      </p>
+                    ) : null}
+                    {application.company_note ? (
+                      <p className="mt-3 whitespace-pre-wrap rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
+                        기업 안내: {application.company_note}
                       </p>
                     ) : null}
                   </div>
@@ -256,7 +269,7 @@ function getApplicationStatusGuidance(status?: string | null) {
   }
 
   if (status === "accepted") {
-    return "기업이 합격으로 표시했습니다. 연락 안내를 확인해주세요.";
+    return "기업이 합격으로 표시했습니다. 기업 안내 메모를 확인해주세요.";
   }
 
   if (status === "rejected") {

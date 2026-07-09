@@ -40,7 +40,7 @@ export default async function CompanyApplicationPrintPage({
   const { data: application } = await supabase
     .from("job_applications")
     .select(
-      "id, job_id, seeker_id, resume_id, profile_snapshot, resume_snapshot, status, message, applied_at",
+      "id, job_id, seeker_id, resume_id, profile_snapshot, resume_snapshot, status, message, company_note, applied_at, status_updated_at",
     )
     .eq("id", applicationId)
     .maybeSingle();
@@ -189,6 +189,14 @@ export default async function CompanyApplicationPrintPage({
             <Info label="Company" value={company.name} />
             <Info label="Status" value={status.label} />
             <Info
+              label="Status updated"
+              value={
+                application.status_updated_at
+                  ? new Date(application.status_updated_at).toLocaleString("ko-KR")
+                  : "-"
+              }
+            />
+            <Info
               label="Submission data"
               value={`${snapshotMeta.label} · ${formatSnapshotTime(snapshotMeta.capturedAt)}`}
             />
@@ -238,6 +246,13 @@ export default async function CompanyApplicationPrintPage({
           <h2 className="text-lg font-black">지원 메시지</h2>
           <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
             {application.message || "지원 메시지가 없습니다."}
+          </p>
+        </section>
+
+        <section className="mt-8">
+          <h2 className="text-lg font-black">기업 안내 메모</h2>
+          <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
+            {application.company_note || "기업 안내 메모가 없습니다."}
           </p>
         </section>
 

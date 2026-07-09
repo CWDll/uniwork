@@ -167,7 +167,7 @@ export default async function CompanyApplicationsPage({
           let query = supabase
             .from("job_applications")
             .select(
-              "id, job_id, seeker_id, resume_id, profile_snapshot, resume_snapshot, status, message, applied_at",
+              "id, job_id, seeker_id, resume_id, profile_snapshot, resume_snapshot, status, message, company_note, applied_at, status_updated_at",
             )
             .in("job_id", jobIds)
             .order("applied_at", { ascending: false });
@@ -281,6 +281,7 @@ export default async function CompanyApplicationsPage({
       seekerProfile?.preferred_job_types?.join(" "),
       resume?.title,
       application.message,
+      application.company_note,
       application.status,
       snapshotMeta.label,
     ]
@@ -659,6 +660,11 @@ export default async function CompanyApplicationsPage({
                         {application.message ? (
                           <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm font-medium text-slate-700">
                             {application.message}
+                          </p>
+                        ) : null}
+                        {application.company_note ? (
+                          <p className="mt-2 rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
+                            기업 메모: {application.company_note}
                           </p>
                         ) : null}
                       </div>

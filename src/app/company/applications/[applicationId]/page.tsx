@@ -50,7 +50,7 @@ export default async function CompanyApplicationDetailPage({
   const { data: application } = await supabase
     .from("job_applications")
     .select(
-      "id, job_id, seeker_id, resume_id, profile_snapshot, resume_snapshot, status, message, applied_at",
+      "id, job_id, seeker_id, resume_id, profile_snapshot, resume_snapshot, status, message, company_note, applied_at, status_updated_at",
     )
     .eq("id", applicationId)
     .maybeSingle();
@@ -233,6 +233,13 @@ export default async function CompanyApplicationDetailPage({
               </p>
             </Section>
 
+            <Section title="기업 안내 메모">
+              <p className="whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
+                {application.company_note ||
+                  "아직 구직자에게 전달한 상태 안내 메모가 없습니다."}
+              </p>
+            </Section>
+
             <Section title="이력과 자기소개">
               {submittedResume ? (
                 <div className="grid gap-5">
@@ -305,6 +312,14 @@ export default async function CompanyApplicationDetailPage({
               label="Submission data"
               value={`${snapshotMeta.label} · ${formatSnapshotTime(snapshotMeta.capturedAt)}`}
             />
+            <Info
+              label="Status updated"
+              value={
+                application.status_updated_at
+                  ? new Date(application.status_updated_at).toLocaleString("ko-KR")
+                  : "-"
+              }
+            />
             <Info label="Category" value={job.category || "-"} />
             <Info label="Wage" value={wage} />
             <Info label="Visa condition" value={job.visa_support_type || "-"} />
@@ -313,7 +328,9 @@ export default async function CompanyApplicationDetailPage({
           <div className="mt-5">
             <ApplicationStatusForm
               applicationId={application.id}
+              currentNote={application.company_note}
               currentStatus={application.status}
+              showNoteField
             />
           </div>
           <Link
