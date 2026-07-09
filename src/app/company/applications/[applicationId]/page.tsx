@@ -5,6 +5,10 @@ import { notFound } from "next/navigation";
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  getProfileForApplication,
+  getResumeForApplication,
+} from "@/lib/applications/snapshot";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
@@ -36,7 +40,9 @@ export default async function CompanyApplicationDetailPage({
   const supabase = await createClient();
   const { data: application } = await supabase
     .from("job_applications")
-    .select("id, job_id, seeker_id, resume_id, status, message, applied_at")
+    .select(
+      "id, job_id, seeker_id, resume_id, profile_snapshot, resume_snapshot, status, message, applied_at",
+    )
     .eq("id", applicationId)
     .maybeSingle();
 
@@ -100,16 +106,24 @@ export default async function CompanyApplicationDetailPage({
   }
 
   const avatarUrl = getProfilePhotoUrl(supabase, profile.avatar_path);
+  const submittedProfile = getProfileForApplication({
+    liveProfile: seekerProfile,
+    snapshot: application.profile_snapshot,
+  });
+  const submittedResume = getResumeForApplication({
+    liveResume: resume,
+    snapshot: application.resume_snapshot,
+  });
   const status = getStatusMeta("application", application.status);
   const wage =
     job.wage_amount && job.wage_type
       ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
       : "협의";
   const availableTimes =
-    seekerProfile?.available_times &&
-    typeof seekerProfile.available_times === "object" &&
-    !Array.isArray(seekerProfile.available_times)
-      ? (seekerProfile.available_times as { weekday?: string; weekend?: string })
+    submittedProfile?.available_times &&
+    typeof submittedProfile.available_times === "object" &&
+    !Array.isArray(submittedProfile.available_times)
+      ? (submittedProfile.available_times as { weekday?: string; weekend?: string })
       : {};
 
   return (
@@ -159,18 +173,18 @@ export default async function CompanyApplicationDetailPage({
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <Info label="Nationality" value={seekerProfile?.nationality || "미입력"} />
-              <Info label="Visa" value={seekerProfile?.visa_type || "미입력"} />
+              <Info label="Nationality" value={submittedProfile?.nationality || "미입력"} />
+              <Info label="Visa" value={submittedProfile?.visa_type || "미입력"} />
               <Info
                 label="Alien registration"
-                value={seekerProfile?.alien_registration_status || "미입력"}
+                value={submittedProfile?.alien_registration_status || "미입력"}
               />
               <Info
                 label="School"
-                value={`${seekerProfile?.school || "미입력"} · ${seekerProfile?.major || "전공 미입력"}`}
+                value={`${submittedProfile?.school || "미입력"} · ${submittedProfile?.major || "전공 미입력"}`}
               />
-              <Info label="Korean" value={seekerProfile?.korean_level || "미입력"} />
-              <Info label="English" value={seekerProfile?.english_level || "미입력"} />
+              <Info label="Korean" value={submittedProfile?.korean_level || "미입력"} />
+              <Info label="English" value={submittedProfile?.english_level || "미입력"} />
             </div>
 
             <Section title="근무 가능 시간">
@@ -184,11 +198,11 @@ export default async function CompanyApplicationDetailPage({
               <div className="grid gap-3 sm:grid-cols-2">
                 <TagList
                   label="Preferred locations"
-                  values={(seekerProfile?.preferred_locations as TextArray) ?? []}
+                  values={(submittedProfile?.preferred_locations as TextArray) ?? []}
                 />
                 <TagList
                   label="Preferred jobs"
-                  values={(seekerProfile?.preferred_job_types as TextArray) ?? []}
+                  values={(submittedProfile?.preferred_job_types as TextArray) ?? []}
                 />
               </div>
             </Section>
@@ -200,24 +214,24 @@ export default async function CompanyApplicationDetailPage({
             </Section>
 
             <Section title="이력과 자기소개">
-              {resume ? (
+              {submittedResume ? (
                 <div className="grid gap-5">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-black text-slate-500">
-                        {resume.title || "Uniwork Resume"}
+                        {submittedResume.title || "Uniwork Resume"}
                       </p>
                       <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
-                        {application.resume_id ? "지원 시 제출한 이력서" : "기본 이력서"}
+                        {application.resume_snapshot ? "지원 시점 제출본" : "현재 이력서 fallback"}
                       </span>
                     </div>
                     <p className="mt-2 whitespace-pre-wrap rounded-xl bg-blue-50 p-4 text-sm font-semibold leading-7 text-slate-700">
-                      {resume.intro || "자기소개가 없습니다."}
+                      {submittedResume.intro || "자기소개가 없습니다."}
                     </p>
                   </div>
                   <ResumeList
                     emptyText="학력 정보가 없습니다."
-                    items={normalizeEducation(resume.education)}
+                    items={normalizeEducation(submittedResume.education)}
                     render={(item) => ({
                       body: [item.school, item.major].filter(Boolean).join(" · "),
                       meta: item.period,
@@ -227,7 +241,7 @@ export default async function CompanyApplicationDetailPage({
                   />
                   <ResumeList
                     emptyText="경력 정보가 없습니다."
-                    items={normalizeExperience(resume.experience)}
+                    items={normalizeExperience(submittedResume.experience)}
                     render={(item) => ({
                       body: item.description,
                       meta: [item.company, item.period].filter(Boolean).join(" · "),
@@ -237,7 +251,7 @@ export default async function CompanyApplicationDetailPage({
                   />
                   <TagList
                     label="Languages"
-                    values={normalizeLanguages(resume.languages).map((item) =>
+                    values={normalizeLanguages(submittedResume.languages).map((item) =>
                       [item.name, item.level].filter(Boolean).join(" · "),
                     )}
                   />

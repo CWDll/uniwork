@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { getResumeForApplication } from "@/lib/applications/snapshot";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -19,7 +20,7 @@ export default async function SeekerApplicationsPage({
   const { data: applications } = user
     ? await supabase
         .from("job_applications")
-        .select("id, job_id, resume_id, status, message, applied_at")
+        .select("id, job_id, resume_id, resume_snapshot, status, message, applied_at")
         .eq("seeker_id", user.id)
         .order("applied_at", { ascending: false })
     : { data: [] };
@@ -93,9 +94,12 @@ export default async function SeekerApplicationsPage({
               const company = job ? companyById.get(job.company_id) : null;
               const status = getStatusMeta("application", application.status);
               const isRecentlyApplied = applied === application.job_id;
-              const resume = application.resume_id
-                ? resumeById.get(application.resume_id)
-                : null;
+              const resume = getResumeForApplication({
+                liveResume: application.resume_id
+                  ? (resumeById.get(application.resume_id) ?? null)
+                  : null,
+                snapshot: application.resume_snapshot,
+              });
 
               return (
                 <article
@@ -133,6 +137,7 @@ export default async function SeekerApplicationsPage({
                     </p>
                     <p className="mt-1 text-xs font-bold text-slate-400">
                       제출 이력서 {resume?.title || "연결된 이력서 없음"}
+                      {application.resume_snapshot ? " · 제출 시점 저장됨" : ""}
                     </p>
                     {application.message ? (
                       <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-600">

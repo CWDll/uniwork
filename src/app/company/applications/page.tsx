@@ -6,6 +6,10 @@ import {
   getApplicationCompletion,
   getResumeCompletion,
 } from "@/lib/applications/completeness";
+import {
+  getProfileForApplication,
+  getResumeForApplication,
+} from "@/lib/applications/snapshot";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
@@ -92,7 +96,9 @@ export default async function CompanyApplicationsPage({
       ? await (() => {
           let query = supabase
             .from("job_applications")
-            .select("id, job_id, seeker_id, resume_id, status, message, applied_at")
+            .select(
+              "id, job_id, seeker_id, resume_id, profile_snapshot, resume_snapshot, status, message, applied_at",
+            )
             .in("job_id", jobIds)
             .order("applied_at", { ascending: false });
 
@@ -173,7 +179,17 @@ export default async function CompanyApplicationsPage({
     const job = jobById.get(application.job_id);
     const company = job ? companyById.get(job.company_id) : null;
     const profile = profileById.get(application.seeker_id);
-    const seekerProfile = seekerProfileById.get(application.seeker_id);
+    const seekerProfile = getProfileForApplication({
+      liveProfile: seekerProfileById.get(application.seeker_id) ?? null,
+      snapshot: application.profile_snapshot,
+    });
+    const resume = getResumeForApplication({
+      liveResume:
+        (application.resume_id
+          ? linkedResumeById.get(application.resume_id)
+          : firstResumeBySeekerId.get(application.seeker_id)) ?? null,
+      snapshot: application.resume_snapshot,
+    });
     const haystack = [
       job?.title,
       company?.name,
@@ -187,10 +203,7 @@ export default async function CompanyApplicationsPage({
       seekerProfile?.english_level,
       seekerProfile?.preferred_locations?.join(" "),
       seekerProfile?.preferred_job_types?.join(" "),
-      (application.resume_id
-        ? linkedResumeById.get(application.resume_id)
-        : firstResumeBySeekerId.get(application.seeker_id)
-      )?.title,
+      resume?.title,
       application.message,
     ]
       .filter(Boolean)
@@ -337,16 +350,26 @@ export default async function CompanyApplicationsPage({
                 supabase,
                 profilePhotoById.get(application.seeker_id),
               );
-              const seekerProfile = seekerProfileById.get(application.seeker_id);
+              const seekerProfile = getProfileForApplication({
+                liveProfile: seekerProfileById.get(application.seeker_id) ?? null,
+                snapshot: application.profile_snapshot,
+              });
               const status = getStatusMeta("application", application.status);
-              const resume = application.resume_id
-                ? linkedResumeById.get(application.resume_id)
-                : firstResumeBySeekerId.get(application.seeker_id);
+              const resume = getResumeForApplication({
+                liveResume:
+                  (application.resume_id
+                    ? linkedResumeById.get(application.resume_id)
+                    : firstResumeBySeekerId.get(application.seeker_id)) ?? null,
+                snapshot: application.resume_snapshot,
+              });
               const completion = getApplicationCompletion({
                 profile: seekerProfile ?? null,
                 resume: resume ?? null,
               });
               const resumeCompletion = getResumeCompletion(resume ?? null);
+              const hasSubmissionSnapshot = Boolean(
+                application.profile_snapshot && application.resume_snapshot,
+              );
 
               return (
                 <article
@@ -388,8 +411,8 @@ export default async function CompanyApplicationsPage({
                           label={`정보 ${completion.completedCount}/${completion.totalCount}`}
                         />
                         <CompletionBadge
-                          isComplete={Boolean(application.resume_id)}
-                          label={application.resume_id ? "제출 이력서 연결" : "이력서 fallback"}
+                          isComplete={hasSubmissionSnapshot}
+                          label={hasSubmissionSnapshot ? "제출본 고정" : "현재 정보 fallback"}
                         />
                       </div>
                       <p className="mt-1 break-words text-sm font-semibold text-slate-500">

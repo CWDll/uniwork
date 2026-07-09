@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { getApplicationCompletion } from "@/lib/applications/completeness";
+import {
+  createProfileSnapshot,
+  createResumeSnapshot,
+} from "@/lib/applications/snapshot";
 import { getJobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
 
@@ -97,7 +101,9 @@ export async function applyToJobAction(
   const message = String(formData.get("message") ?? "").trim();
   const { error } = await supabase.from("job_applications").insert({
     job_id: job.id,
+    profile_snapshot: createProfileSnapshot(seekerProfile),
     resume_id: resume.id,
+    resume_snapshot: createResumeSnapshot(resume),
     seeker_id: user.id,
     message,
     status: "submitted",

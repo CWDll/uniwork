@@ -313,17 +313,30 @@ async function main() {
       .insert({
         job_id: jobInsert.data.id,
         message: "I would like to apply with my profile.",
+        profile_snapshot: {
+          nationality: "Vietnam",
+          visa_type: "D-2",
+        },
         resume_id: resumeInsert.data.id,
+        resume_snapshot: {
+          id: resumeInsert.data.id,
+          intro: resumeInsert.data.intro,
+          title: "Cafe service profile",
+        },
         seeker_id: seekerUser.id,
         status: "submitted",
       })
-      .select("id, resume_id")
+      .select("id, profile_snapshot, resume_id, resume_snapshot")
       .single();
 
     assertNoError(applicationInsert, "insert application");
     assert(
       applicationInsert.data.resume_id === resumeInsert.data.id,
       "Expected application to store the submitted resume_id.",
+    );
+    assert(
+      applicationInsert.data.resume_snapshot?.id === resumeInsert.data.id,
+      "Expected application to store the submitted resume snapshot.",
     );
 
     const companyResumeRead = await companyClient
@@ -352,6 +365,7 @@ async function main() {
     console.log("Resume access verification passed.");
     console.log("- Seeker can create a private resume.");
     console.log("- Seeker can attach only their own resume_id to an application.");
+    console.log("- Application stores profile and resume submission snapshots.");
     console.log("- Company owner can read resumes only for applicants to their jobs.");
     console.log("- Unrelated company owners cannot read seeker resumes.");
   } finally {

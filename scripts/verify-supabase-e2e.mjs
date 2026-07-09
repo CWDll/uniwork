@@ -357,11 +357,22 @@ async function main() {
       .insert({
         job_id: jobInsert.data.id,
         seeker_id: seekerUser.id,
+        profile_snapshot: {
+          nationality: "Vietnam",
+          school: "Uniwork Test University",
+          visa_type: "D-2",
+        },
         resume_id: resumeInsert.data.id,
+        resume_snapshot: {
+          id: resumeInsert.data.id,
+          intro:
+            "I can support busy service hours with reliable communication and careful customer handling.",
+          title: "Hall staff resume",
+        },
         message: "I can work weekends and evenings.",
         status: "submitted",
       })
-      .select("id, resume_id, status")
+      .select("id, profile_snapshot, resume_id, resume_snapshot, status")
       .single();
 
     assertNoError(applicationInsert, "insert application as seeker");
@@ -372,6 +383,10 @@ async function main() {
     assert(
       applicationInsert.data.resume_id === resumeInsert.data.id,
       "Expected application to reference the seeker's resume.",
+    );
+    assert(
+      applicationInsert.data.resume_snapshot?.id === resumeInsert.data.id,
+      "Expected application to store the submitted resume snapshot.",
     );
 
     const duplicateApplication = await seekerClient
@@ -389,7 +404,7 @@ async function main() {
 
     const companyApplications = await companyClient
       .from("job_applications")
-      .select("id, seeker_id, resume_id, status, message")
+      .select("id, seeker_id, profile_snapshot, resume_id, resume_snapshot, status, message")
       .eq("job_id", jobInsert.data.id);
 
     assertNoError(companyApplications, "read applications as company owner");
@@ -400,6 +415,10 @@ async function main() {
     assert(
       companyApplications.data?.[0]?.resume_id === resumeInsert.data.id,
       "Expected company owner to read the submitted resume reference.",
+    );
+    assert(
+      companyApplications.data?.[0]?.resume_snapshot?.id === resumeInsert.data.id,
+      "Expected company owner to read the submitted resume snapshot.",
     );
 
     const applicantProfile = await companyClient
@@ -541,7 +560,7 @@ async function main() {
     console.log("- Seeker resume creation works.");
     console.log("- Non-company company creation is blocked.");
     console.log("- Admin can publish a job, and published jobs are publicly readable.");
-    console.log("- Seeker can apply to published jobs with resume_id.");
+    console.log("- Seeker can apply to published jobs with resume_id and snapshots.");
     console.log("- Company owner can read applicant details and update application status.");
     console.log("- Seeker can create admin requests and admin can update them.");
     console.log("- Admin can assign admin requests to partners.");
