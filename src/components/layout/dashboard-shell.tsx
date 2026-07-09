@@ -23,6 +23,7 @@ const navByArea: Record<"me" | "company" | "admin", NavItem[]> = {
   me: [
     { href: "/me", label: "Dashboard", icon: LayoutDashboard },
     { href: "/me/profile", label: "Profile", icon: ShieldCheck },
+    { href: "/me/resume", label: "Resume", icon: FileText },
     { href: "/me/applications", label: "Applications", icon: ClipboardList },
     { href: "/me/admin-requests", label: "Admin Requests", icon: FileText },
   ],

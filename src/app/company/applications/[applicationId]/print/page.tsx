@@ -8,6 +8,21 @@ import { getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 
 type TextArray = string[] | null;
+type EducationItem = {
+  major?: string;
+  period?: string;
+  school?: string;
+};
+type ExperienceItem = {
+  company?: string;
+  description?: string;
+  period?: string;
+  role?: string;
+};
+type LanguageItem = {
+  level?: string;
+  name?: string;
+};
 
 export default async function CompanyApplicationPrintPage({
   params,
@@ -38,7 +53,12 @@ export default async function CompanyApplicationPrintPage({
     notFound();
   }
 
-  const [{ data: company }, { data: profile }, { data: seekerProfile }] =
+  const [
+    { data: company },
+    { data: profile },
+    { data: seekerProfile },
+    { data: resume },
+  ] =
     await Promise.all([
       supabase
         .from("companies")
@@ -56,6 +76,13 @@ export default async function CompanyApplicationPrintPage({
           "nationality, visa_type, alien_registration_status, school, major, korean_level, english_level, preferred_locations, preferred_job_types, available_times",
         )
         .eq("user_id", application.seeker_id)
+        .maybeSingle(),
+      supabase
+        .from("resumes")
+        .select("title, intro, education, experience, languages")
+        .eq("seeker_id", application.seeker_id)
+        .order("created_at", { ascending: true })
+        .limit(1)
         .maybeSingle(),
     ]);
 
@@ -179,6 +206,54 @@ export default async function CompanyApplicationPrintPage({
             {application.message || "지원 메시지가 없습니다."}
           </p>
         </section>
+
+        <section className="mt-8">
+          <h2 className="text-lg font-black">이력과 자기소개</h2>
+          {resume ? (
+            <div className="mt-3 grid gap-4">
+              <div>
+                <p className="text-sm font-black text-slate-500">
+                  {resume.title || "Uniwork Resume"}
+                </p>
+                <p className="mt-2 whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
+                  {resume.intro || "자기소개가 없습니다."}
+                </p>
+              </div>
+              <ResumeList
+                emptyText="학력 정보가 없습니다."
+                items={normalizeEducation(resume.education)}
+                render={(item) => ({
+                  body: [item.school, item.major].filter(Boolean).join(" · "),
+                  meta: item.period,
+                  title: item.school || item.major || "Education",
+                })}
+                title="Education"
+              />
+              <ResumeList
+                emptyText="경력 정보가 없습니다."
+                items={normalizeExperience(resume.experience)}
+                render={(item) => ({
+                  body: item.description,
+                  meta: [item.company, item.period].filter(Boolean).join(" · "),
+                  title: item.role || item.company || "Experience",
+                })}
+                title="Experience"
+              />
+              <Info
+                label="Languages"
+                value={formatList(
+                  normalizeLanguages(resume.languages).map((item) =>
+                    [item.name, item.level].filter(Boolean).join(" · "),
+                  ),
+                )}
+              />
+            </div>
+          ) : (
+            <p className="mt-3 rounded-xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+              구직자가 아직 이력/소개 정보를 입력하지 않았습니다.
+            </p>
+          )}
+        </section>
       </article>
     </main>
   );
@@ -195,6 +270,66 @@ function Info({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 break-words text-sm font-bold text-slate-800">{value}</p>
+    </div>
+  );
+}
+
+function normalizeEducation(value: unknown): EducationItem[] {
+  return Array.isArray(value) ? (value as EducationItem[]) : [];
+}
+
+function normalizeExperience(value: unknown): ExperienceItem[] {
+  return Array.isArray(value) ? (value as ExperienceItem[]) : [];
+}
+
+function normalizeLanguages(value: unknown): LanguageItem[] {
+  return Array.isArray(value) ? (value as LanguageItem[]) : [];
+}
+
+function ResumeList<T>({
+  emptyText,
+  items,
+  render,
+  title,
+}: {
+  emptyText: string;
+  items: T[];
+  render: (item: T) => { body?: string; meta?: string; title: string };
+  title: string;
+}) {
+  return (
+    <div>
+      <h3 className="text-xs font-black uppercase tracking-wide text-slate-400">
+        {title}
+      </h3>
+      <div className="mt-2 grid gap-2">
+        {items.length > 0 ? (
+          items.map((item, index) => {
+            const rendered = render(item);
+
+            return (
+              <div
+                className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3"
+                key={`${title}-${index}`}
+              >
+                <p className="text-sm font-black text-slate-800">{rendered.title}</p>
+                {rendered.meta ? (
+                  <p className="mt-1 text-xs font-bold text-slate-500">{rendered.meta}</p>
+                ) : null}
+                {rendered.body ? (
+                  <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
+                    {rendered.body}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })
+        ) : (
+          <p className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-500">
+            {emptyText}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

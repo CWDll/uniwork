@@ -53,8 +53,12 @@ export default async function MePage() {
     redirect("/login?next=/me");
   }
 
-  const [{ data: profile }, { count: applicationCount }, { count: adminRequestCount }] =
-    await Promise.all([
+  const [
+    { data: profile },
+    { count: applicationCount },
+    { count: adminRequestCount },
+    { data: resume },
+  ] = await Promise.all([
       supabase
         .from("seeker_profiles")
         .select(
@@ -70,6 +74,13 @@ export default async function MePage() {
         .from("admin_requests")
         .select("id", { count: "exact", head: true })
         .eq("seeker_id", user.id),
+      supabase
+        .from("resumes")
+        .select("id, intro, languages")
+        .eq("seeker_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle(),
     ]);
   const { data: accountProfile } = await supabase
     .from("profiles")
@@ -94,6 +105,14 @@ export default async function MePage() {
       value: String(applicationCount ?? 0),
       note: "내가 지원한 공고 수",
       icon: Send,
+    },
+    {
+      label: "Resume",
+      value: resume?.intro ? "Ready" : "Needed",
+      note: resume?.intro
+        ? "기업에게 보여줄 자기소개 입력 완료"
+        : "자기소개와 경력 정보를 입력해주세요",
+      icon: FileText,
     },
     {
       label: "Admin requests",
@@ -134,7 +153,7 @@ export default async function MePage() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3">
+      <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => {
           const Icon = card.icon;
 
