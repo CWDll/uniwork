@@ -72,7 +72,7 @@ export default async function CompanyJobsPage({
           let query = supabase
             .from("jobs")
             .select(
-              "id, company_id, title, location, employment_type, category, status, created_at, published_at, closed_at",
+              "id, company_id, title, location, employment_type, category, status, review_note, reviewed_at, created_at, published_at, closed_at",
             )
             .in("company_id", companyIds)
             .order("created_at", { ascending: false });
@@ -217,6 +217,24 @@ export default async function CompanyJobsPage({
                       />
                       <Info label="Next step" value={getJobNextStep(job.status)} />
                     </div>
+                    {job.review_note ? (
+                      <p
+                        className={cn(
+                          "mt-3 whitespace-pre-wrap rounded-xl p-3 text-sm font-semibold leading-6",
+                          job.status === "rejected"
+                            ? "bg-red-50 text-red-900"
+                            : "bg-slate-50 text-slate-700",
+                        )}
+                      >
+                        운영자 메모: {job.review_note}
+                      </p>
+                    ) : null}
+                    {job.reviewed_at ? (
+                      <p className="mt-2 text-xs font-bold text-slate-400">
+                        검토일{" "}
+                        {new Date(job.reviewed_at).toLocaleString("ko-KR")}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap items-start gap-2 lg:justify-end">
                     <Link

@@ -40,7 +40,7 @@ export default async function AdminJobsPage({
     let query = supabase
       .from("jobs")
       .select(
-        "id, company_id, title, location, employment_type, category, status, created_at, published_at, closed_at",
+        "id, company_id, title, location, employment_type, category, status, review_note, reviewed_at, reviewed_by, created_at, published_at, closed_at",
       )
       .order("created_at", { ascending: false });
 
@@ -178,30 +178,48 @@ export default async function AdminJobsPage({
                         value={new Date(job.created_at).toLocaleString("ko-KR")}
                       />
                     </div>
+                    {job.review_note ? (
+                      <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-700">
+                        운영자 메모: {job.review_note}
+                      </p>
+                    ) : null}
                   </div>
-                  <div className="flex flex-wrap gap-2 lg:justify-end">
-                    <StatusButton
-                      currentStatus={job.status}
-                      jobId={job.id}
-                      status="published"
-                    >
-                      공개
-                    </StatusButton>
-                    <StatusButton
-                      currentStatus={job.status}
-                      jobId={job.id}
-                      status="rejected"
-                    >
-                      반려
-                    </StatusButton>
-                    <StatusButton
-                      currentStatus={job.status}
-                      jobId={job.id}
-                      status="closed"
-                    >
-                      마감
-                    </StatusButton>
-                  </div>
+                  <form
+                    action={updateJobStatusAction}
+                    className="grid gap-2 rounded-xl bg-slate-50 p-3 lg:w-[320px]"
+                  >
+                    <input name="job_id" type="hidden" value={job.id} />
+                    <label className="grid gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+                      Review note
+                      <textarea
+                        className="min-h-20 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-slate-700 outline-none focus:border-blue-400"
+                        defaultValue={job.review_note ?? ""}
+                        maxLength={700}
+                        name="review_note"
+                        placeholder="반려/마감/승인 사유 또는 기업 안내 메모"
+                      />
+                    </label>
+                    <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+                      <StatusButton
+                        currentStatus={job.status}
+                        status="published"
+                      >
+                        공개
+                      </StatusButton>
+                      <StatusButton
+                        currentStatus={job.status}
+                        status="rejected"
+                      >
+                        반려
+                      </StatusButton>
+                      <StatusButton
+                        currentStatus={job.status}
+                        status="closed"
+                      >
+                        마감
+                      </StatusButton>
+                    </div>
+                  </form>
                 </article>
               );
             })
@@ -219,28 +237,24 @@ export default async function AdminJobsPage({
 function StatusButton({
   children,
   currentStatus,
-  jobId,
   status,
 }: {
   children: React.ReactNode;
   currentStatus: string;
-  jobId: string;
   status: string;
 }) {
   const isCurrent = currentStatus === status;
 
   return (
-    <form action={updateJobStatusAction}>
-      <input name="job_id" type="hidden" value={jobId} />
-      <input name="status" type="hidden" value={status} />
-      <Button
-        disabled={isCurrent}
-        type="submit"
-        variant={status === "published" ? "default" : "outline"}
-      >
-        {isCurrent ? "현재 상태" : children}
-      </Button>
-    </form>
+    <Button
+      disabled={isCurrent}
+      name="status"
+      type="submit"
+      value={status}
+      variant={status === "published" ? "default" : "outline"}
+    >
+      {isCurrent ? "현재 상태" : children}
+    </Button>
   );
 }
 

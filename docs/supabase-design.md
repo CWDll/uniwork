@@ -100,6 +100,9 @@ Important: `owner_id` is intentionally **not unique**. One company-role user can
 - `visa_support_type text`
 - `korean_requirement text`
 - `status text default 'draft'`
+- `review_note text`
+- `reviewed_at timestamptz`
+- `reviewed_by uuid references profiles(id)`
 - `published_at timestamptz`
 - `closed_at timestamptz`
 - `created_at timestamptz default now()`

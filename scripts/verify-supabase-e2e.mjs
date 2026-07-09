@@ -351,16 +351,27 @@ async function main() {
       .update({
         status: "published",
         published_at: new Date().toISOString(),
+        review_note: "Approved for public listing.",
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: adminUser.id,
         updated_at: new Date().toISOString(),
       })
       .eq("id", jobInsert.data.id)
-      .select("id, status")
+      .select("id, review_note, reviewed_at, reviewed_by, status")
       .single();
 
     assertNoError(publishResult, "publish job as admin");
     assert(
       publishResult.data.status === "published",
       "Expected admin-published job to be published.",
+    );
+    assert(
+      publishResult.data.review_note === "Approved for public listing.",
+      "Expected admin review note to be stored.",
+    );
+    assert(
+      publishResult.data.reviewed_by === adminUser.id && publishResult.data.reviewed_at,
+      "Expected admin reviewer metadata to be stored.",
     );
 
     const publicClient = createAnonClient();
