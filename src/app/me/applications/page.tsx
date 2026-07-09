@@ -19,7 +19,7 @@ export default async function SeekerApplicationsPage({
   const { data: applications } = user
     ? await supabase
         .from("job_applications")
-        .select("id, job_id, status, message, applied_at")
+        .select("id, job_id, resume_id, status, message, applied_at")
         .eq("seeker_id", user.id)
         .order("applied_at", { ascending: false })
     : { data: [] };
@@ -38,9 +38,21 @@ export default async function SeekerApplicationsPage({
     companyIds.length > 0
       ? await supabase.from("companies").select("id, name").in("id", companyIds)
       : { data: [] };
+  const resumeIds = Array.from(
+    new Set(
+      applications
+        ?.map((application) => application.resume_id)
+        .filter((resumeId): resumeId is string => Boolean(resumeId)) ?? [],
+    ),
+  );
+  const { data: resumes } =
+    resumeIds.length > 0
+      ? await supabase.from("resumes").select("id, title").in("id", resumeIds)
+      : { data: [] };
 
   const jobById = new Map(jobs?.map((job) => [job.id, job]) ?? []);
   const companyById = new Map(companies?.map((company) => [company.id, company]) ?? []);
+  const resumeById = new Map(resumes?.map((resume) => [resume.id, resume]) ?? []);
 
   return (
     <DashboardShell area="me">
@@ -81,6 +93,9 @@ export default async function SeekerApplicationsPage({
               const company = job ? companyById.get(job.company_id) : null;
               const status = getStatusMeta("application", application.status);
               const isRecentlyApplied = applied === application.job_id;
+              const resume = application.resume_id
+                ? resumeById.get(application.resume_id)
+                : null;
 
               return (
                 <article
@@ -115,6 +130,9 @@ export default async function SeekerApplicationsPage({
                     <p className="mt-1 text-xs font-bold text-slate-400">
                       지원일{" "}
                       {new Date(application.applied_at).toLocaleString("ko-KR")}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-slate-400">
+                      제출 이력서 {resume?.title || "연결된 이력서 없음"}
                     </p>
                     {application.message ? (
                       <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-600">

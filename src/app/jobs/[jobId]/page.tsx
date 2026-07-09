@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { JobApplicationForm } from "@/components/jobs/job-application-form";
 import { PublicShell } from "@/components/layout/public-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { getApplicationCompletion } from "@/lib/applications/completeness";
 import { getJobEligibility, type JobEligibility } from "@/lib/jobs/eligibility";
 import { getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
@@ -43,7 +44,7 @@ export default async function JobDetailPage({
   const { data: existingApplication } = user
     ? await supabase
         .from("job_applications")
-        .select("id, status")
+        .select("id, status, resume_id")
         .eq("job_id", job.id)
         .eq("seeker_id", user.id)
         .maybeSingle()
@@ -51,8 +52,19 @@ export default async function JobDetailPage({
   const { data: seekerProfile } = user
     ? await supabase
         .from("seeker_profiles")
-        .select("visa_type")
+        .select(
+          "nationality, visa_type, alien_registration_status, school, major, korean_level, english_level, preferred_locations, preferred_job_types, available_times",
+        )
         .eq("user_id", user.id)
+        .maybeSingle()
+    : { data: null };
+  const { data: resume } = user
+    ? await supabase
+        .from("resumes")
+        .select("id, title, intro, education, experience, languages, updated_at")
+        .eq("seeker_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
         .maybeSingle()
     : { data: null };
   const { data: visaRule } = seekerProfile?.visa_type
@@ -77,6 +89,10 @@ export default async function JobDetailPage({
     "application",
     existingApplication?.status,
   );
+  const completion = getApplicationCompletion({
+    profile: seekerProfile,
+    resume,
+  });
 
   return (
     <PublicShell>
@@ -160,26 +176,34 @@ export default async function JobDetailPage({
             <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
               이미 지원한 공고입니다. 상태: {existingApplicationStatus.label}
             </div>
-          ) : user && eligibility.canApply ? (
+          ) : user && eligibility.canApply && completion.isComplete ? (
             <>
               <EligibilityPanel eligibility={eligibility} />
+              <ApplicationSnapshotPanel
+                completionLabel={`${completion.completedCount}/${completion.totalCount}`}
+                resumeTitle={resume?.title || "Uniwork Resume"}
+              />
               <JobApplicationForm jobId={job.id} />
             </>
           ) : user ? (
             <>
               <EligibilityPanel eligibility={eligibility} />
-              <Link
-                className={cn(buttonVariants({ className: "mt-4 w-full" }))}
-                href={
-                  eligibility.status === "profile_required"
-                    ? "/me/profile"
-                    : "/me/admin-requests"
-                }
-              >
-                {eligibility.status === "profile_required"
-                  ? "프로필 입력하기"
-                  : "행정 검토 요청하기"}
-              </Link>
+              {eligibility.canApply ? (
+                <ApplicationReadinessPanel completion={completion} />
+              ) : (
+                <Link
+                  className={cn(buttonVariants({ className: "mt-4 w-full" }))}
+                  href={
+                    eligibility.status === "profile_required"
+                      ? "/me/profile"
+                      : "/me/admin-requests"
+                  }
+                >
+                  {eligibility.status === "profile_required"
+                    ? "프로필 입력하기"
+                    : "행정 검토 요청하기"}
+                </Link>
+              )}
             </>
           ) : (
             <>
@@ -195,6 +219,70 @@ export default async function JobDetailPage({
         </aside>
       </section>
     </PublicShell>
+  );
+}
+
+function ApplicationSnapshotPanel({
+  completionLabel,
+  resumeTitle,
+}: {
+  completionLabel: string;
+  resumeTitle: string;
+}) {
+  return (
+    <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
+      <p className="text-sm font-black text-blue-900">제출 정보</p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-blue-900">
+        현재 저장된 프로필과 {resumeTitle} 이력서로 지원합니다.
+      </p>
+      <p className="mt-1 text-xs font-black text-blue-700">
+        지원 정보 완성도 {completionLabel}
+      </p>
+    </div>
+  );
+}
+
+function ApplicationReadinessPanel({
+  completion,
+}: {
+  completion: ReturnType<typeof getApplicationCompletion>;
+}) {
+  const profileMissing = completion.profile.missing;
+  const resumeMissing = completion.resume.missing;
+
+  return (
+    <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-4">
+      <p className="text-sm font-black text-amber-950">지원 전 보완이 필요합니다</p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-amber-900">
+        기업에게 전달할 프로필/이력 정보가 아직 부족합니다.
+      </p>
+      <div className="mt-3 grid gap-2 text-xs font-bold text-amber-900">
+        {profileMissing.length > 0 ? (
+          <p>프로필: {profileMissing.slice(0, 5).join(", ")}</p>
+        ) : null}
+        {resumeMissing.length > 0 ? (
+          <p>이력서: {resumeMissing.slice(0, 5).join(", ")}</p>
+        ) : null}
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {profileMissing.length > 0 ? (
+          <Link
+            className={cn(buttonVariants({ className: "w-full" }))}
+            href="/me/profile"
+          >
+            프로필 보완
+          </Link>
+        ) : null}
+        {resumeMissing.length > 0 ? (
+          <Link
+            className={cn(buttonVariants({ className: "w-full", variant: "outline" }))}
+            href="/me/resume"
+          >
+            이력서 보완
+          </Link>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

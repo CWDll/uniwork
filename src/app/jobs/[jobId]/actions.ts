@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getApplicationCompletion } from "@/lib/applications/completeness";
 import { getJobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
 
@@ -52,7 +53,9 @@ export async function applyToJobAction(
 
   const { data: seekerProfile } = await supabase
     .from("seeker_profiles")
-    .select("visa_type")
+    .select(
+      "nationality, visa_type, alien_registration_status, school, major, korean_level, english_level, preferred_locations, preferred_job_types, available_times",
+    )
     .eq("user_id", user.id)
     .maybeSingle();
   const { data: visaRule } = seekerProfile?.visa_type
@@ -73,9 +76,28 @@ export async function applyToJobAction(
     return { error: eligibility.description };
   }
 
+  const { data: resume } = await supabase
+    .from("resumes")
+    .select("id, title, intro, education, experience, languages")
+    .eq("seeker_id", user.id)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  const completion = getApplicationCompletion({
+    profile: seekerProfile,
+    resume,
+  });
+
+  if (!completion.isComplete || !resume?.id) {
+    return {
+      error: `지원 전 정보를 보완해주세요: ${completion.missing.slice(0, 4).join(", ")}`,
+    };
+  }
+
   const message = String(formData.get("message") ?? "").trim();
   const { error } = await supabase.from("job_applications").insert({
     job_id: job.id,
+    resume_id: resume.id,
     seeker_id: user.id,
     message,
     status: "submitted",

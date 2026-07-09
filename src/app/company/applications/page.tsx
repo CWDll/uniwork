@@ -2,6 +2,10 @@ import Link from "next/link";
 
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import {
+  getApplicationCompletion,
+  getResumeCompletion,
+} from "@/lib/applications/completeness";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
@@ -88,7 +92,7 @@ export default async function CompanyApplicationsPage({
       ? await (() => {
           let query = supabase
             .from("job_applications")
-            .select("id, job_id, seeker_id, status, message, applied_at")
+            .select("id, job_id, seeker_id, resume_id, status, message, applied_at")
             .in("job_id", jobIds)
             .order("applied_at", { ascending: false });
 
@@ -120,6 +124,28 @@ export default async function CompanyApplicationsPage({
           )
           .in("user_id", seekerIds)
       : { data: [] };
+  const resumeIds = Array.from(
+    new Set(
+      applications
+        ?.map((application) => application.resume_id)
+        .filter((resumeId): resumeId is string => Boolean(resumeId)) ?? [],
+    ),
+  );
+  const { data: linkedResumes } =
+    resumeIds.length > 0
+      ? await supabase
+          .from("resumes")
+          .select("id, seeker_id, title, intro, education, experience, languages")
+          .in("id", resumeIds)
+      : { data: [] };
+  const { data: seekerResumes } =
+    seekerIds.length > 0
+      ? await supabase
+          .from("resumes")
+          .select("id, seeker_id, title, intro, education, experience, languages, created_at")
+          .in("seeker_id", seekerIds)
+          .order("created_at", { ascending: true })
+      : { data: [] };
 
   const jobById = new Map(jobs?.map((job) => [job.id, job]) ?? []);
   const companyById = new Map(companies?.map((company) => [company.id, company]) ?? []);
@@ -130,6 +156,15 @@ export default async function CompanyApplicationsPage({
   const seekerProfileById = new Map(
     seekerProfiles?.map((profile) => [profile.user_id, profile]) ?? [],
   );
+  const linkedResumeById = new Map(
+    linkedResumes?.map((resume) => [resume.id, resume]) ?? [],
+  );
+  const firstResumeBySeekerId = new Map<string, NonNullable<typeof seekerResumes>[number]>();
+  seekerResumes?.forEach((resume) => {
+    if (!firstResumeBySeekerId.has(resume.seeker_id)) {
+      firstResumeBySeekerId.set(resume.seeker_id, resume);
+    }
+  });
   const visibleApplications = (applications ?? []).filter((application) => {
     if (!keyword) {
       return true;
@@ -152,6 +187,10 @@ export default async function CompanyApplicationsPage({
       seekerProfile?.english_level,
       seekerProfile?.preferred_locations?.join(" "),
       seekerProfile?.preferred_job_types?.join(" "),
+      (application.resume_id
+        ? linkedResumeById.get(application.resume_id)
+        : firstResumeBySeekerId.get(application.seeker_id)
+      )?.title,
       application.message,
     ]
       .filter(Boolean)
@@ -300,6 +339,14 @@ export default async function CompanyApplicationsPage({
               );
               const seekerProfile = seekerProfileById.get(application.seeker_id);
               const status = getStatusMeta("application", application.status);
+              const resume = application.resume_id
+                ? linkedResumeById.get(application.resume_id)
+                : firstResumeBySeekerId.get(application.seeker_id);
+              const completion = getApplicationCompletion({
+                profile: seekerProfile ?? null,
+                resume: resume ?? null,
+              });
+              const resumeCompletion = getResumeCompletion(resume ?? null);
 
               return (
                 <article
@@ -336,6 +383,14 @@ export default async function CompanyApplicationsPage({
                         >
                           {status.label}
                         </span>
+                        <CompletionBadge
+                          isComplete={completion.isComplete}
+                          label={`정보 ${completion.completedCount}/${completion.totalCount}`}
+                        />
+                        <CompletionBadge
+                          isComplete={Boolean(application.resume_id)}
+                          label={application.resume_id ? "제출 이력서 연결" : "이력서 fallback"}
+                        />
                       </div>
                       <p className="mt-1 break-words text-sm font-semibold text-slate-500">
                         {job?.title ?? "Job"} · {company?.name ?? "Company"} ·{" "}
@@ -359,6 +414,10 @@ export default async function CompanyApplicationsPage({
                         <Info
                           label="English"
                           value={seekerProfile?.english_level || "미입력"}
+                        />
+                        <Info
+                          label="Resume"
+                          value={`${resume?.title || "이력서 없음"} · ${resumeCompletion.completedCount}/${resumeCompletion.totalCount}`}
                         />
                       </div>
                       {application.message ? (
@@ -401,5 +460,26 @@ function Info({ label, value }: { label: string; value: string }) {
       </p>
       <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
     </div>
+  );
+}
+
+function CompletionBadge({
+  isComplete,
+  label,
+}: {
+  isComplete: boolean;
+  label: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "rounded-md px-2 py-1 text-xs font-black",
+        isComplete
+          ? "bg-emerald-50 text-emerald-700"
+          : "bg-amber-50 text-amber-700",
+      )}
+    >
+      {label}
+    </span>
   );
 }

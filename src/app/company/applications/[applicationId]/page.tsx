@@ -36,7 +36,7 @@ export default async function CompanyApplicationDetailPage({
   const supabase = await createClient();
   const { data: application } = await supabase
     .from("job_applications")
-    .select("id, job_id, seeker_id, status, message, applied_at")
+    .select("id, job_id, seeker_id, resume_id, status, message, applied_at")
     .eq("id", applicationId)
     .maybeSingle();
 
@@ -80,13 +80,19 @@ export default async function CompanyApplicationDetailPage({
         )
         .eq("user_id", application.seeker_id)
         .maybeSingle(),
-      supabase
-        .from("resumes")
-        .select("title, intro, education, experience, languages")
-        .eq("seeker_id", application.seeker_id)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle(),
+      application.resume_id
+        ? supabase
+            .from("resumes")
+            .select("id, title, intro, education, experience, languages")
+            .eq("id", application.resume_id)
+            .maybeSingle()
+        : supabase
+            .from("resumes")
+            .select("id, title, intro, education, experience, languages")
+            .eq("seeker_id", application.seeker_id)
+            .order("created_at", { ascending: true })
+            .limit(1)
+            .maybeSingle(),
     ]);
 
   if (!company || !profile) {
@@ -197,9 +203,14 @@ export default async function CompanyApplicationDetailPage({
               {resume ? (
                 <div className="grid gap-5">
                   <div>
-                    <p className="text-sm font-black text-slate-500">
-                      {resume.title || "Uniwork Resume"}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-black text-slate-500">
+                        {resume.title || "Uniwork Resume"}
+                      </p>
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
+                        {application.resume_id ? "지원 시 제출한 이력서" : "기본 이력서"}
+                      </span>
+                    </div>
                     <p className="mt-2 whitespace-pre-wrap rounded-xl bg-blue-50 p-4 text-sm font-semibold leading-7 text-slate-700">
                       {resume.intro || "자기소개가 없습니다."}
                     </p>
