@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { normalizeNotificationEmail } from "@/lib/notifications/recipients";
 import { createClient } from "@/lib/supabase/server";
 
 type CompanyState = {
@@ -24,9 +25,16 @@ export async function createCompanyAction(
   }
 
   const name = String(formData.get("name") ?? "").trim();
+  const notificationEmail = normalizeNotificationEmail(
+    String(formData.get("notification_email") ?? ""),
+  );
 
   if (!name) {
     return { error: "기업명은 필수입니다." };
+  }
+
+  if (notificationEmail === null) {
+    return { error: "알림 이메일 형식을 확인해주세요." };
   }
 
   const { error } = await supabase.from("companies").insert({
@@ -35,8 +43,11 @@ export async function createCompanyAction(
     business_number: String(formData.get("business_number") ?? "").trim(),
     industry: String(formData.get("industry") ?? "").trim(),
     address: String(formData.get("address") ?? "").trim(),
+    email_notifications_enabled:
+      formData.get("email_notifications_enabled") === "on",
     manager_name: String(formData.get("manager_name") ?? "").trim(),
     manager_phone: String(formData.get("manager_phone") ?? "").trim(),
+    notification_email: notificationEmail || user.email,
   });
 
   if (error) {

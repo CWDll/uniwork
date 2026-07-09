@@ -21,6 +21,21 @@ export function CompanySettingsForm() {
         <Field label="Address" name="address" />
         <Field label="Manager name" name="manager_name" />
         <Field label="Manager phone" name="manager_phone" />
+        <Field
+          helper="새 지원자, 미검토 알림을 받을 이메일입니다. 비워두면 계정 이메일을 사용합니다."
+          label="Notification email"
+          name="notification_email"
+          type="email"
+        />
+        <label className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-bold text-slate-700">
+          <input
+            className="size-4"
+            defaultChecked
+            name="email_notifications_enabled"
+            type="checkbox"
+          />
+          이메일 알림 받기
+        </label>
       </div>
 
       {state.error ? (
@@ -40,11 +55,15 @@ export function CompanySettingsForm() {
 }
 
 function Field({
+  helper,
   label,
   name,
+  type = "text",
 }: {
+  helper?: string;
   label: string;
   name: string;
+  type?: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -52,7 +71,13 @@ function Field({
       <input
         className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
         name={name}
+        type={type}
       />
+      {helper ? (
+        <span className="text-xs font-semibold leading-5 text-slate-400">
+          {helper}
+        </span>
+      ) : null}
     </label>
   );
 }

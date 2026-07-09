@@ -59,8 +59,14 @@ const jobTypeOptions = [
 ];
 
 export function SeekerProfileForm({
+  accountEmail,
+  emailNotificationsEnabled,
+  notificationEmail,
   profile,
 }: {
+  accountEmail: string;
+  emailNotificationsEnabled: boolean;
+  notificationEmail: string;
   profile: SeekerProfile | null;
 }) {
   const [state, formAction] = useActionState(saveSeekerProfileAction, {});
@@ -76,6 +82,31 @@ export function SeekerProfileForm({
       <VisaGuidancePanel guidance={visaGuidance} />
 
       <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 md:col-span-2">
+          <p className="text-sm font-black text-slate-900">Email notifications</p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+            지원 상태 변경과 기업 안내를 받을 이메일입니다. 비워두면 계정 이메일을 사용합니다.
+          </p>
+          <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+            <Field
+              helper={`계정 이메일: ${accountEmail || "미확인"}`}
+              label="Notification email"
+              name="notification_email"
+              placeholder={accountEmail || "name@example.com"}
+              type="email"
+              value={notificationEmail || accountEmail}
+            />
+            <label className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-700">
+              <input
+                className="size-4"
+                defaultChecked={emailNotificationsEnabled}
+                name="email_notifications_enabled"
+                type="checkbox"
+              />
+              이메일 알림 받기
+            </label>
+          </div>
+        </div>
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           Nationality
           <select
@@ -313,6 +344,7 @@ function Field({
   name,
   placeholder,
   required,
+  type = "text",
   value,
 }: {
   helper?: string;
@@ -320,6 +352,7 @@ function Field({
   name: string;
   placeholder?: string;
   required?: boolean;
+  type?: string;
   value?: string | null;
 }) {
   return (
@@ -331,6 +364,7 @@ function Field({
         name={name}
         placeholder={placeholder}
         required={required}
+        type={type}
       />
       {helper ? (
         <span className="text-xs font-semibold text-slate-400">{helper}</span>

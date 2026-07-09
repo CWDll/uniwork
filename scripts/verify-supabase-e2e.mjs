@@ -194,6 +194,8 @@ async function main() {
           industry: "Food service",
           address: "Seoul",
           manager_name: "Owner A",
+          notification_email: `alerts-seoul-${suffix}@uniwork.test`,
+          email_notifications_enabled: true,
         },
         {
           owner_id: companyUser.id,
@@ -201,12 +203,22 @@ async function main() {
           industry: "Retail",
           address: "Busan",
           manager_name: "Owner A",
+          notification_email: `alerts-busan-${suffix}@uniwork.test`,
+          email_notifications_enabled: false,
         },
       ])
-      .select("id, owner_id, name");
+      .select("email_notifications_enabled, id, notification_email, owner_id, name");
 
     assertNoError(companyInsert, "insert multiple companies as company owner");
     assert(companyInsert.data?.length === 2, "Expected two owned companies.");
+    assert(
+      companyInsert.data?.[0]?.notification_email?.startsWith("alerts-seoul-"),
+      "Expected company notification email to be stored.",
+    );
+    assert(
+      companyInsert.data?.[1]?.email_notifications_enabled === false,
+      "Expected company email notification preference to be stored.",
+    );
 
     const companyIds = companyInsert.data.map((company) => company.id);
     const verifyCompany = await admin
@@ -261,6 +273,28 @@ async function main() {
     });
 
     assertNoError(seekerProfile, "upsert seeker profile as seeker");
+
+    const seekerNotificationProfile = await seekerClient
+      .from("profiles")
+      .update({
+        email_notifications_enabled: true,
+        notification_email: `seeker-alerts-${suffix}@uniwork.test`,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", seekerUser.id)
+      .select("email_notifications_enabled, notification_email")
+      .single();
+
+    assertNoError(
+      seekerNotificationProfile,
+      "update seeker notification preferences",
+    );
+    assert(
+      seekerNotificationProfile.data.notification_email?.startsWith(
+        "seeker-alerts-",
+      ),
+      "Expected seeker notification email to be stored.",
+    );
 
     const resumeInsert = await seekerClient
       .from("resumes")

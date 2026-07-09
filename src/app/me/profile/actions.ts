@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { normalizeNotificationEmail } from "@/lib/notifications/recipients";
 import { createClient } from "@/lib/supabase/server";
 
 type ProfileState = {
@@ -67,6 +68,11 @@ export async function saveSeekerProfileAction(
   const weekendAvailability = String(
     formData.get("weekend_availability") ?? "",
   ).trim();
+  const notificationEmail = normalizeNotificationEmail(
+    String(formData.get("notification_email") ?? ""),
+  );
+  const emailNotificationsEnabled =
+    formData.get("email_notifications_enabled") === "on";
 
   if (!nationality || !visaType || !alienRegistrationStatus || !school || !major) {
     return { error: "국적, 비자, 외국인등록 상태, 학교, 전공은 필수입니다." };
@@ -84,27 +90,45 @@ export async function saveSeekerProfileAction(
     return { error: "평일 또는 주말 근무 가능 시간을 입력해주세요." };
   }
 
-  const { error } = await supabase.from("seeker_profiles").upsert({
-    user_id: user.id,
-    nationality,
-    visa_type: visaType,
-    visa_review_status: getVisaReviewStatus(visaType),
-    alien_registration_status: alienRegistrationStatus,
-    school,
-    major,
-    korean_level: koreanLevel,
-    english_level: englishLevel,
-    preferred_locations: preferredLocations,
-    preferred_job_types: preferredJobTypes,
-    available_times: {
-      weekday: weekdayAvailability,
-      weekend: weekendAvailability,
-    },
-    updated_at: new Date().toISOString(),
-  });
+  if (notificationEmail === null) {
+    return { error: "알림 이메일 형식을 확인해주세요." };
+  }
+
+  const [{ error }, { error: profileError }] = await Promise.all([
+    supabase.from("seeker_profiles").upsert({
+      user_id: user.id,
+      nationality,
+      visa_type: visaType,
+      visa_review_status: getVisaReviewStatus(visaType),
+      alien_registration_status: alienRegistrationStatus,
+      school,
+      major,
+      korean_level: koreanLevel,
+      english_level: englishLevel,
+      preferred_locations: preferredLocations,
+      preferred_job_types: preferredJobTypes,
+      available_times: {
+        weekday: weekdayAvailability,
+        weekend: weekendAvailability,
+      },
+      updated_at: new Date().toISOString(),
+    }),
+    supabase
+      .from("profiles")
+      .update({
+        email_notifications_enabled: emailNotificationsEnabled,
+        notification_email: notificationEmail || user.email,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id),
+  ]);
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (profileError) {
+    return { error: profileError.message };
   }
 
   revalidatePath("/me/profile");

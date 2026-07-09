@@ -17,7 +17,9 @@ export default async function CompanySettingsPage() {
 
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, name, business_number, industry, address, verification_status")
+    .select(
+      "id, name, business_number, industry, address, notification_email, email_notifications_enabled, verification_status",
+    )
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -63,6 +65,12 @@ export default async function CompanySettingsPage() {
                     <p className="mt-1 text-sm font-semibold text-slate-500">
                       {company.industry || "-"} · {company.address || "-"} ·{" "}
                       {company.business_number || "사업자번호 미입력"}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-500">
+                      알림 이메일 {company.notification_email || "계정 이메일 사용"} ·{" "}
+                      {company.email_notifications_enabled
+                        ? "이메일 알림 ON"
+                        : "이메일 알림 OFF"}
                     </p>
                   </div>
                   <span

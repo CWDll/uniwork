@@ -23,12 +23,12 @@ export default async function SeekerProfilePage() {
     )
     .eq("user_id", user.id)
     .maybeSingle();
-  const { data: profilePhoto } = await supabase
+  const { data: accountProfile } = await supabase
     .from("profiles")
-    .select("avatar_path")
+    .select("avatar_path, email, notification_email, email_notifications_enabled")
     .eq("id", user.id)
     .maybeSingle();
-  const avatarUrl = getProfilePhotoUrl(supabase, profilePhoto?.avatar_path);
+  const avatarUrl = getProfilePhotoUrl(supabase, accountProfile?.avatar_path);
 
   return (
     <DashboardShell area="me">
@@ -47,7 +47,14 @@ export default async function SeekerProfilePage() {
 
       <div className="grid gap-5">
         <ProfilePhotoUploader avatarUrl={avatarUrl} userId={user.id} />
-        <SeekerProfileForm profile={profile} />
+        <SeekerProfileForm
+          accountEmail={accountProfile?.email ?? user.email ?? ""}
+          emailNotificationsEnabled={
+            accountProfile?.email_notifications_enabled ?? true
+          }
+          notificationEmail={accountProfile?.notification_email ?? ""}
+          profile={profile}
+        />
       </div>
     </DashboardShell>
   );
