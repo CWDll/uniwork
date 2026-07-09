@@ -146,6 +146,13 @@ async function main() {
       password,
       role: "seeker",
     });
+    const otherSeekerUser = await createConfirmedUser({
+      createdUserIds,
+      email: `resume-other-seeker-${suffix}@uniwork.test`,
+      name: "Other Resume Owner",
+      password,
+      role: "seeker",
+    });
     const otherCompanyUser = await createConfirmedUser({
       createdUserIds,
       email: `resume-other-company-${suffix}@uniwork.test`,
@@ -156,6 +163,7 @@ async function main() {
 
     const companyClient = await signIn(companyUser.email, password);
     const seekerClient = await signIn(seekerUser.email, password);
+    const otherSeekerClient = await signIn(otherSeekerUser.email, password);
     const otherCompanyClient = await signIn(otherCompanyUser.email, password);
 
     const companyInsert = await companyClient
@@ -252,6 +260,28 @@ async function main() {
 
     assertNoError(resumeInsert, "insert seeker resume");
 
+    const otherResumeInsert = await otherSeekerClient
+      .from("resumes")
+      .insert({
+        education: [],
+        experience: [],
+        intro:
+          "This resume belongs to a different seeker and must not be attachable to another application.",
+        languages: [
+          {
+            level: "Conversational",
+            name: "Korean",
+          },
+        ],
+        seeker_id: otherSeekerUser.id,
+        title: "Other seeker resume",
+        visibility: "private",
+      })
+      .select("id")
+      .single();
+
+    assertNoError(otherResumeInsert, "insert other seeker resume");
+
     const otherCompanyBeforeApply = await otherCompanyClient
       .from("resumes")
       .select("id")
@@ -263,18 +293,38 @@ async function main() {
       "Unrelated company should not read seeker resume.",
     );
 
+    const blockedApplicationInsert = await seekerClient
+      .from("job_applications")
+      .insert({
+        job_id: jobInsert.data.id,
+        message: "This should not attach another seeker's resume.",
+        resume_id: otherResumeInsert.data.id,
+        seeker_id: seekerUser.id,
+        status: "submitted",
+      });
+
+    assert(
+      blockedApplicationInsert.error,
+      "Expected application with another seeker's resume_id to be blocked.",
+    );
+
     const applicationInsert = await seekerClient
       .from("job_applications")
       .insert({
         job_id: jobInsert.data.id,
         message: "I would like to apply with my profile.",
+        resume_id: resumeInsert.data.id,
         seeker_id: seekerUser.id,
         status: "submitted",
       })
-      .select("id")
+      .select("id, resume_id")
       .single();
 
     assertNoError(applicationInsert, "insert application");
+    assert(
+      applicationInsert.data.resume_id === resumeInsert.data.id,
+      "Expected application to store the submitted resume_id.",
+    );
 
     const companyResumeRead = await companyClient
       .from("resumes")
@@ -301,6 +351,7 @@ async function main() {
 
     console.log("Resume access verification passed.");
     console.log("- Seeker can create a private resume.");
+    console.log("- Seeker can attach only their own resume_id to an application.");
     console.log("- Company owner can read resumes only for applicants to their jobs.");
     console.log("- Unrelated company owners cannot read seeker resumes.");
   } finally {
