@@ -18,9 +18,12 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type CompanyApplicationsSearchParams = {
+  completeness?: string;
   company?: string;
+  data?: string;
   job?: string;
   q?: string;
+  sort?: string;
   status?: string;
 };
 
@@ -30,6 +33,25 @@ const applicationStatusOptions = [
   { value: "reviewing", label: "검토 중" },
   { value: "accepted", label: "합격" },
   { value: "rejected", label: "불합격" },
+];
+
+const sortOptions = [
+  { value: "newest", label: "최신 지원순" },
+  { value: "oldest", label: "오래된 지원순" },
+  { value: "needs_review", label: "미검토 우선" },
+  { value: "incomplete", label: "정보 미완성 우선" },
+];
+
+const dataFilterOptions = [
+  { value: "", label: "전체 제출 기준" },
+  { value: "snapshot", label: "제출본 고정" },
+  { value: "fallback", label: "현재 정보 fallback" },
+];
+
+const completenessFilterOptions = [
+  { value: "", label: "전체 완성도" },
+  { value: "complete", label: "정보 완성" },
+  { value: "incomplete", label: "정보 미완성" },
 ];
 
 function compactValue(value?: string) {
@@ -58,6 +80,49 @@ function buildApplicationsHref(
   return query ? `/company/applications?${query}` : "/company/applications";
 }
 
+type SortableApplication = {
+  application: {
+    applied_at: string;
+    status: string;
+  };
+  completion: {
+    isComplete: boolean;
+  };
+};
+
+function compareApplications(
+  first: SortableApplication,
+  second: SortableApplication,
+  sort: string,
+) {
+  const firstDate = new Date(first.application.applied_at).getTime();
+  const secondDate = new Date(second.application.applied_at).getTime();
+
+  if (sort === "oldest") {
+    return firstDate - secondDate;
+  }
+
+  if (sort === "needs_review") {
+    const firstSubmitted = first.application.status === "submitted" ? 0 : 1;
+    const secondSubmitted = second.application.status === "submitted" ? 0 : 1;
+
+    if (firstSubmitted !== secondSubmitted) {
+      return firstSubmitted - secondSubmitted;
+    }
+  }
+
+  if (sort === "incomplete") {
+    const firstComplete = first.completion.isComplete ? 1 : 0;
+    const secondComplete = second.completion.isComplete ? 1 : 0;
+
+    if (firstComplete !== secondComplete) {
+      return firstComplete - secondComplete;
+    }
+  }
+
+  return secondDate - firstDate;
+}
+
 export default async function CompanyApplicationsPage({
   searchParams,
 }: {
@@ -67,6 +132,9 @@ export default async function CompanyApplicationsPage({
   const activeCompanyId = compactValue(params.company);
   const activeJobId = compactValue(params.job);
   const activeStatus = compactValue(params.status);
+  const activeDataFilter = compactValue(params.data);
+  const activeCompletenessFilter = compactValue(params.completeness);
+  const activeSort = compactValue(params.sort) || "newest";
   const keyword = compactValue(params.q).toLowerCase();
   const supabase = await createClient();
   const {
@@ -173,11 +241,7 @@ export default async function CompanyApplicationsPage({
       firstResumeBySeekerId.set(resume.seeker_id, resume);
     }
   });
-  const visibleApplications = (applications ?? []).filter((application) => {
-    if (!keyword) {
-      return true;
-    }
-
+  const enrichedApplications = (applications ?? []).map((application) => {
     const job = jobById.get(application.job_id);
     const company = job ? companyById.get(job.company_id) : null;
     const profile = profileById.get(application.seeker_id);
@@ -191,6 +255,16 @@ export default async function CompanyApplicationsPage({
           ? linkedResumeById.get(application.resume_id)
           : firstResumeBySeekerId.get(application.seeker_id)) ?? null,
       snapshot: application.resume_snapshot,
+    });
+    const completion = getApplicationCompletion({
+      profile: seekerProfile ?? null,
+      resume: resume ?? null,
+    });
+    const resumeCompletion = getResumeCompletion(resume ?? null);
+    const snapshotMeta = getApplicationSnapshotMeta({
+      appliedAt: application.applied_at,
+      profileSnapshot: application.profile_snapshot,
+      resumeSnapshot: application.resume_snapshot,
     });
     const haystack = [
       job?.title,
@@ -207,16 +281,77 @@ export default async function CompanyApplicationsPage({
       seekerProfile?.preferred_job_types?.join(" "),
       resume?.title,
       application.message,
+      application.status,
+      snapshotMeta.label,
     ]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
 
-    return haystack.includes(keyword);
+    return {
+      application,
+      company,
+      completion,
+      haystack,
+      job,
+      profile,
+      resume,
+      resumeCompletion,
+      seekerProfile,
+      snapshotMeta,
+    };
   });
-  const hasActiveFilters = Boolean(
-    activeCompanyId || activeJobId || activeStatus || keyword,
+  const filteredApplications = enrichedApplications.filter((item) => {
+    if (!keyword) {
+      return matchesSecondaryFilters(item);
+    }
+
+    return item.haystack.includes(keyword) && matchesSecondaryFilters(item);
+  });
+  const visibleApplications = [...filteredApplications].sort((first, second) =>
+    compareApplications(first, second, activeSort),
   );
+  const unreviewedCount = enrichedApplications.filter(
+    (item) => item.application.status === "submitted",
+  ).length;
+  const incompleteCount = enrichedApplications.filter(
+    (item) => !item.completion.isComplete,
+  ).length;
+  const fallbackCount = enrichedApplications.filter(
+    (item) => !item.snapshotMeta.hasCompleteSnapshot,
+  ).length;
+  const hasActiveFilters = Boolean(
+    activeCompanyId ||
+      activeJobId ||
+      activeStatus ||
+      activeDataFilter ||
+      activeCompletenessFilter ||
+      keyword ||
+      activeSort !== "newest",
+  );
+
+  function matchesSecondaryFilters(item: (typeof enrichedApplications)[number]) {
+    if (
+      activeDataFilter === "snapshot" &&
+      !item.snapshotMeta.hasCompleteSnapshot
+    ) {
+      return false;
+    }
+
+    if (activeDataFilter === "fallback" && item.snapshotMeta.hasCompleteSnapshot) {
+      return false;
+    }
+
+    if (activeCompletenessFilter === "complete" && !item.completion.isComplete) {
+      return false;
+    }
+
+    if (activeCompletenessFilter === "incomplete" && item.completion.isComplete) {
+      return false;
+    }
+
+    return true;
+  }
 
   return (
     <DashboardShell area="company">
@@ -233,13 +368,13 @@ export default async function CompanyApplicationsPage({
       </div>
 
       <form
-        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_180px_minmax(0,1fr)_auto]"
+        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_170px_170px_170px_170px_minmax(0,1fr)_auto]"
         action="/company/applications"
       >
-        <label className="grid gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
           Company
           <select
-            className="h-11 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeCompanyId}
             name="company"
           >
@@ -251,10 +386,10 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
           Job
           <select
-            className="h-11 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeJobId}
             name="job"
           >
@@ -266,10 +401,10 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
           Status
           <select
-            className="h-11 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeStatus}
             name="status"
           >
@@ -280,14 +415,56 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
           Search
           <input
-            className="h-11 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700 outline-none focus:border-blue-400"
+            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700 outline-none focus:border-blue-400"
             defaultValue={params.q ?? ""}
             name="q"
-            placeholder="이름, 이메일, 비자, 학교"
+            placeholder="이름, 이메일, 비자, 학교, 이력서"
           />
+        </label>
+        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+          Data
+          <select
+            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            defaultValue={activeDataFilter}
+            name="data"
+          >
+            {dataFilterOptions.map((option) => (
+              <option key={option.value || "all"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+          Completeness
+          <select
+            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            defaultValue={activeCompletenessFilter}
+            name="completeness"
+          >
+            {completenessFilterOptions.map((option) => (
+              <option key={option.value || "all"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+          Sort
+          <select
+            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            defaultValue={activeSort}
+            name="sort"
+          >
+            {sortOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
         <div className="flex items-end gap-2">
           <button className="h-11 rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700">
@@ -303,6 +480,39 @@ export default async function CompanyApplicationsPage({
           ) : null}
         </div>
       </form>
+
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        <QuickFilterCard
+          active={activeStatus === "submitted"}
+          count={unreviewedCount}
+          href={buildApplicationsHref(params, {
+            sort: "needs_review",
+            status: activeStatus === "submitted" ? "" : "submitted",
+          })}
+          label="미검토 지원"
+          tone="blue"
+        />
+        <QuickFilterCard
+          active={activeCompletenessFilter === "incomplete"}
+          count={incompleteCount}
+          href={buildApplicationsHref(params, {
+            completeness:
+              activeCompletenessFilter === "incomplete" ? "" : "incomplete",
+            sort: "incomplete",
+          })}
+          label="정보 미완성"
+          tone="amber"
+        />
+        <QuickFilterCard
+          active={activeDataFilter === "fallback"}
+          count={fallbackCount}
+          href={buildApplicationsHref(params, {
+            data: activeDataFilter === "fallback" ? "" : "fallback",
+          })}
+          label="현재 정보 fallback"
+          tone="slate"
+        />
+      </div>
 
       <div className="mb-5 grid gap-3 sm:grid-cols-4">
         {applicationStatusOptions.slice(1).map((option) => {
@@ -344,36 +554,23 @@ export default async function CompanyApplicationsPage({
         </div>
         <div className="divide-y divide-slate-100">
           {visibleApplications.length > 0 ? (
-            visibleApplications.map((application) => {
-              const job = jobById.get(application.job_id);
-              const company = job ? companyById.get(job.company_id) : null;
-              const profile = profileById.get(application.seeker_id);
+            visibleApplications.map((item) => {
+              const {
+                application,
+                company,
+                completion,
+                job,
+                profile,
+                resume,
+                resumeCompletion,
+                seekerProfile,
+                snapshotMeta,
+              } = item;
               const avatarUrl = getProfilePhotoUrl(
                 supabase,
                 profilePhotoById.get(application.seeker_id),
               );
-              const seekerProfile = getProfileForApplication({
-                liveProfile: seekerProfileById.get(application.seeker_id) ?? null,
-                snapshot: application.profile_snapshot,
-              });
               const status = getStatusMeta("application", application.status);
-              const resume = getResumeForApplication({
-                liveResume:
-                  (application.resume_id
-                    ? linkedResumeById.get(application.resume_id)
-                    : firstResumeBySeekerId.get(application.seeker_id)) ?? null,
-                snapshot: application.resume_snapshot,
-              });
-              const completion = getApplicationCompletion({
-                profile: seekerProfile ?? null,
-                resume: resume ?? null,
-              });
-              const resumeCompletion = getResumeCompletion(resume ?? null);
-              const snapshotMeta = getApplicationSnapshotMeta({
-                appliedAt: application.applied_at,
-                profileSnapshot: application.profile_snapshot,
-                resumeSnapshot: application.resume_snapshot,
-              });
 
               return (
                 <article
@@ -497,6 +694,45 @@ function Info({ label, value }: { label: string; value: string }) {
       </p>
       <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
     </div>
+  );
+}
+
+function QuickFilterCard({
+  active,
+  count,
+  href,
+  label,
+  tone,
+}: {
+  active: boolean;
+  count: number;
+  href: string;
+  label: string;
+  tone: "amber" | "blue" | "slate";
+}) {
+  const activeClassName =
+    tone === "blue"
+      ? "border-blue-200 bg-blue-50 text-blue-950"
+      : tone === "amber"
+        ? "border-amber-200 bg-amber-50 text-amber-950"
+        : "border-slate-300 bg-slate-100 text-slate-950";
+
+  return (
+    <Link
+      className={cn(
+        "rounded-2xl border p-4 transition",
+        active ? activeClassName : "border-slate-200 bg-white hover:bg-slate-50",
+      )}
+      href={href}
+    >
+      <p className="text-sm font-black text-slate-500">{label}</p>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <p className="text-2xl font-black">{count}</p>
+        <span className="rounded-md bg-white/70 px-2 py-1 text-xs font-black text-slate-600">
+          {active ? "필터 해제" : "바로 보기"}
+        </span>
+      </div>
+    </Link>
   );
 }
 
