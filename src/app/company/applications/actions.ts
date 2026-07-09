@@ -20,4 +20,5 @@ export async function updateApplicationStatusAction(formData: FormData) {
 
   revalidatePath("/company");
   revalidatePath("/company/applications");
+  revalidatePath(`/company/applications/${applicationId}`);
 }

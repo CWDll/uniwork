@@ -322,9 +322,12 @@ export default async function CompanyApplicationsPage({
                       </div>
                       <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="break-words font-black">
+                        <Link
+                          className="break-words font-black text-slate-950 hover:text-blue-700"
+                          href={`/company/applications/${application.id}`}
+                        >
                           {profile?.name || profile?.email || "Applicant"}
-                        </h3>
+                        </Link>
                         <span
                           className={getStatusBadgeClassName(
                             "application",
@@ -369,6 +372,12 @@ export default async function CompanyApplicationsPage({
                       applicationId={application.id}
                       currentStatus={application.status}
                     />
+                    <Link
+                      className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-sm font-black text-slate-700 hover:bg-slate-50 lg:hidden"
+                      href={`/company/applications/${application.id}`}
+                    >
+                      상세 보기
+                    </Link>
                   </div>
                 </article>
               );
