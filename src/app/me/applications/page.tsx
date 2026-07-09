@@ -143,8 +143,20 @@ export default async function SeekerApplicationsPage({
             지원이 완료되었습니다.
           </p>
           <p className="mt-1 text-sm font-semibold leading-6 text-emerald-800">
-            기업이 상태를 변경하면 이 화면에서 바로 확인할 수 있습니다.
+            제출 시점의 프로필/이력서가 고정 저장되었습니다. 기업이 상태를
+            변경하거나 안내 메모를 남기면 이 화면에서 바로 확인할 수 있습니다.
           </p>
+          <div className="mt-3 grid gap-2 text-xs font-bold leading-5 text-emerald-900 sm:grid-cols-3">
+            <span className="rounded-lg bg-white/70 px-3 py-2">
+              1. 지원 상태 확인
+            </span>
+            <span className="rounded-lg bg-white/70 px-3 py-2">
+              2. 기업 안내 메모 확인
+            </span>
+            <span className="rounded-lg bg-white/70 px-3 py-2">
+              3. 프로필/이력서 최신화 유지
+            </span>
+          </div>
         </div>
       ) : null}
 

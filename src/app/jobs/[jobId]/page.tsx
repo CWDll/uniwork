@@ -394,39 +394,103 @@ function ApplicationReadinessPanel({
 }) {
   const profileMissing = completion.profile.missing;
   const resumeMissing = completion.resume.missing;
+  const profileComplete = completion.profile.completedCount;
+  const resumeComplete = completion.resume.completedCount;
 
   return (
     <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-4">
-      <p className="text-sm font-black text-amber-950">지원 전 보완이 필요합니다</p>
-      <p className="mt-2 text-sm font-semibold leading-6 text-amber-900">
-        기업에게 전달할 프로필/이력 정보가 아직 부족합니다.
+      <div className="flex items-start gap-2">
+        <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-700" />
+        <div>
+          <p className="text-sm font-black text-amber-950">
+            지원 전 보완이 필요합니다
+          </p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-amber-900">
+            기업에게 전달할 프로필/이력 정보가 아직 부족합니다.
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <ReadinessGroup
+          completedCount={profileComplete}
+          href="/me/profile"
+          missing={profileMissing}
+          title="프로필"
+          totalCount={completion.profile.totalCount}
+        />
+        <ReadinessGroup
+          completedCount={resumeComplete}
+          href="/me/resume"
+          missing={resumeMissing}
+          title="이력서"
+          totalCount={completion.resume.totalCount}
+        />
+      </div>
+      <p className="mt-3 text-xs font-black text-amber-800">
+        전체 완성도 {completion.completedCount}/{completion.totalCount}
       </p>
-      <div className="mt-3 grid gap-2 text-xs font-bold text-amber-900">
-        {profileMissing.length > 0 ? (
-          <p>프로필: {profileMissing.slice(0, 5).join(", ")}</p>
-        ) : null}
-        {resumeMissing.length > 0 ? (
-          <p>이력서: {resumeMissing.slice(0, 5).join(", ")}</p>
-        ) : null}
+    </div>
+  );
+}
+
+function ReadinessGroup({
+  completedCount,
+  href,
+  missing,
+  title,
+  totalCount,
+}: {
+  completedCount: number;
+  href: string;
+  missing: string[];
+  title: string;
+  totalCount: number;
+}) {
+  const isComplete = missing.length === 0;
+
+  return (
+    <div className="rounded-xl bg-white/80 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-black text-slate-900">{title}</p>
+        <span
+          className={cn(
+            "rounded-md px-2 py-1 text-xs font-black",
+            isComplete
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-amber-100 text-amber-800",
+          )}
+        >
+          {completedCount}/{totalCount}
+        </span>
       </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        {profileMissing.length > 0 ? (
+      {isComplete ? (
+        <p className="mt-2 flex items-center gap-2 text-xs font-bold text-emerald-700">
+          <CheckCircle2 className="size-4" />
+          제출 준비 완료
+        </p>
+      ) : (
+        <>
+          <ul className="mt-2 grid gap-1 text-xs font-bold leading-5 text-amber-900">
+            {missing.slice(0, 4).map((item) => (
+              <li className="flex items-start gap-2" key={item}>
+                <span className="mt-2 size-1.5 shrink-0 rounded-full bg-amber-500" />
+                {item}
+              </li>
+            ))}
+          </ul>
+          {missing.length > 4 ? (
+            <p className="mt-1 text-xs font-bold text-amber-800">
+              외 {missing.length - 4}개 항목
+            </p>
+          ) : null}
           <Link
-            className={cn(buttonVariants({ className: "w-full" }))}
-            href="/me/profile"
+            className={cn(buttonVariants({ className: "mt-3 w-full", size: "sm" }))}
+            href={href}
           >
-            프로필 보완
+            {title} 보완
           </Link>
-        ) : null}
-        {resumeMissing.length > 0 ? (
-          <Link
-            className={cn(buttonVariants({ className: "w-full", variant: "outline" }))}
-            href="/me/resume"
-          >
-            이력서 보완
-          </Link>
-        ) : null}
-      </div>
+        </>
+      )}
     </div>
   );
 }
