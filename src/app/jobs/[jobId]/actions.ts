@@ -99,6 +99,14 @@ export async function applyToJobAction(
   }
 
   const message = String(formData.get("message") ?? "").trim();
+  const confirmedSubmission = formData.get("confirm_submission") === "on";
+
+  if (!confirmedSubmission) {
+    return {
+      error: "제출 정보와 개인정보 안내를 확인한 뒤 지원할 수 있습니다.",
+    };
+  }
+
   const { error } = await supabase.from("job_applications").insert({
     job_id: job.id,
     profile_snapshot: createProfileSnapshot(seekerProfile),

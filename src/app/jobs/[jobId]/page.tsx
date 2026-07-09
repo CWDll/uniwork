@@ -1,4 +1,16 @@
-import { AlertCircle, ArrowLeft, BriefcaseBusiness, CheckCircle2, MapPin } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowLeft,
+  BriefcaseBusiness,
+  CheckCircle2,
+  FileText,
+  GraduationCap,
+  Languages,
+  type LucideIcon,
+  LockKeyhole,
+  MapPin,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -181,6 +193,8 @@ export default async function JobDetailPage({
               <EligibilityPanel eligibility={eligibility} />
               <ApplicationSnapshotPanel
                 completionLabel={`${completion.completedCount}/${completion.totalCount}`}
+                profile={seekerProfile}
+                resume={resume}
                 resumeTitle={resume?.title || "Uniwork Resume"}
               />
               <JobApplicationForm jobId={job.id} />
@@ -224,22 +238,136 @@ export default async function JobDetailPage({
 
 function ApplicationSnapshotPanel({
   completionLabel,
+  profile,
+  resume,
   resumeTitle,
 }: {
   completionLabel: string;
+  profile: ApplicationPanelProfile;
+  resume: ApplicationPanelResume;
   resumeTitle: string;
 }) {
+  const resumeIntro = resume?.intro?.trim() || "자기소개가 없습니다.";
+  const educationCount = countRows(resume?.education);
+  const experienceCount = countRows(resume?.experience);
+  const languageLabels = getLanguageLabels(resume?.languages);
+
   return (
     <div className="mt-4 rounded-xl border border-blue-100 bg-blue-50 p-4">
-      <p className="text-sm font-black text-blue-900">제출 정보</p>
-      <p className="mt-2 text-sm font-semibold leading-6 text-blue-900">
-        현재 저장된 프로필과 {resumeTitle} 이력서로 지원합니다.
-      </p>
-      <p className="mt-1 text-xs font-black text-blue-700">
+      <div className="flex items-start gap-2">
+        <FileText className="mt-0.5 size-5 shrink-0 text-blue-700" />
+        <div className="min-w-0">
+          <p className="text-sm font-black text-blue-950">제출 전 확인</p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-blue-900">
+            지원하면 아래 정보가 기업에 전달되고 제출 시점 그대로 저장됩니다.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2">
+        <SnapshotRow
+          icon={UserRound}
+          label="프로필"
+          value={`${profile?.nationality || "국적 미입력"} · ${profile?.visa_type || "비자 미입력"}`}
+        />
+        <SnapshotRow
+          icon={GraduationCap}
+          label="학교"
+          value={`${profile?.school || "학교 미입력"} · ${profile?.major || "전공 미입력"}`}
+        />
+        <SnapshotRow
+          icon={Languages}
+          label="언어"
+          value={[
+            profile?.korean_level ? `한국어 ${profile.korean_level}` : "",
+            profile?.english_level ? `영어 ${profile.english_level}` : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        />
+        <SnapshotRow icon={FileText} label="이력서" value={resumeTitle} />
+      </div>
+
+      <div className="mt-3 rounded-lg bg-white/70 p-3">
+        <p className="line-clamp-3 text-sm font-semibold leading-6 text-slate-700">
+          {resumeIntro}
+        </p>
+        <p className="mt-2 text-xs font-black text-slate-500">
+          학력 {educationCount}개 · 경력 {experienceCount}개 · 언어{" "}
+          {languageLabels.length > 0 ? languageLabels.join(", ") : "미입력"}
+        </p>
+      </div>
+
+      <div className="mt-3 flex items-start gap-2 rounded-lg bg-white/70 p-3 text-xs font-semibold leading-5 text-slate-600">
+        <LockKeyhole className="mt-0.5 size-4 shrink-0 text-blue-700" />
+        <p>
+          외국인등록번호, 여권번호 원본은 제출하지 않습니다. 기업은 지원자
+          검토에 필요한 프로필, 이력서, 지원 메시지만 확인합니다.
+        </p>
+      </div>
+
+      <p className="mt-3 text-xs font-black text-blue-700">
         지원 정보 완성도 {completionLabel}
       </p>
     </div>
   );
+}
+
+type ApplicationPanelProfile = {
+  english_level?: string | null;
+  korean_level?: string | null;
+  major?: string | null;
+  nationality?: string | null;
+  school?: string | null;
+  visa_type?: string | null;
+} | null;
+
+type ApplicationPanelResume = {
+  education?: unknown;
+  experience?: unknown;
+  intro?: string | null;
+  languages?: unknown;
+} | null;
+
+function SnapshotRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="grid grid-cols-[18px_64px_minmax(0,1fr)] items-start gap-2 rounded-lg bg-white/70 px-3 py-2 text-xs">
+      <Icon className="mt-0.5 size-4 text-blue-700" />
+      <span className="font-black text-slate-500">{label}</span>
+      <span className="break-words font-bold text-slate-800">{value || "미입력"}</span>
+    </div>
+  );
+}
+
+function countRows(value: unknown) {
+  return Array.isArray(value) ? value.length : 0;
+}
+
+function getLanguageLabels(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return [];
+    }
+
+    const language = item as { level?: unknown; name?: unknown };
+    const name = typeof language.name === "string" ? language.name : "";
+    const level = typeof language.level === "string" ? language.level : "";
+    const label = [name, level].filter(Boolean).join(" ");
+
+    return label ? [label] : [];
+  });
 }
 
 function ApplicationReadinessPanel({
