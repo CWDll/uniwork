@@ -134,7 +134,7 @@ export default async function CompanyPage() {
       firstResumeBySeekerId.set(resume.seeker_id, resume);
     }
   });
-  const attentionApplications = (recentApplications ?? [])
+  const scoredApplications = (recentApplications ?? [])
     .map((application) => {
       const job = jobById.get(application.job_id);
       const profile = profileById.get(application.seeker_id);
@@ -177,8 +177,11 @@ export default async function CompanyPage() {
       };
     })
     .filter((item) => item.attention.score >= 40)
-    .sort((first, second) => second.attention.score - first.attention.score)
-    .slice(0, 5);
+    .sort((first, second) => second.attention.score - first.attention.score);
+  const attentionApplications = scoredApplications.slice(0, 5);
+  const overdueReviewApplications = scoredApplications.filter(
+    (item) => item.attention.flags.isOverdueReview,
+  );
 
   const metrics = [
     { label: "Companies", value: companyIds.length, icon: BriefcaseBusiness },
@@ -187,6 +190,11 @@ export default async function CompanyPage() {
     {
       label: "Needs action",
       value: attentionApplications.length,
+      icon: AlertTriangle,
+    },
+    {
+      label: "24h unreviewed",
+      value: overdueReviewApplications.length,
       icon: AlertTriangle,
     },
     { label: "Drafts", value: draftCount ?? 0, icon: ClipboardList },
@@ -243,7 +251,26 @@ export default async function CompanyPage() {
         )}
       </div>
 
-      <div className="mt-5 grid gap-4 md:grid-cols-4">
+      {overdueReviewApplications.length > 0 ? (
+        <div className="mt-5 flex flex-col gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-red-900">
+              24시간 이상 미검토 지원자가 {overdueReviewApplications.length}명 있습니다.
+            </p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-red-800">
+              상태를 검토 중으로 바꾸거나 구직자 안내 메모를 남겨주세요.
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-red-600 px-4 text-sm font-black text-white hover:bg-red-700"
+            href="/company/applications?alert=overdue&attention=overdue&sort=action_needed"
+          >
+            알림 대상 보기
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="mt-5 grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         {metrics.map((metric) => {
           const Icon = metric.icon;
 
@@ -311,6 +338,11 @@ export default async function CompanyPage() {
                       <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-black text-red-700">
                         {item.attention.summary}
                       </span>
+                      {item.attention.flags.isOverdueReview ? (
+                        <span className="rounded-md bg-red-600 px-2 py-1 text-xs font-black text-white">
+                          24시간 미검토
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-1 break-words text-sm font-semibold text-slate-500">
                       {item.job?.title ?? "Job"} ·{" "}

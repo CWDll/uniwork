@@ -11,6 +11,9 @@ export type ApplicationAttentionInput = {
 };
 
 export type ApplicationAttention = {
+  flags: {
+    isOverdueReview: boolean;
+  };
   level: "high" | "medium" | "low";
   labels: string[];
   score: number;
@@ -42,6 +45,7 @@ export function getApplicationAttention({
 }: ApplicationAttentionInput): ApplicationAttention {
   const appliedAge = getAgeInDays(appliedAt, now);
   const statusAge = getAgeInDays(statusUpdatedAt ?? appliedAt, now);
+  const isOverdueReview = status === "submitted" && appliedAge >= 1;
   const labels: string[] = [];
   let score = 0;
 
@@ -52,7 +56,7 @@ export function getApplicationAttention({
     if (appliedAge >= 2) {
       score += 35;
       labels.push(`${appliedAge}일 대기`);
-    } else if (appliedAge >= 1) {
+    } else if (isOverdueReview) {
       score += 20;
       labels.push("24시간 경과");
     }
@@ -92,6 +96,9 @@ export function getApplicationAttention({
       : "추가 조치 없음";
 
   return {
+    flags: {
+      isOverdueReview,
+    },
     labels: dedupedLabels,
     level,
     score,

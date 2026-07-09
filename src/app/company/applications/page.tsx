@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 type CompanyApplicationsSearchParams = {
   completeness?: string;
   attention?: string;
+  alert?: string;
   company?: string;
   data?: string;
   job?: string;
@@ -51,6 +52,7 @@ const sortOptions = [
 const attentionFilterOptions = [
   { value: "", label: "전체 조치" },
   { value: "needed", label: "조치 필요" },
+  { value: "overdue", label: "24시간 미검토" },
 ];
 
 const dataFilterOptions = [
@@ -155,6 +157,7 @@ export default async function CompanyApplicationsPage({
   const activeDataFilter = compactValue(params.data);
   const activeCompletenessFilter = compactValue(params.completeness);
   const activeAttentionFilter = compactValue(params.attention);
+  const activeAlertFilter = compactValue(params.alert);
   const activeSort = compactValue(params.sort) || "newest";
   const keyword = compactValue(params.q).toLowerCase();
   const supabase = await createClient();
@@ -355,6 +358,9 @@ export default async function CompanyApplicationsPage({
   const attentionNeededCount = enrichedApplications.filter(
     (item) => item.attention.score >= 40,
   ).length;
+  const overdueReviewCount = enrichedApplications.filter(
+    (item) => item.attention.flags.isOverdueReview,
+  ).length;
   const hasActiveFilters = Boolean(
     activeCompanyId ||
       activeJobId ||
@@ -362,6 +368,7 @@ export default async function CompanyApplicationsPage({
       activeDataFilter ||
       activeCompletenessFilter ||
       activeAttentionFilter ||
+      activeAlertFilter ||
       keyword ||
       activeSort !== "newest",
   );
@@ -387,6 +394,14 @@ export default async function CompanyApplicationsPage({
     }
 
     if (activeAttentionFilter === "needed" && item.attention.score < 40) {
+      return false;
+    }
+
+    if (activeAttentionFilter === "overdue" && !item.attention.flags.isOverdueReview) {
+      return false;
+    }
+
+    if (activeAlertFilter === "overdue" && !item.attention.flags.isOverdueReview) {
       return false;
     }
 
@@ -535,7 +550,41 @@ export default async function CompanyApplicationsPage({
         </div>
       </form>
 
-      <div className="mb-5 grid gap-3 md:grid-cols-4">
+      {overdueReviewCount > 0 ? (
+        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-red-100 bg-red-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black text-red-900">
+              24시간 이상 미검토 지원자가 {overdueReviewCount}명 있습니다.
+            </p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-red-800">
+              담당자가 오늘 상태를 바꾸거나 안내 메모를 남겨야 하는 알림 대상입니다.
+            </p>
+          </div>
+          <Link
+            className="inline-flex h-10 shrink-0 items-center justify-center rounded-md bg-red-600 px-4 text-sm font-black text-white hover:bg-red-700"
+            href={buildApplicationsHref(params, {
+              alert: activeAlertFilter === "overdue" ? "" : "overdue",
+              attention: activeAttentionFilter === "overdue" ? "" : "overdue",
+              sort: "action_needed",
+            })}
+          >
+            알림 대상 보기
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+        <QuickFilterCard
+          active={activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"}
+          count={overdueReviewCount}
+          href={buildApplicationsHref(params, {
+            alert: activeAlertFilter === "overdue" ? "" : "overdue",
+            attention: activeAttentionFilter === "overdue" ? "" : "overdue",
+            sort: "action_needed",
+          })}
+          label="24시간 미검토"
+          tone="red"
+        />
         <QuickFilterCard
           active={activeAttentionFilter === "needed"}
           count={attentionNeededCount}

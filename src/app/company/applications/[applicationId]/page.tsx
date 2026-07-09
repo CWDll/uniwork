@@ -12,6 +12,8 @@ import { notFound } from "next/navigation";
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { getApplicationAttention } from "@/lib/applications/attention";
+import { getApplicationCompletion } from "@/lib/applications/completeness";
 import {
   formatSnapshotTime,
   getApplicationSnapshotMeta,
@@ -133,6 +135,18 @@ export default async function CompanyApplicationDetailPage({
     appliedAt: application.applied_at,
     profileSnapshot: application.profile_snapshot,
     resumeSnapshot: application.resume_snapshot,
+  });
+  const completion = getApplicationCompletion({
+    profile: submittedProfile ?? null,
+    resume: submittedResume ?? null,
+  });
+  const attention = getApplicationAttention({
+    appliedAt: application.applied_at,
+    hasCompanyNote: Boolean(application.company_note?.trim()),
+    hasCompleteSnapshot: snapshotMeta.hasCompleteSnapshot,
+    isComplete: completion.isComplete,
+    status: application.status,
+    statusUpdatedAt: application.status_updated_at,
   });
   const status = getStatusMeta("application", application.status);
   const actorIds = Array.from(
@@ -330,6 +344,16 @@ export default async function CompanyApplicationDetailPage({
             </span>
           </div>
           <div className="mt-5 grid gap-2">
+            {attention.flags.isOverdueReview ? (
+              <div className="rounded-xl border border-red-100 bg-red-50 p-3">
+                <p className="text-sm font-black text-red-900">
+                  24시간 이상 미검토 알림 대상
+                </p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-red-800">
+                  상태를 검토 중으로 바꾸거나 구직자에게 안내 메모를 남겨주세요.
+                </p>
+              </div>
+            ) : null}
             <Info
               label="Submission data"
               value={`${snapshotMeta.label} · ${formatSnapshotTime(snapshotMeta.capturedAt)}`}
