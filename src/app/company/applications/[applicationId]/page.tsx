@@ -201,6 +201,12 @@ export default async function CompanyApplicationDetailPage({
           >
             공고 페이지 보기
           </Link>
+          <Link
+            className={cn(buttonVariants({ className: "mt-2 w-full", variant: "outline" }))}
+            href={`/company/applications/${application.id}/print`}
+          >
+            지원자 PDF 저장
+          </Link>
         </aside>
       </section>
     </DashboardShell>
