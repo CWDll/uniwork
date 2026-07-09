@@ -73,7 +73,7 @@ if (process.env.NEXT_PUBLIC_SITE_URL) {
 
 if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
   printWarn(
-    "SUPABASE_SERVICE_ROLE_KEY is present locally. Do not add it to Vercel unless a server-only runtime feature needs it.",
+    "SUPABASE_SERVICE_ROLE_KEY is present locally. Keep it server-only; it is required in Vercel for cron email digests.",
   );
 }
 

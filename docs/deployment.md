@@ -19,9 +19,17 @@ Set these in Vercel Project Settings > Environment Variables.
 NEXT_PUBLIC_SUPABASE_URL=https://xcarczbywefjouyyycaf.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_SITE_URL=https://your-production-domain.com
+SUPABASE_SERVICE_ROLE_KEY=...
+RESEND_API_KEY=...
+EMAIL_FROM=Uniwork <notifications@your-production-domain.com>
+CRON_SECRET=...
 ```
 
-Do not set `SUPABASE_SERVICE_ROLE_KEY` for the public web runtime unless a server-only operation explicitly needs it. The current app does not need it at runtime. It is only used by the local verification script:
+`SUPABASE_SERVICE_ROLE_KEY` is required only for server-only runtime work such as Vercel Cron email digests and local verification scripts. Never expose it to client code or prefix it with `NEXT_PUBLIC_`.
+
+`RESEND_API_KEY` and `EMAIL_FROM` enable transactional email delivery. Verify the sending domain in Resend before using a production sender address.
+
+`CRON_SECRET` secures Vercel Cron calls. Vercel sends it as the `Authorization: Bearer ...` header when invoking configured cron paths.
 
 ```bash
 npm run verify:supabase
@@ -57,6 +65,14 @@ The Supabase project should have these SQL files applied in order:
 4. `supabase/migrations/0004_application_access_policies.sql`
 5. `supabase/migrations/0005_rls_helpers_and_admin_request_policies.sql`
 6. `supabase/migrations/0006_partner_assignment_policies.sql`
+7. `supabase/migrations/0007_profile_photos.sql`
+8. `supabase/migrations/0008_resume_company_read_policy.sql`
+9. `supabase/migrations/0009_application_resume_guard.sql`
+10. `supabase/migrations/0010_fix_application_resume_policy_recursion.sql`
+11. `supabase/migrations/0011_application_submission_snapshots.sql`
+12. `supabase/migrations/0012_application_status_notes.sql`
+13. `supabase/migrations/0013_application_status_events.sql`
+14. `supabase/migrations/0014_notification_email_settings.sql`
 
 ## Pre-Deploy Checks
 

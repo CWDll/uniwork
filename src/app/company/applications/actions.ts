@@ -3,6 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { sendEmail } from "@/lib/email/client";
+import { renderApplicationStatusEmail } from "@/lib/email/templates";
+import { getNotificationRecipient } from "@/lib/notifications/recipients";
+import { getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 
 function getSafeReturnTo(value: FormDataEntryValue | null) {
@@ -36,7 +40,7 @@ export async function updateApplicationStatusAction(formData: FormData) {
 
   const { data: currentApplication } = await supabase
     .from("job_applications")
-    .select("id, status")
+    .select("id, job_id, seeker_id, status")
     .eq("id", applicationId)
     .maybeSingle();
 
@@ -66,6 +70,17 @@ export async function updateApplicationStatusAction(formData: FormData) {
       note: hasCompanyNote ? companyNote || null : null,
       to_status: status,
     });
+
+    if (currentApplication) {
+      await sendApplicationStatusEmail({
+        applicationId,
+        companyNote: hasCompanyNote ? companyNote || null : null,
+        jobId: currentApplication.job_id,
+        seekerId: currentApplication.seeker_id,
+        status,
+        supabase,
+      });
+    }
   }
 
   revalidatePath("/company");
@@ -73,4 +88,65 @@ export async function updateApplicationStatusAction(formData: FormData) {
   revalidatePath(`/company/applications/${applicationId}`);
 
   redirect(returnTo);
+}
+
+async function sendApplicationStatusEmail({
+  applicationId,
+  companyNote,
+  jobId,
+  seekerId,
+  status,
+  supabase,
+}: {
+  applicationId: string;
+  companyNote: string | null;
+  jobId: string;
+  seekerId: string;
+  status: string;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+}) {
+  try {
+    const [{ data: seeker }, { data: job }] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("email, email_notifications_enabled, name, notification_email")
+        .eq("id", seekerId)
+        .maybeSingle(),
+      supabase
+        .from("jobs")
+        .select("id, company_id, title")
+        .eq("id", jobId)
+        .maybeSingle(),
+    ]);
+    const { data: company } = job
+      ? await supabase
+          .from("companies")
+          .select("name")
+          .eq("id", job.company_id)
+          .maybeSingle()
+      : { data: null };
+    const recipient = getNotificationRecipient({
+      accountEmail: seeker?.email,
+      emailNotificationsEnabled: seeker?.email_notifications_enabled,
+      notificationEmail: seeker?.notification_email,
+    });
+
+    if (!recipient) {
+      return;
+    }
+
+    await sendEmail({
+      to: recipient,
+      ...renderApplicationStatusEmail({
+        applicantName: seeker?.name,
+        applicationId,
+        companyName: company?.name,
+        jobTitle: job?.title,
+        note: companyNote,
+        statusLabel: getStatusMeta("application", status).label,
+      }),
+    });
+  } catch (error) {
+    console.error("Failed to send application status email", error);
+  }
 }
