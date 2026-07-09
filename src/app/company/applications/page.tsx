@@ -573,11 +573,8 @@ export default async function CompanyApplicationsPage({
               const status = getStatusMeta("application", application.status);
 
               return (
-                <article
-                  className="grid gap-4 px-4 py-4 sm:px-5"
-                  key={application.id}
-                >
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+                <article className="grid gap-4 px-4 py-4 sm:px-5" key={application.id}>
+                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
                     <div className="grid min-w-0 gap-3 sm:grid-cols-[56px_minmax(0,1fr)]">
                       <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-sm font-black text-blue-700">
                         {avatarUrl ? (
@@ -592,85 +589,92 @@ export default async function CompanyApplicationsPage({
                         )}
                       </div>
                       <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          className="break-words font-black text-slate-950 hover:text-blue-700"
-                          href={`/company/applications/${application.id}`}
-                        >
-                          {profile?.name || profile?.email || "Applicant"}
-                        </Link>
-                        <span
-                          className={getStatusBadgeClassName(
-                            "application",
-                            application.status,
-                          )}
-                        >
-                          {status.label}
-                        </span>
-                        <CompletionBadge
-                          isComplete={completion.isComplete}
-                          label={`정보 ${completion.completedCount}/${completion.totalCount}`}
-                        />
-                        <CompletionBadge
-                          isComplete={snapshotMeta.hasCompleteSnapshot}
-                          label={snapshotMeta.label}
-                        />
-                      </div>
-                      <p className="mt-1 break-words text-sm font-semibold text-slate-500">
-                        {job?.title ?? "Job"} · {company?.name ?? "Company"} ·{" "}
-                        {job?.location ?? "-"} · {job?.employment_type ?? "-"}
-                      </p>
-                      <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-2">
-                        <Info label="Email" value={profile?.email ?? "-"} />
-                        <Info label="Applied" value={new Date(application.applied_at).toLocaleString("ko-KR")} />
-                        <Info
-                          label="Visa"
-                          value={`${seekerProfile?.visa_type || "미입력"} · ${seekerProfile?.nationality || "국적 미입력"}`}
-                        />
-                        <Info
-                          label="School"
-                          value={`${seekerProfile?.school || "학교 미입력"} · ${seekerProfile?.major || "전공 미입력"}`}
-                        />
-                        <Info
-                          label="Korean"
-                          value={seekerProfile?.korean_level || "미입력"}
-                        />
-                        <Info
-                          label="English"
-                          value={seekerProfile?.english_level || "미입력"}
-                        />
-                        <Info
-                          label="Resume"
-                          value={`${resume?.title || "이력서 없음"} · ${resumeCompletion.completedCount}/${resumeCompletion.totalCount}`}
-                        />
-                        <Info
-                          label="Submission"
-                          value={formatSnapshotTime(snapshotMeta.capturedAt)}
-                        />
-                      </div>
-                      {!snapshotMeta.hasCompleteSnapshot ? (
-                        <p className="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
-                          이 지원은 제출본 저장 이전 데이터입니다. 화면에는 현재
-                          접근 가능한 프로필/이력 정보가 표시됩니다.
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            className="break-words font-black text-slate-950 hover:text-blue-700"
+                            href={`/company/applications/${application.id}`}
+                          >
+                            {profile?.name || profile?.email || "Applicant"}
+                          </Link>
+                          <span
+                            className={getStatusBadgeClassName(
+                              "application",
+                              application.status,
+                            )}
+                          >
+                            {status.label}
+                          </span>
+                          <CompletionBadge
+                            isComplete={completion.isComplete}
+                            label={`정보 ${completion.completedCount}/${completion.totalCount}`}
+                          />
+                          <CompletionBadge
+                            isComplete={snapshotMeta.hasCompleteSnapshot}
+                            label={snapshotMeta.label}
+                          />
+                        </div>
+                        <p className="mt-1 break-words text-sm font-semibold text-slate-500">
+                          {job?.title ?? "Job"} · {company?.name ?? "Company"} ·{" "}
+                          {job?.location ?? "-"} · {job?.employment_type ?? "-"}
                         </p>
-                      ) : null}
-                      {application.message ? (
-                        <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm font-medium text-slate-700">
-                          {application.message}
-                        </p>
-                      ) : null}
+                        <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-2 2xl:grid-cols-4">
+                          <Info label="Email" value={profile?.email ?? "-"} />
+                          <Info
+                            label="Applied"
+                            value={new Date(application.applied_at).toLocaleString(
+                              "ko-KR",
+                            )}
+                          />
+                          <Info
+                            label="Visa"
+                            value={`${seekerProfile?.visa_type || "미입력"} · ${seekerProfile?.nationality || "국적 미입력"}`}
+                          />
+                          <Info
+                            label="School"
+                            value={`${seekerProfile?.school || "학교 미입력"} · ${seekerProfile?.major || "전공 미입력"}`}
+                          />
+                          <Info
+                            label="Korean"
+                            value={seekerProfile?.korean_level || "미입력"}
+                          />
+                          <Info
+                            label="English"
+                            value={seekerProfile?.english_level || "미입력"}
+                          />
+                          <Info
+                            label="Resume"
+                            value={`${resume?.title || "이력서 없음"} · ${resumeCompletion.completedCount}/${resumeCompletion.totalCount}`}
+                          />
+                          <Info
+                            label="Submission"
+                            value={formatSnapshotTime(snapshotMeta.capturedAt)}
+                          />
+                        </div>
+                        {!snapshotMeta.hasCompleteSnapshot ? (
+                          <p className="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
+                            이 지원은 제출본 저장 이전 데이터입니다. 화면에는 현재
+                            접근 가능한 프로필/이력 정보가 표시됩니다.
+                          </p>
+                        ) : null}
+                        {application.message ? (
+                          <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm font-medium text-slate-700">
+                            {application.message}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
-                    <ApplicationStatusForm
-                      applicationId={application.id}
-                      currentStatus={application.status}
-                    />
-                    <Link
-                      className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-sm font-black text-slate-700 hover:bg-slate-50 lg:hidden"
-                      href={`/company/applications/${application.id}`}
-                    >
-                      상세 보기
-                    </Link>
+                    <div className="grid gap-2 xl:w-[292px]">
+                      <ApplicationStatusForm
+                        applicationId={application.id}
+                        currentStatus={application.status}
+                      />
+                      <Link
+                        className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-sm font-black text-slate-700 hover:bg-slate-50"
+                        href={`/company/applications/${application.id}`}
+                      >
+                        상세 보기
+                      </Link>
+                    </div>
                   </div>
                 </article>
               );

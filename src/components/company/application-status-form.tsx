@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname, useSearchParams } from "next/navigation";
 import { useFormStatus } from "react-dom";
 
 import { updateApplicationStatusAction } from "@/app/company/applications/actions";
@@ -12,42 +13,54 @@ export function ApplicationStatusForm({
   applicationId: string;
   currentStatus: string;
 }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const query = searchParams.toString();
+  const returnTo = query ? `${pathname}?${query}` : pathname;
+
   return (
     <div className="grid gap-2 rounded-xl bg-slate-50 p-3 sm:grid-cols-3 lg:min-w-[292px] lg:bg-transparent lg:p-0">
       <ApplicationStatusButton
         applicationId={applicationId}
         currentStatus={currentStatus}
+        label={currentStatus === "submitted" ? "검토 시작" : "검토 중"}
+        primary={currentStatus === "submitted"}
+        returnTo={returnTo}
         status="reviewing"
-      >
-        검토 중
-      </ApplicationStatusButton>
+      />
       <ApplicationStatusButton
         applicationId={applicationId}
         currentStatus={currentStatus}
+        label="합격 처리"
+        primary={currentStatus === "reviewing"}
+        returnTo={returnTo}
         status="accepted"
-      >
-        합격
-      </ApplicationStatusButton>
+      />
       <ApplicationStatusButton
         applicationId={applicationId}
         currentStatus={currentStatus}
+        label="불합격"
+        primary={false}
+        returnTo={returnTo}
         status="rejected"
-      >
-        불합격
-      </ApplicationStatusButton>
+      />
     </div>
   );
 }
 
 function ApplicationStatusButton({
   applicationId,
-  children,
   currentStatus,
+  label,
+  primary,
+  returnTo,
   status,
 }: {
   applicationId: string;
-  children: React.ReactNode;
   currentStatus: string;
+  label: string;
+  primary: boolean;
+  returnTo: string;
   status: string;
 }) {
   const isCurrent = currentStatus === status;
@@ -55,9 +68,10 @@ function ApplicationStatusButton({
   return (
     <form action={updateApplicationStatusAction}>
       <input name="application_id" type="hidden" value={applicationId} />
+      <input name="return_to" type="hidden" value={returnTo} />
       <input name="status" type="hidden" value={status} />
-      <SubmitButton disabled={isCurrent} primary={status === "accepted"}>
-        {isCurrent ? "현재 상태" : children}
+      <SubmitButton disabled={isCurrent} primary={primary}>
+        {isCurrent ? "현재 상태" : label}
       </SubmitButton>
     </form>
   );
