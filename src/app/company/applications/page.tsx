@@ -7,6 +7,8 @@ import {
   getResumeCompletion,
 } from "@/lib/applications/completeness";
 import {
+  formatSnapshotTime,
+  getApplicationSnapshotMeta,
   getProfileForApplication,
   getResumeForApplication,
 } from "@/lib/applications/snapshot";
@@ -367,9 +369,11 @@ export default async function CompanyApplicationsPage({
                 resume: resume ?? null,
               });
               const resumeCompletion = getResumeCompletion(resume ?? null);
-              const hasSubmissionSnapshot = Boolean(
-                application.profile_snapshot && application.resume_snapshot,
-              );
+              const snapshotMeta = getApplicationSnapshotMeta({
+                appliedAt: application.applied_at,
+                profileSnapshot: application.profile_snapshot,
+                resumeSnapshot: application.resume_snapshot,
+              });
 
               return (
                 <article
@@ -411,8 +415,8 @@ export default async function CompanyApplicationsPage({
                           label={`정보 ${completion.completedCount}/${completion.totalCount}`}
                         />
                         <CompletionBadge
-                          isComplete={hasSubmissionSnapshot}
-                          label={hasSubmissionSnapshot ? "제출본 고정" : "현재 정보 fallback"}
+                          isComplete={snapshotMeta.hasCompleteSnapshot}
+                          label={snapshotMeta.label}
                         />
                       </div>
                       <p className="mt-1 break-words text-sm font-semibold text-slate-500">
@@ -442,7 +446,17 @@ export default async function CompanyApplicationsPage({
                           label="Resume"
                           value={`${resume?.title || "이력서 없음"} · ${resumeCompletion.completedCount}/${resumeCompletion.totalCount}`}
                         />
+                        <Info
+                          label="Submission"
+                          value={formatSnapshotTime(snapshotMeta.capturedAt)}
+                        />
                       </div>
+                      {!snapshotMeta.hasCompleteSnapshot ? (
+                        <p className="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
+                          이 지원은 제출본 저장 이전 데이터입니다. 화면에는 현재
+                          접근 가능한 프로필/이력 정보가 표시됩니다.
+                        </p>
+                      ) : null}
                       {application.message ? (
                         <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm font-medium text-slate-700">
                           {application.message}

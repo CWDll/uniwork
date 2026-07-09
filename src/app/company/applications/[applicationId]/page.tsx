@@ -1,4 +1,11 @@
-import { ArrowLeft, BriefcaseBusiness, CalendarDays, Mail, MapPin } from "lucide-react";
+import {
+  ArrowLeft,
+  BriefcaseBusiness,
+  CalendarDays,
+  DatabaseZap,
+  Mail,
+  MapPin,
+} from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -6,6 +13,8 @@ import { ApplicationStatusForm } from "@/components/company/application-status-f
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
 import {
+  formatSnapshotTime,
+  getApplicationSnapshotMeta,
   getProfileForApplication,
   getResumeForApplication,
 } from "@/lib/applications/snapshot";
@@ -114,6 +123,11 @@ export default async function CompanyApplicationDetailPage({
     liveResume: resume,
     snapshot: application.resume_snapshot,
   });
+  const snapshotMeta = getApplicationSnapshotMeta({
+    appliedAt: application.applied_at,
+    profileSnapshot: application.profile_snapshot,
+    resumeSnapshot: application.resume_snapshot,
+  });
   const status = getStatusMeta("application", application.status);
   const wage =
     job.wage_amount && job.wage_type
@@ -172,6 +186,12 @@ export default async function CompanyApplicationDetailPage({
               </div>
             </div>
 
+            <SnapshotNotice
+              capturedAt={snapshotMeta.capturedAt}
+              hasCompleteSnapshot={snapshotMeta.hasCompleteSnapshot}
+              label={snapshotMeta.label}
+            />
+
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <Info label="Nationality" value={submittedProfile?.nationality || "미입력"} />
               <Info label="Visa" value={submittedProfile?.visa_type || "미입력"} />
@@ -222,7 +242,7 @@ export default async function CompanyApplicationDetailPage({
                         {submittedResume.title || "Uniwork Resume"}
                       </p>
                       <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
-                        {application.resume_snapshot ? "지원 시점 제출본" : "현재 이력서 fallback"}
+                        {snapshotMeta.label}
                       </span>
                     </div>
                     <p className="mt-2 whitespace-pre-wrap rounded-xl bg-blue-50 p-4 text-sm font-semibold leading-7 text-slate-700">
@@ -281,6 +301,10 @@ export default async function CompanyApplicationDetailPage({
             </span>
           </div>
           <div className="mt-5 grid gap-2">
+            <Info
+              label="Submission data"
+              value={`${snapshotMeta.label} · ${formatSnapshotTime(snapshotMeta.capturedAt)}`}
+            />
             <Info label="Category" value={job.category || "-"} />
             <Info label="Wage" value={wage} />
             <Info label="Visa condition" value={job.visa_support_type || "-"} />
@@ -307,6 +331,42 @@ export default async function CompanyApplicationDetailPage({
         </aside>
       </section>
     </DashboardShell>
+  );
+}
+
+function SnapshotNotice({
+  capturedAt,
+  hasCompleteSnapshot,
+  label,
+}: {
+  capturedAt: string | null;
+  hasCompleteSnapshot: boolean;
+  label: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "mt-6 rounded-2xl border p-4",
+        hasCompleteSnapshot
+          ? "border-emerald-100 bg-emerald-50 text-emerald-950"
+          : "border-amber-100 bg-amber-50 text-amber-950",
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <DatabaseZap className="mt-0.5 size-5 shrink-0" />
+        <div className="min-w-0">
+          <p className="text-sm font-black">{label}</p>
+          <p className="mt-1 text-sm font-semibold leading-6">
+            {hasCompleteSnapshot
+              ? "아래 프로필과 이력서는 지원자가 제출 버튼을 누른 시점의 고정본입니다."
+              : "제출본 저장 기능 이전 지원입니다. 현재 접근 가능한 프로필/이력 정보로 표시합니다."}
+          </p>
+          <p className="mt-2 text-xs font-black">
+            기준 시각 {formatSnapshotTime(capturedAt)}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 
 import { ApplicationPrintActions } from "@/components/company/application-print-actions";
 import {
+  formatSnapshotTime,
+  getApplicationSnapshotMeta,
   getProfileForApplication,
   getResumeForApplication,
 } from "@/lib/applications/snapshot";
@@ -111,6 +113,11 @@ export default async function CompanyApplicationPrintPage({
     liveResume: resume,
     snapshot: application.resume_snapshot,
   });
+  const snapshotMeta = getApplicationSnapshotMeta({
+    appliedAt: application.applied_at,
+    profileSnapshot: application.profile_snapshot,
+    resumeSnapshot: application.resume_snapshot,
+  });
   const status = getStatusMeta("application", application.status);
   const wage =
     job.wage_amount && job.wage_type
@@ -157,6 +164,9 @@ export default async function CompanyApplicationPrintPage({
             <p className="mt-1 text-sm font-bold text-slate-500">
               지원일 {new Date(application.applied_at).toLocaleString("ko-KR")}
             </p>
+            <p className="mt-1 text-sm font-bold text-slate-500">
+              제출 정보 {snapshotMeta.label} · {formatSnapshotTime(snapshotMeta.capturedAt)}
+            </p>
           </div>
           <div className="grid size-28 shrink-0 place-items-center overflow-hidden rounded-2xl bg-slate-100 text-2xl font-black text-blue-700">
             {avatarUrl ? (
@@ -178,6 +188,10 @@ export default async function CompanyApplicationPrintPage({
             <Info label="Job" value={job.title} />
             <Info label="Company" value={company.name} />
             <Info label="Status" value={status.label} />
+            <Info
+              label="Submission data"
+              value={`${snapshotMeta.label} · ${formatSnapshotTime(snapshotMeta.capturedAt)}`}
+            />
             <Info label="Location" value={job.location || company.address || "-"} />
             <Info label="Employment" value={job.employment_type || "-"} />
             <Info label="Wage" value={wage} />
@@ -234,7 +248,7 @@ export default async function CompanyApplicationPrintPage({
               <div>
                 <p className="text-sm font-black text-slate-500">
                   {submittedResume.title || "Uniwork Resume"} ·{" "}
-                  {application.resume_snapshot ? "지원 시점 제출본" : "현재 이력서 fallback"}
+                  {snapshotMeta.label}
                 </p>
                 <p className="mt-2 whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
                   {submittedResume.intro || "자기소개가 없습니다."}

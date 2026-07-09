@@ -143,3 +143,34 @@ export function getResumeForApplication({
 }) {
   return parseResumeSnapshot(snapshot) ?? liveResume;
 }
+
+export function getApplicationSnapshotMeta({
+  appliedAt,
+  profileSnapshot,
+  resumeSnapshot,
+}: {
+  appliedAt?: string | null;
+  profileSnapshot: unknown;
+  resumeSnapshot: unknown;
+}) {
+  const parsedProfile = parseProfileSnapshot(profileSnapshot);
+  const parsedResume = parseResumeSnapshot(resumeSnapshot);
+  const capturedAt =
+    parsedResume?.captured_at ?? parsedProfile?.captured_at ?? appliedAt ?? null;
+  const hasCompleteSnapshot = Boolean(parsedProfile && parsedResume);
+
+  return {
+    capturedAt,
+    hasCompleteSnapshot,
+    label: hasCompleteSnapshot ? "지원 시점 제출본" : "현재 정보 fallback",
+    tone: hasCompleteSnapshot ? ("success" as const) : ("warning" as const),
+  };
+}
+
+export function formatSnapshotTime(value?: string | null) {
+  if (!value) {
+    return "캡처 시각 없음";
+  }
+
+  return new Date(value).toLocaleString("ko-KR");
+}
