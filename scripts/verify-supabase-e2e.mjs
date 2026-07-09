@@ -458,6 +458,24 @@ async function main() {
       "Expected status update timestamp to be stored.",
     );
 
+    const statusEventInsert = await companyClient
+      .from("application_status_events")
+      .insert({
+        actor_id: companyUser.id,
+        application_id: applicationInsert.data.id,
+        from_status: "submitted",
+        note: "We are reviewing your application and will follow up soon.",
+        to_status: "reviewing",
+      })
+      .select("application_id, from_status, id, note, to_status")
+      .single();
+
+    assertNoError(statusEventInsert, "insert application status event as company owner");
+    assert(
+      statusEventInsert.data.to_status === "reviewing",
+      "Expected company owner to create a status event.",
+    );
+
     const seekerApplication = await seekerClient
       .from("job_applications")
       .select("company_note, id, status, status_updated_at")
@@ -472,6 +490,17 @@ async function main() {
     assert(
       seekerApplication.data.company_note?.includes("reviewing"),
       "Expected seeker to read the company note.",
+    );
+
+    const seekerStatusEvents = await seekerClient
+      .from("application_status_events")
+      .select("application_id, from_status, note, to_status")
+      .eq("application_id", applicationInsert.data.id);
+
+    assertNoError(seekerStatusEvents, "read own application status events as seeker");
+    assert(
+      seekerStatusEvents.data?.[0]?.to_status === "reviewing",
+      "Expected seeker to read their application status event.",
     );
 
     const consentInsert = await seekerClient

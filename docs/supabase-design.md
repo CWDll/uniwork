@@ -128,6 +128,16 @@ Important: `owner_id` is intentionally **not unique**. One company-role user can
 - `applied_at timestamptz default now()`
 - `status_updated_at timestamptz`
 
+### application_status_events
+
+- `id uuid primary key`
+- `application_id uuid not null references job_applications(id)`
+- `actor_id uuid references profiles(id)`
+- `from_status text`
+- `to_status text not null`
+- `note text`
+- `created_at timestamptz default now()`
+
 ### admin_requests
 
 - `id uuid primary key`

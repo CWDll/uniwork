@@ -18,6 +18,15 @@ const applicationStatusOptions = [
   { value: "rejected", label: "불합격" },
 ];
 
+type StatusEvent = {
+  application_id: string;
+  created_at: string;
+  from_status: string | null;
+  id: string;
+  note: string | null;
+  to_status: string;
+};
+
 export default async function SeekerApplicationsPage({
   searchParams,
 }: {
@@ -64,10 +73,26 @@ export default async function SeekerApplicationsPage({
     resumeIds.length > 0
       ? await supabase.from("resumes").select("id, title").in("id", resumeIds)
       : { data: [] };
+  const applicationIds = applications?.map((application) => application.id) ?? [];
+  const { data: statusEvents } =
+    applicationIds.length > 0
+      ? await supabase
+          .from("application_status_events")
+          .select("id, application_id, from_status, to_status, note, created_at")
+          .in("application_id", applicationIds)
+          .order("created_at", { ascending: false })
+      : { data: [] };
 
   const jobById = new Map(jobs?.map((job) => [job.id, job]) ?? []);
   const companyById = new Map(companies?.map((company) => [company.id, company]) ?? []);
   const resumeById = new Map(resumes?.map((resume) => [resume.id, resume]) ?? []);
+  const statusEventRows = (statusEvents ?? []) as StatusEvent[];
+  const eventsByApplicationId = new Map<string, StatusEvent[]>();
+  statusEventRows.forEach((event) => {
+    const events = eventsByApplicationId.get(event.application_id) ?? [];
+    events.push(event);
+    eventsByApplicationId.set(event.application_id, events);
+  });
   const enrichedApplications = (applications ?? []).map((application) => {
     const job = jobById.get(application.job_id);
     const company = job ? companyById.get(job.company_id) : null;
@@ -89,6 +114,7 @@ export default async function SeekerApplicationsPage({
       job,
       resume,
       snapshotMeta,
+      statusEvents: eventsByApplicationId.get(application.id) ?? [],
     };
   });
   const visibleApplications = activeStatus
@@ -161,7 +187,8 @@ export default async function SeekerApplicationsPage({
         <div className="divide-y divide-slate-100">
           {visibleApplications.length > 0 ? (
             visibleApplications.map((item) => {
-              const { application, company, job, resume, snapshotMeta } = item;
+              const { application, company, job, resume, snapshotMeta, statusEvents } =
+                item;
               const status = getStatusMeta("application", application.status);
               const isRecentlyApplied = applied === application.job_id;
 
@@ -225,6 +252,18 @@ export default async function SeekerApplicationsPage({
                         기업 안내: {application.company_note}
                       </p>
                     ) : null}
+                    {statusEvents.length > 0 ? (
+                      <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                          Status history
+                        </p>
+                        <div className="mt-2 grid gap-2">
+                          {statusEvents.slice(0, 3).map((event) => (
+                            <StatusEventItem event={event} key={event.id} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                   <div className="grid h-max gap-2 rounded-xl bg-slate-50 p-3">
                     <span
@@ -260,6 +299,33 @@ export default async function SeekerApplicationsPage({
         </div>
       </section>
     </DashboardShell>
+  );
+}
+
+function StatusEventItem({
+  event,
+}: {
+  event: StatusEvent;
+}) {
+  const fromStatus = event.from_status
+    ? getStatusMeta("application", event.from_status).label
+    : "이전 상태 없음";
+  const toStatus = getStatusMeta("application", event.to_status).label;
+
+  return (
+    <div className="rounded-lg bg-white px-3 py-2">
+      <p className="text-sm font-black text-slate-700">
+        {fromStatus} → {toStatus}
+      </p>
+      <p className="mt-1 text-xs font-bold text-slate-400">
+        {new Date(event.created_at).toLocaleString("ko-KR")}
+      </p>
+      {event.note ? (
+        <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-600">
+          {event.note}
+        </p>
+      ) : null}
+    </div>
   );
 }
 

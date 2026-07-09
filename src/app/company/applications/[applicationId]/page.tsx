@@ -76,6 +76,7 @@ export default async function CompanyApplicationDetailPage({
     { data: profile },
     { data: seekerProfile },
     { data: resume },
+    { data: statusEvents },
   ] =
     await Promise.all([
       supabase
@@ -108,6 +109,11 @@ export default async function CompanyApplicationDetailPage({
             .order("created_at", { ascending: true })
             .limit(1)
             .maybeSingle(),
+      supabase
+        .from("application_status_events")
+        .select("id, actor_id, from_status, to_status, note, created_at")
+        .eq("application_id", application.id)
+        .order("created_at", { ascending: false }),
     ]);
 
   if (!company || !profile) {
@@ -129,6 +135,14 @@ export default async function CompanyApplicationDetailPage({
     resumeSnapshot: application.resume_snapshot,
   });
   const status = getStatusMeta("application", application.status);
+  const actorIds = Array.from(
+    new Set(statusEvents?.map((event) => event.actor_id).filter(Boolean) ?? []),
+  );
+  const { data: actors } =
+    actorIds.length > 0
+      ? await supabase.from("profiles").select("id, name, email").in("id", actorIds)
+      : { data: [] };
+  const actorById = new Map(actors?.map((actor) => [actor.id, actor]) ?? []);
   const wage =
     job.wage_amount && job.wage_type
       ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
@@ -240,6 +254,14 @@ export default async function CompanyApplicationDetailPage({
               </p>
             </Section>
 
+            <Section title="상태 변경 이력">
+              <StatusTimeline
+                actorById={actorById}
+                emptyText="아직 상태 변경 이력이 없습니다."
+                events={statusEvents ?? []}
+              />
+            </Section>
+
             <Section title="이력과 자기소개">
               {submittedResume ? (
                 <div className="grid gap-5">
@@ -348,6 +370,64 @@ export default async function CompanyApplicationDetailPage({
         </aside>
       </section>
     </DashboardShell>
+  );
+}
+
+function StatusTimeline({
+  actorById,
+  emptyText,
+  events,
+}: {
+  actorById: Map<string, { email: string | null; id: string; name: string | null }>;
+  emptyText: string;
+  events: {
+    actor_id: string | null;
+    created_at: string;
+    from_status: string | null;
+    id: string;
+    note: string | null;
+    to_status: string;
+  }[];
+}) {
+  if (events.length === 0) {
+    return (
+      <p className="rounded-xl bg-slate-50 p-4 text-sm font-semibold text-slate-500">
+        {emptyText}
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      {events.map((event) => {
+        const actor = event.actor_id ? actorById.get(event.actor_id) : null;
+        const fromStatus = event.from_status
+          ? getStatusMeta("application", event.from_status).label
+          : "이전 상태 없음";
+        const toStatus = getStatusMeta("application", event.to_status).label;
+
+        return (
+          <article className="rounded-xl border border-slate-100 bg-slate-50 p-4" key={event.id}>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-black text-slate-900">
+                {fromStatus} → {toStatus}
+              </span>
+              <span className="text-xs font-bold text-slate-400">
+                {new Date(event.created_at).toLocaleString("ko-KR")}
+              </span>
+            </div>
+            <p className="mt-1 text-xs font-bold text-slate-500">
+              처리자 {actor?.name || actor?.email || "담당자"}
+            </p>
+            {event.note ? (
+              <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
+                {event.note}
+              </p>
+            ) : null}
+          </article>
+        );
+      })}
+    </div>
   );
 }
 

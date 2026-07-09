@@ -21,6 +21,9 @@ function getSafeReturnTo(value: FormDataEntryValue | null) {
 
 export async function updateApplicationStatusAction(formData: FormData) {
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const applicationId = String(formData.get("application_id") ?? "").trim();
   const hasCompanyNote = formData.has("company_note");
   const companyNote = String(formData.get("company_note") ?? "").trim();
@@ -30,6 +33,12 @@ export async function updateApplicationStatusAction(formData: FormData) {
   if (!applicationId || !["reviewing", "accepted", "rejected"].includes(status)) {
     return;
   }
+
+  const { data: currentApplication } = await supabase
+    .from("job_applications")
+    .select("id, status")
+    .eq("id", applicationId)
+    .maybeSingle();
 
   const payload: {
     company_note?: string | null;
@@ -44,10 +53,20 @@ export async function updateApplicationStatusAction(formData: FormData) {
     payload.company_note = companyNote || null;
   }
 
-  await supabase
+  const { error: updateError } = await supabase
     .from("job_applications")
     .update(payload)
     .eq("id", applicationId);
+
+  if (!updateError && user) {
+    await supabase.from("application_status_events").insert({
+      actor_id: user.id,
+      application_id: applicationId,
+      from_status: currentApplication?.status ?? null,
+      note: hasCompanyNote ? companyNote || null : null,
+      to_status: status,
+    });
+  }
 
   revalidatePath("/company");
   revalidatePath("/company/applications");
