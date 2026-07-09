@@ -122,7 +122,11 @@ Important: `owner_id` is intentionally **not unique**. One company-role user can
 - `resume_id uuid references resumes(id)`
 - `status text default 'submitted'`
 - `message text`
+- `profile_snapshot jsonb`
+- `resume_snapshot jsonb`
+- `company_note text`
 - `applied_at timestamptz default now()`
+- `status_updated_at timestamptz`
 
 ### admin_requests
 

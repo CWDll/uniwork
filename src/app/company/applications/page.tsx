@@ -3,6 +3,10 @@ import Link from "next/link";
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
+  getApplicationAttention,
+  type ApplicationAttention,
+} from "@/lib/applications/attention";
+import {
   getApplicationCompletion,
   getResumeCompletion,
 } from "@/lib/applications/completeness";
@@ -19,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 type CompanyApplicationsSearchParams = {
   completeness?: string;
+  attention?: string;
   company?: string;
   data?: string;
   job?: string;
@@ -39,7 +44,13 @@ const sortOptions = [
   { value: "newest", label: "최신 지원순" },
   { value: "oldest", label: "오래된 지원순" },
   { value: "needs_review", label: "미검토 우선" },
+  { value: "action_needed", label: "조치 필요 우선" },
   { value: "incomplete", label: "정보 미완성 우선" },
+];
+
+const attentionFilterOptions = [
+  { value: "", label: "전체 조치" },
+  { value: "needed", label: "조치 필요" },
 ];
 
 const dataFilterOptions = [
@@ -83,8 +94,11 @@ function buildApplicationsHref(
 type SortableApplication = {
   application: {
     applied_at: string;
+    company_note?: string | null;
     status: string;
+    status_updated_at?: string | null;
   };
+  attention: ApplicationAttention;
   completion: {
     isComplete: boolean;
   };
@@ -111,6 +125,12 @@ function compareApplications(
     }
   }
 
+  if (sort === "action_needed") {
+    if (first.attention.score !== second.attention.score) {
+      return second.attention.score - first.attention.score;
+    }
+  }
+
   if (sort === "incomplete") {
     const firstComplete = first.completion.isComplete ? 1 : 0;
     const secondComplete = second.completion.isComplete ? 1 : 0;
@@ -134,6 +154,7 @@ export default async function CompanyApplicationsPage({
   const activeStatus = compactValue(params.status);
   const activeDataFilter = compactValue(params.data);
   const activeCompletenessFilter = compactValue(params.completeness);
+  const activeAttentionFilter = compactValue(params.attention);
   const activeSort = compactValue(params.sort) || "newest";
   const keyword = compactValue(params.q).toLowerCase();
   const supabase = await createClient();
@@ -266,6 +287,14 @@ export default async function CompanyApplicationsPage({
       profileSnapshot: application.profile_snapshot,
       resumeSnapshot: application.resume_snapshot,
     });
+    const attention = getApplicationAttention({
+      appliedAt: application.applied_at,
+      hasCompanyNote: Boolean(application.company_note?.trim()),
+      hasCompleteSnapshot: snapshotMeta.hasCompleteSnapshot,
+      isComplete: completion.isComplete,
+      status: application.status,
+      statusUpdatedAt: application.status_updated_at,
+    });
     const haystack = [
       job?.title,
       company?.name,
@@ -283,6 +312,7 @@ export default async function CompanyApplicationsPage({
       application.message,
       application.company_note,
       application.status,
+      attention.summary,
       snapshotMeta.label,
     ]
       .filter(Boolean)
@@ -291,6 +321,7 @@ export default async function CompanyApplicationsPage({
 
     return {
       application,
+      attention,
       company,
       completion,
       haystack,
@@ -321,12 +352,16 @@ export default async function CompanyApplicationsPage({
   const fallbackCount = enrichedApplications.filter(
     (item) => !item.snapshotMeta.hasCompleteSnapshot,
   ).length;
+  const attentionNeededCount = enrichedApplications.filter(
+    (item) => item.attention.score >= 40,
+  ).length;
   const hasActiveFilters = Boolean(
     activeCompanyId ||
       activeJobId ||
       activeStatus ||
       activeDataFilter ||
       activeCompletenessFilter ||
+      activeAttentionFilter ||
       keyword ||
       activeSort !== "newest",
   );
@@ -351,6 +386,10 @@ export default async function CompanyApplicationsPage({
       return false;
     }
 
+    if (activeAttentionFilter === "needed" && item.attention.score < 40) {
+      return false;
+    }
+
     return true;
   }
 
@@ -369,7 +408,7 @@ export default async function CompanyApplicationsPage({
       </div>
 
       <form
-        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_170px_170px_170px_170px_minmax(0,1fr)_auto]"
+        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_150px_150px_150px_150px_minmax(0,1fr)_auto]"
         action="/company/applications"
       >
         <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
@@ -454,6 +493,20 @@ export default async function CompanyApplicationsPage({
           </select>
         </label>
         <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
+          Action
+          <select
+            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            defaultValue={activeAttentionFilter}
+            name="attention"
+          >
+            {attentionFilterOptions.map((option) => (
+              <option key={option.value || "all"} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
           Sort
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
@@ -482,7 +535,17 @@ export default async function CompanyApplicationsPage({
         </div>
       </form>
 
-      <div className="mb-5 grid gap-3 md:grid-cols-3">
+      <div className="mb-5 grid gap-3 md:grid-cols-4">
+        <QuickFilterCard
+          active={activeAttentionFilter === "needed"}
+          count={attentionNeededCount}
+          href={buildApplicationsHref(params, {
+            attention: activeAttentionFilter === "needed" ? "" : "needed",
+            sort: "action_needed",
+          })}
+          label="조치 필요"
+          tone="red"
+        />
         <QuickFilterCard
           active={activeStatus === "submitted"}
           count={unreviewedCount}
@@ -560,6 +623,7 @@ export default async function CompanyApplicationsPage({
                 application,
                 company,
                 completion,
+                attention,
                 job,
                 profile,
                 resume,
@@ -651,6 +715,14 @@ export default async function CompanyApplicationsPage({
                             value={formatSnapshotTime(snapshotMeta.capturedAt)}
                           />
                         </div>
+                        {attention.score >= 40 ? (
+                          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold leading-6 text-red-900">
+                            <span>조치 필요: {attention.summary}</span>
+                            <span className="rounded-md bg-white/80 px-2 py-1 text-xs font-black text-red-700">
+                              priority {attention.score}
+                            </span>
+                          </div>
+                        ) : null}
                         {!snapshotMeta.hasCompleteSnapshot ? (
                           <p className="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
                             이 지원은 제출본 저장 이전 데이터입니다. 화면에는 현재
@@ -718,13 +790,15 @@ function QuickFilterCard({
   count: number;
   href: string;
   label: string;
-  tone: "amber" | "blue" | "slate";
+  tone: "amber" | "blue" | "red" | "slate";
 }) {
   const activeClassName =
     tone === "blue"
       ? "border-blue-200 bg-blue-50 text-blue-950"
       : tone === "amber"
         ? "border-amber-200 bg-amber-50 text-amber-950"
+        : tone === "red"
+          ? "border-red-200 bg-red-50 text-red-950"
         : "border-slate-300 bg-slate-100 text-slate-950";
 
   return (
