@@ -49,7 +49,7 @@ export default async function JobDetailPage({
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id, name, industry, address")
+    .select("id, name, industry, address, verification_status")
     .eq("id", job.company_id)
     .maybeSingle();
 
@@ -132,6 +132,11 @@ export default async function JobDetailPage({
             </h1>
             <p className="mt-3 text-base font-semibold text-slate-600">
               {company?.name ?? "Company"}
+              {company?.verification_status === "verified" ? (
+                <span className="ml-2 rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
+                  인증 기업
+                </span>
+              ) : null}
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -174,6 +179,12 @@ export default async function JobDetailPage({
           </div>
 
           <div className="mt-5 grid gap-2 text-sm font-semibold text-slate-600">
+            {company?.verification_status === "verified" ? (
+              <span className="flex items-center gap-2 text-emerald-700">
+                <CheckCircle2 className="size-4" />
+                운영자 인증 기업
+              </span>
+            ) : null}
             <span className="flex items-center gap-2">
               <MapPin className="size-4 text-slate-400" />
               {job.location || "-"}
@@ -182,6 +193,12 @@ export default async function JobDetailPage({
               <BriefcaseBusiness className="size-4 text-slate-400" />
               {job.employment_type || "-"}
             </span>
+            {job.published_at ? (
+              <span className="flex items-center gap-2 text-slate-500">
+                <FileText className="size-4 text-slate-400" />
+                공개일 {new Date(job.published_at).toLocaleDateString("ko-KR")}
+              </span>
+            ) : null}
           </div>
 
           {existingApplication ? (

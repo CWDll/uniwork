@@ -166,13 +166,19 @@ export default async function JobsPage({
     companyIds.length > 0
       ? await supabase
           .from("companies")
-          .select("id, name")
+          .select("id, name, verification_status")
           .in("id", companyIds)
       : { data: [] };
 
   const companyNameById = new Map<string, string>(
     companies?.map((company) => [String(company.id), String(company.name)]) ??
       [],
+  );
+  const companyVerifiedById = new Map<string, boolean>(
+    companies?.map((company) => [
+      String(company.id),
+      company.verification_status === "verified",
+    ]) ?? [],
   );
 
   const jobsWithEligibility =
@@ -188,6 +194,7 @@ export default async function JobsPage({
       return {
         id: job.id,
         company,
+        companyVerified: companyVerifiedById.get(String(job.company_id)) ?? false,
         featured: false,
         location: job.location || "-",
         logo: initials || "UW",

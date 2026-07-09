@@ -7,6 +7,7 @@ import type { JobEligibility } from "@/lib/jobs/eligibility";
 import { cn } from "@/lib/utils";
 
 type Job = {
+  companyVerified?: boolean;
   id?: string;
   company: string;
   logo: string;
@@ -52,6 +53,11 @@ export function JobCard({ job }: { job: Job }) {
         </div>
         <p className="mt-1 text-sm font-semibold text-slate-600">
           {job.company}
+          {job.companyVerified ? (
+            <span className="ml-2 rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
+              인증 기업
+            </span>
+          ) : null}
         </p>
         <div className="mt-3 flex min-w-0 flex-wrap gap-2 text-xs font-bold text-slate-500">
           <span className="rounded-md bg-slate-100 px-2 py-1">
