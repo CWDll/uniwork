@@ -1,15 +1,47 @@
 import Link from "next/link";
 import { BriefcaseBusiness, Building2, Home, ShieldCheck, UserRound } from "lucide-react";
 
-const items = [
+import { createClient } from "@/lib/supabase/server";
+
+const dashboardByRole = {
+  admin: "/admin",
+  company: "/company",
+  partner: "/admin/admin-requests",
+  seeker: "/me",
+} as const;
+
+const publicItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
   { href: "/corp", label: "Corp", icon: Building2 },
-  { href: "/auth", label: "Auth", icon: UserRound },
-  { href: "/me", label: "My", icon: ShieldCheck },
 ];
 
-export function MobileBottomNav() {
+export async function MobileBottomNav() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: profile } = user
+    ? await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle()
+    : { data: null };
+  const dashboardHref =
+    profile?.role && profile.role in dashboardByRole
+      ? dashboardByRole[profile.role as keyof typeof dashboardByRole]
+      : "/me";
+  const items = [
+    ...publicItems,
+    {
+      href: user ? "/me/applications" : "/auth",
+      label: user ? "Applied" : "Auth",
+      icon: UserRound,
+    },
+    {
+      href: user ? dashboardHref : "/login",
+      label: user ? "My" : "Login",
+      icon: ShieldCheck,
+    },
+  ];
+
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 pb-[max(env(safe-area-inset-bottom),0.5rem)] pt-2 shadow-[0_-8px_28px_rgba(15,23,42,0.08)] backdrop-blur md:hidden">
       <div className="mx-auto grid max-w-md grid-cols-5">

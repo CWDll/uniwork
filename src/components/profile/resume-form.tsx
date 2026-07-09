@@ -37,6 +37,8 @@ export function ResumeForm({ resume }: { resume: Resume | null }) {
   const education = resume?.education ?? [];
   const experience = resume?.experience ?? [];
   const languages = resume?.languages ?? [];
+  const introReady = (resume?.intro?.trim().length ?? 0) >= 20;
+  const languageReady = languages.length > 0;
 
   return (
     <form
@@ -49,6 +51,17 @@ export function ResumeForm({ resume }: { resume: Resume | null }) {
           기업이 지원자를 판단할 때 볼 수 있는 소개, 학력, 경력, 언어 정보를
           입력합니다.
         </p>
+      </div>
+      <div className="mt-4 grid gap-2 rounded-2xl bg-blue-50 p-3 text-xs font-bold text-blue-900 sm:grid-cols-3">
+        <span className="rounded-lg bg-white/70 px-3 py-2">
+          자기소개 {introReady ? "완료" : "필수"}
+        </span>
+        <span className="rounded-lg bg-white/70 px-3 py-2">
+          언어 {languageReady ? "완료" : "필수"}
+        </span>
+        <span className="rounded-lg bg-white/70 px-3 py-2">
+          학력/경력은 선택 입력
+        </span>
       </div>
 
       <div className="mt-5 grid gap-4">

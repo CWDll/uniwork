@@ -1,9 +1,13 @@
 import { FileText, Send, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { buttonVariants } from "@/components/ui/button";
+import { getApplicationCompletion } from "@/lib/applications/completeness";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 type SeekerProfile = {
   alien_registration_status: string | null;
@@ -76,7 +80,7 @@ export default async function MePage() {
         .eq("seeker_id", user.id),
       supabase
         .from("resumes")
-        .select("id, intro, languages")
+        .select("id, title, intro, education, experience, languages")
         .eq("seeker_id", user.id)
         .order("created_at", { ascending: true })
         .limit(1)
@@ -90,6 +94,36 @@ export default async function MePage() {
   const avatarUrl = getProfilePhotoUrl(supabase, accountProfile?.avatar_path);
 
   const profileCompletion = getProfileCompletion(profile);
+  const applicationCompletion = getApplicationCompletion({
+    profile,
+    resume,
+  });
+  const nextSteps = [
+    {
+      complete: applicationCompletion.profile.isComplete,
+      href: "/me/profile",
+      label: "프로필 입력",
+      note: applicationCompletion.profile.isComplete
+        ? "비자/학교/근무 가능 시간 준비 완료"
+        : `${applicationCompletion.profile.missing.slice(0, 2).join(", ")} 보완 필요`,
+    },
+    {
+      complete: applicationCompletion.resume.isComplete,
+      href: "/me/resume",
+      label: "이력서 입력",
+      note: applicationCompletion.resume.isComplete
+        ? "자기소개/언어 정보 준비 완료"
+        : `${applicationCompletion.resume.missing.slice(0, 2).join(", ")} 보완 필요`,
+    },
+    {
+      complete: applicationCompletion.isComplete,
+      href: applicationCompletion.isComplete ? "/jobs?profile_fit=eligible" : "/jobs",
+      label: "공고 찾기",
+      note: applicationCompletion.isComplete
+        ? "내 프로필 기준 지원 가능 공고 확인"
+        : "정보 보완 후 지원 가능성이 더 정확해집니다",
+    },
+  ];
   const cards = [
     {
       label: "Profile",
@@ -108,10 +142,10 @@ export default async function MePage() {
     },
     {
       label: "Resume",
-      value: resume?.intro ? "Ready" : "Needed",
-      note: resume?.intro
-        ? "기업에게 보여줄 자기소개 입력 완료"
-        : "자기소개와 경력 정보를 입력해주세요",
+      value: `${applicationCompletion.resume.completedCount}/${applicationCompletion.resume.totalCount}`,
+      note: applicationCompletion.resume.isComplete
+        ? "기업에게 보여줄 이력 정보 입력 완료"
+        : "자기소개와 언어 정보를 입력해주세요",
       icon: FileText,
     },
     {
@@ -149,6 +183,56 @@ export default async function MePage() {
               프로필 완성도, 지원 내역, 행정 요청 현황을 실제 계정 데이터
               기준으로 확인합니다.
             </p>
+          </div>
+        </div>
+        <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-black text-blue-950">
+                지원 준비도 {applicationCompletion.completedCount}/
+                {applicationCompletion.totalCount}
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-blue-900">
+                프로필과 이력서를 채우면 공고 상세에서 바로 지원할 수 있습니다.
+              </p>
+            </div>
+            <Link
+              className={cn(buttonVariants({ className: "w-full sm:w-auto" }))}
+              href={applicationCompletion.isComplete ? "/jobs?profile_fit=eligible" : "/me/profile"}
+            >
+              {applicationCompletion.isComplete ? "지원 가능 공고 보기" : "준비 시작"}
+            </Link>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {nextSteps.map((step) => (
+              <Link
+                className={cn(
+                  "rounded-xl border p-3 transition",
+                  step.complete
+                    ? "border-emerald-100 bg-white/80"
+                    : "border-blue-100 bg-white hover:bg-blue-50",
+                )}
+                href={step.href}
+                key={step.label}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-black text-slate-900">{step.label}</p>
+                  <span
+                    className={cn(
+                      "rounded-md px-2 py-1 text-xs font-black",
+                      step.complete
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700",
+                    )}
+                  >
+                    {step.complete ? "완료" : "필요"}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
+                  {step.note}
+                </p>
+              </Link>
+            ))}
           </div>
         </div>
       </div>
