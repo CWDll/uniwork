@@ -18,7 +18,7 @@ export default async function CompanySettingsPage() {
   const { data: companies } = await supabase
     .from("companies")
     .select(
-      "id, name, business_number, industry, address, notification_email, email_notifications_enabled, verification_status",
+      "id, name, business_number, industry, address, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at",
     )
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
@@ -72,6 +72,16 @@ export default async function CompanySettingsPage() {
                         ? "이메일 알림 ON"
                         : "이메일 알림 OFF"}
                     </p>
+                    {company.verification_note ? (
+                      <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-700">
+                        운영자 메모: {company.verification_note}
+                      </p>
+                    ) : null}
+                    {company.verified_at ? (
+                      <p className="mt-2 text-xs font-bold text-slate-400">
+                        검토일 {new Date(company.verified_at).toLocaleString("ko-KR")}
+                      </p>
+                    ) : null}
                   </div>
                   <span
                     className={getStatusBadgeClassName(

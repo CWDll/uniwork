@@ -14,7 +14,7 @@ type CompanyJobsSearchParams = {
 
 const jobStatusFilters = [
   { value: "", label: "전체" },
-  { value: "draft", label: "승인 대기" },
+  { value: "draft", label: "초안" },
   { value: "published", label: "공개 중" },
   { value: "rejected", label: "반려" },
   { value: "closed", label: "마감" },
@@ -23,7 +23,7 @@ const jobStatusFilters = [
 function getJobNextStep(status: string) {
   switch (status) {
     case "draft":
-      return "운영자 검토 후 공개됩니다.";
+      return "아직 공개되지 않은 공고입니다.";
     case "published":
       return "지원자 현황을 확인하세요.";
     case "rejected":
@@ -57,11 +57,13 @@ export default async function CompanyJobsPage({
 
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, name, verification_status")
+    .select("id, name, verification_status, verification_note")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
 
   const companyIds = companies?.map((company) => company.id) ?? [];
+  const verifiedCompanies =
+    companies?.filter((company) => company.verification_status === "verified") ?? [];
   const companyNameById = new Map(
     companies?.map((company) => [company.id, company.name]) ?? [],
   );
@@ -114,8 +116,8 @@ export default async function CompanyJobsPage({
           채용공고를 작성하고 상태를 확인합니다
         </h1>
         <p className="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-600">
-          MVP 단계에서는 기업이 공고 초안을 무료로 만들고, 운영자 승인 후
-          공개되는 흐름으로 갑니다.
+          운영자 인증이 완료된 회사/지점은 공고를 저장하면 바로 구직자에게
+          공개됩니다.
         </p>
       </div>
 
@@ -136,7 +138,27 @@ export default async function CompanyJobsPage({
         </div>
       ) : null}
 
-      <CompanyJobForm companies={companies ?? []} disabled={companyIds.length === 0} />
+      {companyIds.length > 0 && verifiedCompanies.length === 0 ? (
+        <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <h2 className="text-lg font-black text-amber-900">
+            회사/지점 인증이 필요합니다
+          </h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-amber-800">
+            운영자가 회사 정보를 인증하면 공고를 바로 공개할 수 있습니다.
+          </p>
+          <Link
+            className={cn(buttonVariants({ className: "mt-4", variant: "outline" }))}
+            href="/company/settings"
+          >
+            인증 상태 확인하기
+          </Link>
+        </div>
+      ) : null}
+
+      <CompanyJobForm
+        companies={verifiedCompanies}
+        disabled={verifiedCompanies.length === 0}
+      />
 
       <div className="mt-5 grid gap-3 sm:grid-cols-4">
         {jobStatusFilters.slice(1).map((filter) => {

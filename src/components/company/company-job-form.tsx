@@ -70,9 +70,9 @@ export function CompanyJobForm({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black">New job draft</h2>
+          <h2 className="text-xl font-black">New job post</h2>
           <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
-            작성한 공고는 초안으로 저장되고, 운영자 승인 후 공개됩니다.
+            운영자 인증이 완료된 회사/지점은 공고를 저장하면 바로 공개됩니다.
           </p>
         </div>
       </div>
@@ -184,7 +184,7 @@ Notes:
       ) : null}
       {state.message ? (
         <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-          {state.message} 운영자 승인 전까지는 구직자에게 공개되지 않습니다.
+          {state.message}
         </p>
       ) : null}
 

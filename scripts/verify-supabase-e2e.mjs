@@ -225,11 +225,25 @@ async function main() {
       .from("companies")
       .update({
         verification_status: "verified",
+        verification_note: "Verified for E2E public listing.",
+        verified_at: new Date().toISOString(),
+        verified_by: adminUser.id,
         updated_at: new Date().toISOString(),
       })
-      .in("id", companyIds);
+      .in("id", companyIds)
+      .select("id, verification_note, verification_status, verified_at, verified_by");
 
     assertNoError(verifyCompany, "mark test companies verified");
+    assert(
+      verifyCompany.data?.every(
+        (company) =>
+          company.verification_status === "verified" &&
+          company.verification_note === "Verified for E2E public listing." &&
+          company.verified_by === adminUser.id &&
+          company.verified_at,
+      ),
+      "Expected company verification metadata to be stored.",
+    );
 
     const jobInsert = await companyClient
       .from("jobs")
@@ -372,6 +386,31 @@ async function main() {
     assert(
       publishResult.data.reviewed_by === adminUser.id && publishResult.data.reviewed_at,
       "Expected admin reviewer metadata to be stored.",
+    );
+
+    const directPublishedJob = await companyClient
+      .from("jobs")
+      .insert({
+        category: "Retail",
+        company_id: companyIds[0],
+        description:
+          "E2E published job created directly by a verified company owner.",
+        employment_type: "part-time",
+        location: "Seoul",
+        published_at: new Date().toISOString(),
+        status: "published",
+        title: "Uniwork E2E Direct Published Job",
+      })
+      .select("id, status")
+      .single();
+
+    assertNoError(
+      directPublishedJob,
+      "insert published job as verified company owner",
+    );
+    assert(
+      directPublishedJob.data.status === "published",
+      "Expected verified company owner to create a published job.",
     );
 
     const publicClient = createAnonClient();

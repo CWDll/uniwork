@@ -14,7 +14,7 @@ type AdminJobsSearchParams = {
 
 const reviewFilters = [
   { value: "", label: "전체" },
-  { value: "draft", label: "승인 대기" },
+  { value: "draft", label: "초안" },
   { value: "published", label: "공개 중" },
   { value: "rejected", label: "반려" },
   { value: "closed", label: "마감" },
@@ -87,14 +87,14 @@ export default async function AdminJobsPage({
     <DashboardShell area="admin">
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-          Admin job review
+          Admin job operations
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">
-          기업 공고를 승인하거나 반려합니다
+          공개 공고를 관리하고 필요 시 조치합니다
         </h1>
         <p className="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-600">
-          기업이 만든 draft 공고를 검토한 뒤 published로 전환하면 공개
-          구직자 목록에 노출됩니다.
+          인증된 회사/지점의 공고는 등록 즉시 공개됩니다. 운영자는 문제가 있는
+          공고를 반려하거나 마감 처리하고, 기업 담당자에게 메모를 남깁니다.
         </p>
       </div>
 
@@ -126,7 +126,7 @@ export default async function AdminJobsPage({
         <div className="border-b border-slate-200 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black">Job review queue</h2>
+              <h2 className="text-lg font-black">Job operations</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
                 전체 공고 {jobs?.length ?? 0}개
               </p>

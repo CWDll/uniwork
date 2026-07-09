@@ -81,6 +81,9 @@ Initial rules:
 - `notification_email text`
 - `email_notifications_enabled boolean default true`
 - `verification_status text default 'pending'`
+- `verification_note text`
+- `verified_at timestamptz`
+- `verified_by uuid references profiles(id)`
 - `created_at timestamptz default now()`
 - `updated_at timestamptz default now()`
 

@@ -74,6 +74,7 @@ The Supabase project should have these SQL files applied in order:
 13. `supabase/migrations/0013_application_status_events.sql`
 14. `supabase/migrations/0014_notification_email_settings.sql`
 15. `supabase/migrations/0015_job_review_notes.sql`
+16. `supabase/migrations/0016_company_verification_notes.sql`
 
 ## Pre-Deploy Checks
 

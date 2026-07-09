@@ -32,7 +32,7 @@ export default async function CompanyPage() {
 
   const { data: companies } = await supabase
     .from("companies")
-    .select("id, name, verification_status")
+    .select("id, name, verification_status, verification_note")
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -234,6 +234,7 @@ export default async function CompanyPage() {
                 <span
                   className="inline-flex items-center gap-2 rounded-md bg-slate-100 px-3 py-2 text-sm font-black text-slate-700"
                   key={company.id}
+                  title={company.verification_note ?? undefined}
                 >
                   {company.name}
                   <span

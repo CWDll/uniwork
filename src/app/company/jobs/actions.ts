@@ -65,13 +65,17 @@ export async function createCompanyJobAction(
 
   const { data: company } = await supabase
     .from("companies")
-    .select("id")
+    .select("id, verification_status")
     .eq("owner_id", user.id)
     .eq("id", companyId)
     .maybeSingle();
 
   if (!company) {
     return { error: "선택한 회사/지점을 찾을 수 없습니다." };
+  }
+
+  if (company.verification_status !== "verified") {
+    return { error: "운영자 인증이 완료된 회사/지점만 공고를 공개할 수 있습니다." };
   }
 
   const title = String(formData.get("title") ?? "").trim();
@@ -126,7 +130,8 @@ export async function createCompanyJobAction(
     wage_amount: wageAmount,
     visa_support_type: visaSupportType,
     korean_requirement: koreanRequirement,
-    status: "draft",
+    published_at: new Date().toISOString(),
+    status: "published",
   });
 
   if (error) {
@@ -135,9 +140,10 @@ export async function createCompanyJobAction(
 
   revalidatePath("/company");
   revalidatePath("/company/jobs");
+  revalidatePath("/jobs");
 
   return {
-    message: "채용공고 초안이 생성되었습니다.",
+    message: "채용공고가 공개되었습니다.",
     successKey: new Date().toISOString(),
   };
 }

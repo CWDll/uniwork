@@ -45,7 +45,7 @@ const statusByDomain = {
   },
   job: {
     draft: {
-      label: "승인 대기",
+      label: "초안",
       className: "bg-amber-50 text-amber-700",
     },
     published: {
