@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
@@ -44,6 +45,10 @@ export default async function SeekerApplicationsPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?next=/me/applications");
+  }
 
   const { data: applications } = user
     ? await supabase
@@ -333,10 +338,39 @@ export default async function SeekerApplicationsPage({
               );
             })
           ) : (
-            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-              {hasActiveFilters
-                ? "현재 필터에 맞는 지원 내역이 없습니다."
-                : "아직 지원한 공고가 없습니다."}
+            <div className="px-5 py-8">
+              <p className="text-sm font-black text-slate-700">
+                {hasActiveFilters
+                  ? "현재 필터에 맞는 지원 내역이 없습니다."
+                  : "아직 지원한 공고가 없습니다."}
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                {hasActiveFilters
+                  ? "다른 상태를 선택하거나 필터를 초기화해 전체 지원 내역을 확인해보세요."
+                  : "관심 있는 공고를 찾고, 프로필과 이력서를 완성한 뒤 지원해보세요."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {hasActiveFilters ? (
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+                    href="/me/applications"
+                  >
+                    필터 초기화
+                  </Link>
+                ) : null}
+                <Link
+                  className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
+                  href="/jobs"
+                >
+                  공고 찾기
+                </Link>
+                <Link
+                  className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+                  href="/me/resume"
+                >
+                  이력서 보완
+                </Link>
+              </div>
             </div>
           )}
         </div>

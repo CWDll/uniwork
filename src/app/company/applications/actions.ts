@@ -35,6 +35,16 @@ function getReturnToWithFeedback(returnTo: string, status: string) {
   return `${url.pathname}${url.search}`;
 }
 
+function getReturnToWithError(returnTo: string) {
+  const url = new URL(returnTo, "https://uniwork.local");
+
+  url.searchParams.delete("application_updated");
+  url.searchParams.delete("status_updated");
+  url.searchParams.set("status_error", "1");
+
+  return `${url.pathname}${url.search}`;
+}
+
 export async function updateApplicationStatusAction(formData: FormData) {
   const supabase = await createClient();
   const {
@@ -104,7 +114,11 @@ export async function updateApplicationStatusAction(formData: FormData) {
   revalidatePath(`/company/applications/${applicationId}`);
   revalidatePath("/me/applications");
 
-  redirect(updateError ? returnTo : getReturnToWithFeedback(returnTo, status));
+  redirect(
+    updateError
+      ? getReturnToWithError(returnTo)
+      : getReturnToWithFeedback(returnTo, status),
+  );
 }
 
 async function sendApplicationStatusEmail({

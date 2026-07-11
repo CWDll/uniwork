@@ -1,6 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ApplicationPrintActions } from "@/components/company/application-print-actions";
 import {
@@ -37,6 +37,14 @@ export default async function CompanyApplicationPrintPage({
 }) {
   const { applicationId } = await params;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect(`/login?next=/company/applications/${applicationId}/print`);
+  }
+
   const { data: application } = await supabase
     .from("job_applications")
     .select(

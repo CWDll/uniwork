@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -32,6 +33,7 @@ type CompanyApplicationsSearchParams = {
   q?: string;
   sort?: string;
   status?: string;
+  status_error?: string;
   status_updated?: string;
 };
 
@@ -83,7 +85,11 @@ function buildApplicationsHref(
   const merged = { ...params, ...updates };
 
   Object.entries(merged).forEach(([key, value]) => {
-    if (key === "application_updated" || key === "status_updated") {
+    if (
+      key === "application_updated" ||
+      key === "status_error" ||
+      key === "status_updated"
+    ) {
       return;
     }
 
@@ -177,6 +183,10 @@ export default async function CompanyApplicationsPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?next=/company/applications");
+  }
 
   const { data: companies } = user
     ? await supabase.from("companies").select("id, name").eq("owner_id", user.id)
@@ -623,6 +633,18 @@ export default async function CompanyApplicationsPage({
         </div>
       ) : null}
 
+      {params.status_error ? (
+        <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 p-4">
+          <p className="text-sm font-black text-red-900">
+            지원자 상태를 저장하지 못했습니다.
+          </p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-red-800">
+            권한 또는 네트워크 상태를 확인한 뒤 다시 시도해주세요. 같은 문제가
+            반복되면 운영자에게 문의해주세요.
+          </p>
+        </div>
+      ) : null}
+
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <QuickFilterCard
           active={activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"}
@@ -898,8 +920,33 @@ export default async function CompanyApplicationsPage({
               );
             })
           ) : (
-            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-              아직 지원자가 없습니다.
+            <div className="px-5 py-8">
+              <p className="text-sm font-black text-slate-700">
+                {hasActiveFilters
+                  ? "현재 조건에 맞는 지원자가 없습니다."
+                  : "아직 지원자가 없습니다."}
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                {hasActiveFilters
+                  ? "필터를 초기화하거나 다른 회사/공고 조건으로 다시 확인해보세요."
+                  : "공고가 공개되면 지원자가 이 화면에 쌓입니다. 먼저 공고 상태를 확인해보세요."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {hasActiveFilters ? (
+                  <Link
+                    className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+                    href="/company/applications"
+                  >
+                    필터 초기화
+                  </Link>
+                ) : null}
+                <Link
+                  className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
+                  href="/company/jobs"
+                >
+                  공고 관리로 이동
+                </Link>
+              </div>
             </div>
           )}
         </div>

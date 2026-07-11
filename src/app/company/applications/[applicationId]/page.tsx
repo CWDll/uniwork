@@ -8,7 +8,7 @@ import {
   Printer,
 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -50,13 +50,25 @@ export default async function CompanyApplicationDetailPage({
   params: Promise<{ applicationId: string }>;
   searchParams: Promise<{
     application_updated?: string;
+    status_error?: string;
     status_updated?: string;
   }>;
 }) {
   const { applicationId } = await params;
-  const { application_updated: applicationUpdated, status_updated: statusUpdated } =
-    await searchParams;
+  const {
+    application_updated: applicationUpdated,
+    status_error: statusError,
+    status_updated: statusUpdated,
+  } = await searchParams;
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect(`/login?next=/company/applications/${applicationId}`);
+  }
+
   const { data: application } = await supabase
     .from("job_applications")
     .select(
@@ -197,6 +209,18 @@ export default async function CompanyApplicationDetailPage({
                 {statusUpdated
                   ? `${getStatusMeta("application", statusUpdated).label} 상태로 반영했고, 구직자 지원 현황도 최신화했습니다.`
                   : "변경 내용이 구직자 지원 현황에 반영되었습니다."}
+              </p>
+            </div>
+          ) : null}
+
+          {statusError ? (
+            <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 p-4">
+              <p className="text-sm font-black text-red-900">
+                지원자 상태를 저장하지 못했습니다.
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-red-800">
+                권한 또는 네트워크 상태를 확인한 뒤 다시 시도해주세요. 같은 문제가
+                반복되면 운영자에게 문의해주세요.
               </p>
             </div>
           ) : null}
