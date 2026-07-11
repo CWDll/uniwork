@@ -5,6 +5,7 @@ import {
   DatabaseZap,
   Mail,
   MapPin,
+  Printer,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -182,7 +183,7 @@ export default async function CompanyApplicationDetailPage({
         <div className="min-w-0">
           <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
             <div className="flex flex-wrap items-start gap-4">
-              <div className="grid size-24 shrink-0 place-items-center overflow-hidden rounded-2xl bg-slate-100 text-2xl font-black text-blue-700">
+              <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-slate-100 text-2xl font-black text-blue-700 sm:size-24">
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -196,7 +197,7 @@ export default async function CompanyApplicationDetailPage({
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="break-words text-3xl font-black tracking-tight">
+                  <h1 className="break-words text-2xl font-black tracking-tight sm:text-3xl">
                     {profile.name || profile.email}
                   </h1>
                   <span className={getStatusBadgeClassName("application", application.status)}>
@@ -211,6 +212,53 @@ export default async function CompanyApplicationDetailPage({
                   <CalendarDays className="size-4 shrink-0" />
                   지원일 {new Date(application.applied_at).toLocaleString("ko-KR")}
                 </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <ReviewSignal
+                label="처리 우선순위"
+                tone={attention.score >= 40 ? "red" : "slate"}
+                value={attention.score >= 40 ? attention.summary : "추가 조치 없음"}
+              />
+              <ReviewSignal
+                label="지원 정보"
+                tone={completion.isComplete ? "green" : "amber"}
+                value={`${completion.completedCount}/${completion.totalCount}`}
+              />
+              <ReviewSignal
+                label="제출 데이터"
+                tone={snapshotMeta.hasCompleteSnapshot ? "green" : "amber"}
+                value={snapshotMeta.label}
+              />
+            </div>
+
+            <div className="mt-4 grid gap-2 rounded-2xl border border-slate-100 bg-slate-50 p-3 lg:hidden">
+              <p className="text-sm font-black text-slate-900">빠른 처리</p>
+              <ApplicationStatusForm
+                applicationId={application.id}
+                currentNote={application.company_note}
+                currentStatus={application.status}
+                showNoteField
+              />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Link
+                  className={cn(
+                    buttonVariants({ className: "min-h-11 w-full", variant: "outline" }),
+                  )}
+                  href={`/jobs/${job.id}`}
+                >
+                  공고 보기
+                </Link>
+                <Link
+                  className={cn(
+                    buttonVariants({ className: "min-h-11 w-full", variant: "outline" }),
+                  )}
+                  href={`/company/applications/${application.id}/print`}
+                >
+                  <Printer className="size-4" />
+                  PDF 저장
+                </Link>
               </div>
             </div>
 
@@ -328,7 +376,7 @@ export default async function CompanyApplicationDetailPage({
           </article>
         </div>
 
-        <aside className="h-max rounded-2xl border border-slate-200 bg-white p-5 lg:sticky lg:top-20">
+        <aside className="hidden h-max rounded-2xl border border-slate-200 bg-white p-5 lg:sticky lg:top-20 lg:block">
           <p className="text-sm font-black uppercase tracking-wide text-blue-700">
             Application
           </p>
@@ -394,6 +442,33 @@ export default async function CompanyApplicationDetailPage({
         </aside>
       </section>
     </DashboardShell>
+  );
+}
+
+function ReviewSignal({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone: "amber" | "green" | "red" | "slate";
+  value: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-3 py-3",
+        tone === "red" && "border-red-100 bg-red-50 text-red-950",
+        tone === "amber" && "border-amber-100 bg-amber-50 text-amber-950",
+        tone === "green" && "border-emerald-100 bg-emerald-50 text-emerald-950",
+        tone === "slate" && "border-slate-100 bg-slate-50 text-slate-800",
+      )}
+    >
+      <p className="text-[11px] font-black uppercase tracking-wide opacity-70">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-black">{value}</p>
+    </div>
   );
 }
 
@@ -499,8 +574,8 @@ function Section({
   title: string;
 }) {
   return (
-    <section className="mt-8 border-t border-slate-100 pt-6">
-      <h2 className="text-xl font-black">{title}</h2>
+    <section className="mt-7 border-t border-slate-100 pt-5 sm:mt-8 sm:pt-6">
+      <h2 className="text-lg font-black text-slate-950 sm:text-xl">{title}</h2>
       <div className="mt-3">{children}</div>
     </section>
   );
