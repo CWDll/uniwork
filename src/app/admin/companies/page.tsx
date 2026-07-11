@@ -39,28 +39,25 @@ export default async function AdminCompaniesPage({
     redirect("/login?next=/admin/companies");
   }
 
-  const { data: companies } = await (() => {
-    let query = supabase
-      .from("companies")
-      .select(
-        "id, owner_id, name, business_number, industry, address, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at, created_at",
-      )
-      .order("created_at", { ascending: false });
-
-    if (activeStatus) {
-      query = query.eq("verification_status", activeStatus);
-    }
-
-    return query;
-  })();
-  const ownerIds = Array.from(new Set(companies?.map((company) => company.owner_id) ?? []));
+  const { data: allCompanies } = await supabase
+    .from("companies")
+    .select(
+      "id, owner_id, name, business_number, industry, address, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at, created_at",
+    )
+    .order("created_at", { ascending: false });
+  const companies = activeStatus
+    ? allCompanies?.filter((company) => company.verification_status === activeStatus)
+    : allCompanies;
+  const ownerIds = Array.from(
+    new Set(allCompanies?.map((company) => company.owner_id) ?? []),
+  );
   const { data: owners } =
     ownerIds.length > 0
       ? await supabase.from("profiles").select("id, name, email").in("id", ownerIds)
       : { data: [] };
   const ownerById = new Map(owners?.map((owner) => [owner.id, owner]) ?? []);
   const statusCounts = new Map<string, number>();
-  companies?.forEach((company) => {
+  allCompanies?.forEach((company) => {
     statusCounts.set(
       company.verification_status,
       (statusCounts.get(company.verification_status) ?? 0) + 1,
@@ -135,6 +132,17 @@ export default async function AdminCompaniesPage({
                 "companyVerification",
                 company.verification_status,
               );
+              const readiness = getCompanyReadiness({
+                address: company.address,
+                businessNumber: company.business_number,
+                managerName: company.manager_name,
+                managerPhone: company.manager_phone,
+                notificationEmail: company.notification_email,
+              });
+              const reviewGuidance = getReviewGuidance({
+                missingCount: readiness.missing.length,
+                status: company.verification_status,
+              });
 
               return (
                 <article
@@ -171,6 +179,10 @@ export default async function AdminCompaniesPage({
                         value={`${company.notification_email || owner?.email || "-"} · ${company.email_notifications_enabled ? "ON" : "OFF"}`}
                       />
                       <Info
+                        label="Readiness"
+                        value={`${readiness.completed}/${readiness.total} 항목`}
+                      />
+                      <Info
                         label="Created"
                         value={new Date(company.created_at).toLocaleString("ko-KR")}
                       />
@@ -182,6 +194,30 @@ export default async function AdminCompaniesPage({
                             : "-"
                         }
                       />
+                    </div>
+                    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        Verification checklist
+                      </p>
+                      {readiness.missing.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {readiness.missing.map((item) => (
+                            <span
+                              className="rounded-md bg-white px-2 py-1 text-xs font-black text-amber-700"
+                              key={item}
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm font-semibold text-slate-600">
+                          필수 운영 정보가 모두 입력되어 있습니다.
+                        </p>
+                      )}
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                        {reviewGuidance}
+                      </p>
                     </div>
                     {company.verification_note ? (
                       <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-700">
@@ -203,6 +239,10 @@ export default async function AdminCompaniesPage({
                         name="verification_note"
                         placeholder="인증/반려 사유 또는 보완 요청"
                       />
+                      <span className="text-[11px] font-bold normal-case tracking-normal text-slate-500">
+                        반려 처리 시에는 기업 담당자가 이해할 수 있도록 5자 이상
+                        보완 메모를 남겨주세요.
+                      </span>
                     </label>
                     <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
                       <StatusButton
@@ -229,14 +269,80 @@ export default async function AdminCompaniesPage({
               );
             })
           ) : (
-            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-              검토할 기업/지점이 없습니다.
+            <div className="px-5 py-8">
+              <p className="text-sm font-black text-slate-700">
+                검토할 기업/지점이 없습니다.
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                {activeStatus
+                  ? "다른 상태 필터를 선택하거나 전체 목록을 확인해보세요."
+                  : "기업 담당자가 회사/지점을 등록하면 이 화면에 표시됩니다."}
+              </p>
+              {activeStatus ? (
+                <Link
+                  className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+                  href="/admin/companies"
+                >
+                  전체 보기
+                </Link>
+              ) : null}
             </div>
           )}
         </div>
       </section>
     </DashboardShell>
   );
+}
+
+function getCompanyReadiness({
+  address,
+  businessNumber,
+  managerName,
+  managerPhone,
+  notificationEmail,
+}: {
+  address?: string | null;
+  businessNumber?: string | null;
+  managerName?: string | null;
+  managerPhone?: string | null;
+  notificationEmail?: string | null;
+}) {
+  const checks = [
+    { done: Boolean(businessNumber?.trim()), label: "사업자번호" },
+    { done: Boolean(address?.trim()), label: "주소" },
+    { done: Boolean(managerName?.trim()), label: "담당자명" },
+    { done: Boolean(managerPhone?.trim()), label: "담당자 연락처" },
+    { done: Boolean(notificationEmail?.trim()), label: "알림 이메일" },
+  ];
+  const missing = checks.filter((check) => !check.done).map((check) => check.label);
+
+  return {
+    completed: checks.length - missing.length,
+    missing,
+    total: checks.length,
+  };
+}
+
+function getReviewGuidance({
+  missingCount,
+  status,
+}: {
+  missingCount: number;
+  status: string;
+}) {
+  if (status === "verified") {
+    return "인증 완료 상태입니다. 공고 등록과 공개가 가능한 회사/지점입니다.";
+  }
+
+  if (status === "rejected") {
+    return "반려 상태입니다. 기업 담당자가 이해할 수 있도록 보완 메모가 충분한지 확인하세요.";
+  }
+
+  if (missingCount > 0) {
+    return "부족한 항목이 있습니다. 인증 전 보완 요청 메모를 남기는 것이 좋습니다.";
+  }
+
+  return "필수 항목이 준비되어 있습니다. 사업자 정보와 담당자 정보를 확인한 뒤 인증하세요.";
 }
 
 function StatusButton({
@@ -252,13 +358,12 @@ function StatusButton({
 
   return (
     <Button
-      disabled={isCurrent}
       name="verification_status"
       type="submit"
       value={status}
       variant={status === "verified" ? "default" : "outline"}
     >
-      {isCurrent ? "현재 상태" : children}
+      {isCurrent ? "메모 저장" : children}
     </Button>
   );
 }

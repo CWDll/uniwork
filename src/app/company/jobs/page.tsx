@@ -68,25 +68,20 @@ export default async function CompanyJobsPage({
     companies?.map((company) => [company.id, company.name]) ?? [],
   );
 
-  const { data: jobs } =
+  const { data: allJobs } =
     companyIds.length > 0
-      ? await (() => {
-          let query = supabase
-            .from("jobs")
-            .select(
-              "id, company_id, title, location, employment_type, category, status, review_note, reviewed_at, created_at, published_at, closed_at",
-            )
-            .in("company_id", companyIds)
-            .order("created_at", { ascending: false });
-
-          if (activeStatus) {
-            query = query.eq("status", activeStatus);
-          }
-
-          return query;
-        })()
+      ? await supabase
+          .from("jobs")
+          .select(
+            "id, company_id, title, location, employment_type, category, status, review_note, reviewed_at, created_at, published_at, closed_at",
+          )
+          .in("company_id", companyIds)
+          .order("created_at", { ascending: false })
       : { data: [] };
-  const allJobIds = jobs?.map((job) => job.id) ?? [];
+  const jobs = activeStatus
+    ? allJobs?.filter((job) => job.status === activeStatus)
+    : allJobs;
+  const allJobIds = allJobs?.map((job) => job.id) ?? [];
   const { data: applications } =
     allJobIds.length > 0
       ? await supabase
@@ -102,7 +97,7 @@ export default async function CompanyJobsPage({
     );
   });
   const statusCounts = new Map<string, number>();
-  jobs?.forEach((job) => {
+  allJobs?.forEach((job) => {
     statusCounts.set(job.status, (statusCounts.get(job.status) ?? 0) + 1);
   });
 
@@ -152,6 +147,23 @@ export default async function CompanyJobsPage({
           >
             인증 상태 확인하기
           </Link>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {companies?.map((company) => {
+              const status = getStatusMeta(
+                "companyVerification",
+                company.verification_status,
+              );
+
+              return (
+                <div
+                  className="rounded-xl bg-white/70 px-3 py-2 text-sm font-semibold text-amber-900"
+                  key={company.id}
+                >
+                  <span className="font-black">{company.name}</span> · {status.label}
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : null}
 
@@ -280,8 +292,39 @@ export default async function CompanyJobsPage({
               );
             })
           ) : (
-            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-              아직 작성한 공고가 없습니다.
+            <div className="px-5 py-8">
+              <p className="text-sm font-black text-slate-700">
+                {activeStatus
+                  ? "현재 상태에 맞는 공고가 없습니다."
+                  : "아직 작성한 공고가 없습니다."}
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                {activeStatus
+                  ? "다른 상태를 선택하거나 전체 공고 목록을 확인해보세요."
+                  : verifiedCompanies.length > 0
+                    ? "위 양식에서 첫 공고를 저장하면 인증된 회사/지점 기준으로 바로 공개됩니다."
+                    : "회사/지점 인증이 완료되면 공고를 등록할 수 있습니다."}
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {activeStatus ? (
+                  <Link
+                    className={cn(
+                      buttonVariants({ size: "sm", variant: "outline" }),
+                    )}
+                    href="/company/jobs"
+                  >
+                    전체 보기
+                  </Link>
+                ) : null}
+                {verifiedCompanies.length === 0 ? (
+                  <Link
+                    className={cn(buttonVariants({ size: "sm" }))}
+                    href="/company/settings"
+                  >
+                    인증 상태 확인
+                  </Link>
+                ) : null}
+              </div>
             </div>
           )}
         </div>

@@ -18,7 +18,7 @@ export default async function CompanySettingsPage() {
   const { data: companies } = await supabase
     .from("companies")
     .select(
-      "id, name, business_number, industry, address, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at",
+      "id, name, business_number, industry, address, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at",
     )
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
@@ -54,14 +54,32 @@ export default async function CompanySettingsPage() {
                 "companyVerification",
                 company.verification_status,
               );
+              const readiness = getCompanyReadiness({
+                address: company.address,
+                businessNumber: company.business_number,
+                managerName: company.manager_name,
+                managerPhone: company.manager_phone,
+                notificationEmail: company.notification_email,
+              });
+              const guidance = getVerificationGuidance(company.verification_status);
 
               return (
                 <article
-                  className="grid gap-2 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto]"
+                  className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_280px]"
                   key={company.id}
                 >
                   <div>
-                    <h3 className="font-black">{company.name}</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black">{company.name}</h3>
+                      <span
+                        className={getStatusBadgeClassName(
+                          "companyVerification",
+                          company.verification_status,
+                        )}
+                      >
+                        {status.label}
+                      </span>
+                    </div>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
                       {company.industry || "-"} · {company.address || "-"} ·{" "}
                       {company.business_number || "사업자번호 미입력"}
@@ -72,6 +90,29 @@ export default async function CompanySettingsPage() {
                         ? "이메일 알림 ON"
                         : "이메일 알림 OFF"}
                     </p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      <Info
+                        label="Manager"
+                        value={`${company.manager_name || "담당자명 미입력"} · ${company.manager_phone || "연락처 미입력"}`}
+                      />
+                      <Info
+                        label="Readiness"
+                        value={`${readiness.completed}/${readiness.total} 항목`}
+                      />
+                      <Info label="Next step" value={guidance.title} />
+                    </div>
+                    {readiness.missing.length > 0 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {readiness.missing.map((item) => (
+                          <span
+                            className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700"
+                            key={item}
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                     {company.verification_note ? (
                       <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-700">
                         운영자 메모: {company.verification_note}
@@ -83,24 +124,93 @@ export default async function CompanySettingsPage() {
                       </p>
                     ) : null}
                   </div>
-                  <span
-                    className={getStatusBadgeClassName(
-                      "companyVerification",
-                      company.verification_status,
-                    )}
+                  <div
+                    className={`h-max rounded-xl border p-3 ${guidance.className}`}
                   >
-                    {status.label}
-                  </span>
+                    <p className="text-sm font-black">{guidance.title}</p>
+                    <p className="mt-1 text-sm font-semibold leading-6">
+                      {guidance.detail}
+                    </p>
+                  </div>
                 </article>
               );
             })
           ) : (
-            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-              아직 등록된 회사/지점이 없습니다.
+            <div className="px-5 py-8">
+              <p className="text-sm font-black text-slate-700">
+                아직 등록된 회사/지점이 없습니다.
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                위 양식에서 회사 정보를 저장하면 운영자가 인증 상태를 확인할 수 있습니다.
+              </p>
             </div>
           )}
         </div>
       </section>
     </DashboardShell>
+  );
+}
+
+function getCompanyReadiness({
+  address,
+  businessNumber,
+  managerName,
+  managerPhone,
+  notificationEmail,
+}: {
+  address?: string | null;
+  businessNumber?: string | null;
+  managerName?: string | null;
+  managerPhone?: string | null;
+  notificationEmail?: string | null;
+}) {
+  const checks = [
+    { done: Boolean(businessNumber?.trim()), label: "사업자번호" },
+    { done: Boolean(address?.trim()), label: "주소" },
+    { done: Boolean(managerName?.trim()), label: "담당자명" },
+    { done: Boolean(managerPhone?.trim()), label: "담당자 연락처" },
+    { done: Boolean(notificationEmail?.trim()), label: "알림 이메일" },
+  ];
+  const missing = checks.filter((check) => !check.done).map((check) => check.label);
+
+  return {
+    completed: checks.length - missing.length,
+    missing,
+    total: checks.length,
+  };
+}
+
+function getVerificationGuidance(status?: string | null) {
+  if (status === "verified") {
+    return {
+      className: "border-emerald-100 bg-emerald-50 text-emerald-950",
+      detail: "이 회사/지점으로 공고를 등록하면 구직자에게 바로 공개됩니다.",
+      title: "공고 등록 가능",
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      className: "border-red-100 bg-red-50 text-red-950",
+      detail: "운영자 메모를 확인하고 부족한 정보를 보완한 뒤 다시 요청해주세요.",
+      title: "보완 필요",
+    };
+  }
+
+  return {
+    className: "border-amber-100 bg-amber-50 text-amber-950",
+    detail: "운영자 인증 전까지 이 회사/지점으로는 공개 공고를 등록할 수 없습니다.",
+    title: "인증 대기",
+  };
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
+      <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
+    </div>
   );
 }
