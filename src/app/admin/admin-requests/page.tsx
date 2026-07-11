@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AdminRequestUpdateForm } from "@/components/admin-requests/admin-request-update-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
@@ -7,16 +8,57 @@ import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
-export default async function AdminRequestsPage() {
+type AdminRequestsSearchParams = {
+  status?: string;
+};
+
+const requestFilters = [
+  { value: "", label: "전체" },
+  { value: "received", label: "접수" },
+  { value: "reviewing", label: "운영자 검토" },
+  { value: "partner_needed", label: "행정사 전달 필요" },
+  { value: "assigned", label: "행정사 배정" },
+  { value: "completed", label: "완료" },
+  { value: "rejected", label: "반려" },
+];
+
+function buildAdminRequestsHref(status?: string) {
+  return status ? `/admin/admin-requests?status=${status}` : "/admin/admin-requests";
+}
+
+export default async function AdminRequestsPage({
+  searchParams,
+}: {
+  searchParams: Promise<AdminRequestsSearchParams>;
+}) {
+  const params = await searchParams;
+  const activeStatus = params.status?.trim() ?? "";
   const supabase = await createClient();
-  const { data: requests } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login?next=/admin/admin-requests");
+  }
+
+  const { data: allRequests } = await supabase
     .from("admin_requests")
     .select(
       "id, seeker_id, assigned_partner_id, type, status, memo, request_details, document_checklist, contact_snapshot, created_at, updated_at",
     )
     .order("created_at", { ascending: false });
+  const requests = activeStatus
+    ? allRequests?.filter((request) => request.status === activeStatus)
+    : allRequests;
+  const statusCounts = new Map<string, number>();
+  allRequests?.forEach((request) => {
+    statusCounts.set(request.status, (statusCounts.get(request.status) ?? 0) + 1);
+  });
 
-  const seekerIds = Array.from(new Set(requests?.map((request) => request.seeker_id) ?? []));
+  const seekerIds = Array.from(
+    new Set(allRequests?.map((request) => request.seeker_id) ?? []),
+  );
   const { data: profiles } =
     seekerIds.length > 0
       ? await supabase.from("profiles").select("id, name, email").in("id", seekerIds)
@@ -56,11 +98,52 @@ export default async function AdminRequestsPage() {
         </p>
       </div>
 
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        {requestFilters.slice(1).map((filter) => {
+          const isActive = activeStatus === filter.value;
+
+          return (
+            <Link
+              className={cn(
+                "rounded-2xl border p-4 transition",
+                isActive
+                  ? "border-blue-200 bg-blue-50"
+                  : "border-slate-200 bg-white hover:bg-slate-50",
+              )}
+              href={buildAdminRequestsHref(isActive ? "" : filter.value)}
+              key={filter.value}
+            >
+              <p className="text-sm font-black text-slate-500">{filter.label}</p>
+              <p className="mt-1 text-2xl font-black">
+                {(statusCounts.get(filter.value) ?? 0).toLocaleString("ko-KR")}
+              </p>
+            </Link>
+          );
+        })}
+      </div>
+
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-black">
-            Request queue {requests?.length ?? 0}
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-black">
+                Request queue {requests?.length ?? 0}
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                {activeStatus
+                  ? `${getStatusMeta("adminRequest", activeStatus).label} 요청`
+                  : "접수된 모든 행정 요청"}
+              </p>
+            </div>
+            {activeStatus ? (
+              <Link
+                className="text-sm font-black text-blue-700 hover:text-blue-900"
+                href="/admin/admin-requests"
+              >
+                전체 보기
+              </Link>
+            ) : null}
+          </div>
         </div>
         <div className="divide-y divide-slate-100">
           {requests && requests.length > 0 ? (
