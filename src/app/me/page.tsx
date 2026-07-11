@@ -1,4 +1,4 @@
-import { FileText, Send, ShieldCheck } from "lucide-react";
+import { BriefcaseBusiness, FileText, Send, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -6,6 +6,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getApplicationCompletion } from "@/lib/applications/completeness";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
+import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +60,7 @@ export default async function MePage() {
 
   const [
     { data: profile },
-    { count: applicationCount },
+    { data: applications, count: applicationCount },
     { count: adminRequestCount },
     { data: resume },
   ] = await Promise.all([
@@ -72,8 +73,11 @@ export default async function MePage() {
         .maybeSingle(),
       supabase
         .from("job_applications")
-        .select("id", { count: "exact", head: true })
-        .eq("seeker_id", user.id),
+        .select("id, job_id, status, applied_at, status_updated_at, company_note", {
+          count: "exact",
+        })
+        .eq("seeker_id", user.id)
+        .order("applied_at", { ascending: false }),
       supabase
         .from("admin_requests")
         .select("id", { count: "exact", head: true })
@@ -92,6 +96,47 @@ export default async function MePage() {
     .eq("id", user.id)
     .maybeSingle();
   const avatarUrl = getProfilePhotoUrl(supabase, accountProfile?.avatar_path);
+  const recentApplications = applications?.slice(0, 3) ?? [];
+  const recentJobIds = recentApplications.map((application) => application.job_id);
+  const { data: recentJobs } =
+    recentJobIds.length > 0
+      ? await supabase
+          .from("jobs")
+          .select("id, company_id, title, location, employment_type")
+          .in("id", recentJobIds)
+      : { data: [] };
+  const recentCompanyIds = Array.from(
+    new Set(recentJobs?.map((job) => job.company_id) ?? []),
+  );
+  const { data: recentCompanies } =
+    recentCompanyIds.length > 0
+      ? await supabase.from("companies").select("id, name").in("id", recentCompanyIds)
+      : { data: [] };
+  const jobById = new Map(recentJobs?.map((job) => [job.id, job]) ?? []);
+  const companyById = new Map(
+    recentCompanies?.map((company) => [company.id, company]) ?? [],
+  );
+  const { data: recommendedJobs } = await supabase
+    .from("jobs")
+    .select(
+      "id, company_id, title, location, employment_type, category, wage_type, wage_amount, visa_support_type, published_at",
+    )
+    .eq("status", "published")
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .limit(6);
+  const recommendedCompanyIds = Array.from(
+    new Set(recommendedJobs?.map((job) => job.company_id) ?? []),
+  );
+  const { data: recommendedCompanies } =
+    recommendedCompanyIds.length > 0
+      ? await supabase
+          .from("companies")
+          .select("id, name, verification_status")
+          .in("id", recommendedCompanyIds)
+      : { data: [] };
+  const recommendedCompanyById = new Map(
+    recommendedCompanies?.map((company) => [company.id, company]) ?? [],
+  );
 
   const profileCompletion = getProfileCompletion(profile);
   const applicationCompletion = getApplicationCompletion({
@@ -155,6 +200,42 @@ export default async function MePage() {
       icon: FileText,
     },
   ];
+  const applicationStatusCounts = new Map<string, number>();
+  applications?.forEach((application) => {
+    applicationStatusCounts.set(
+      application.status,
+      (applicationStatusCounts.get(application.status) ?? 0) + 1,
+    );
+  });
+  const dashboardAlerts = [
+    ...(!applicationCompletion.profile.isComplete
+      ? [
+          {
+            href: "/me/profile",
+            label: "프로필 보완 필요",
+            note: applicationCompletion.profile.missing.slice(0, 3).join(", "),
+          },
+        ]
+      : []),
+    ...(!applicationCompletion.resume.isComplete
+      ? [
+          {
+            href: "/me/resume",
+            label: "이력서 보완 필요",
+            note: applicationCompletion.resume.missing.slice(0, 3).join(", "),
+          },
+        ]
+      : []),
+    ...(applicationStatusCounts.get("accepted")
+      ? [
+          {
+            href: "/me/applications?status=accepted",
+            label: "합격 처리된 지원",
+            note: `${applicationStatusCounts.get("accepted")}건의 합격 상태를 확인하세요`,
+          },
+        ]
+      : []),
+  ].slice(0, 3);
 
   return (
     <DashboardShell area="me">
@@ -255,6 +336,158 @@ export default async function MePage() {
             </article>
           );
         })}
+      </div>
+
+      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+            <div>
+              <h2 className="text-lg font-black">최근 지원 현황</h2>
+              <p className="mt-1 text-sm font-semibold text-slate-500">
+                기업 상태 변경과 안내 메모를 바로 확인합니다.
+              </p>
+            </div>
+            <Link
+              className="text-sm font-black text-blue-700 hover:text-blue-900"
+              href="/me/applications"
+            >
+              전체 보기
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {recentApplications.length > 0 ? (
+              recentApplications.map((application) => {
+                const job = jobById.get(application.job_id);
+                const company = job ? companyById.get(job.company_id) : null;
+
+                return (
+                  <article className="px-5 py-4" key={application.id}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words text-sm font-black text-slate-950">
+                          {job?.title ?? "공고"}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-slate-500">
+                          {company?.name ?? "Company"} · {job?.location ?? "-"} ·{" "}
+                          {job?.employment_type ?? "-"}
+                        </p>
+                      </div>
+                      <span className={getStatusBadgeClassName("application", application.status)}>
+                        {getStatusMeta("application", application.status).label}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs font-bold text-slate-400">
+                      지원일 {new Date(application.applied_at).toLocaleString("ko-KR")}
+                    </p>
+                    {application.company_note ? (
+                      <p className="mt-2 line-clamp-2 rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
+                        기업 안내: {application.company_note}
+                      </p>
+                    ) : null}
+                  </article>
+                );
+              })
+            ) : (
+              <div className="px-5 py-8">
+                <p className="text-sm font-black text-slate-700">
+                  아직 지원한 공고가 없습니다.
+                </p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                  준비 정보를 채운 뒤 지원 가능한 공고를 찾아보세요.
+                </p>
+                <Link
+                  className={cn(buttonVariants({ className: "mt-4", size: "sm" }))}
+                  href="/jobs"
+                >
+                  공고 찾기
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+
+        <div className="grid gap-5">
+          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="text-lg font-black">오늘 확인할 일</h2>
+            <div className="mt-4 grid gap-2">
+              {dashboardAlerts.length > 0 ? (
+                dashboardAlerts.map((alert) => (
+                  <Link
+                    className="rounded-xl border border-slate-100 bg-slate-50 p-3 transition hover:bg-blue-50"
+                    href={alert.href}
+                    key={alert.label}
+                  >
+                    <p className="text-sm font-black text-slate-900">{alert.label}</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                      {alert.note || "상세 내용을 확인해주세요."}
+                    </p>
+                  </Link>
+                ))
+              ) : (
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                  <p className="text-sm font-black text-emerald-900">
+                    지원 준비가 정리되어 있습니다.
+                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-emerald-800">
+                    맞춤 공고를 확인하고 지원을 이어가세요.
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-black">최근 공개 공고</h2>
+              <BriefcaseBusiness className="size-5 text-blue-700" />
+            </div>
+            <div className="mt-4 grid gap-3">
+              {(recommendedJobs ?? []).slice(0, 3).map((job) => {
+                const company = recommendedCompanyById.get(job.company_id);
+                const wage =
+                  job.wage_amount && job.wage_type
+                    ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
+                    : "급여 협의";
+
+                return (
+                  <Link
+                    className="rounded-xl border border-slate-100 bg-slate-50 p-3 transition hover:bg-blue-50"
+                    href={`/jobs/${job.id}`}
+                    key={job.id}
+                  >
+                    <p className="line-clamp-1 text-sm font-black text-slate-950">
+                      {job.title}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                      {company?.name ?? "Company"} · {job.location || "-"} · {wage}
+                    </p>
+                    {company?.verification_status === "verified" ? (
+                      <span className="mt-2 inline-flex rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
+                        인증 기업
+                      </span>
+                    ) : null}
+                  </Link>
+                );
+              })}
+              {recommendedJobs && recommendedJobs.length > 0 ? (
+                <Link
+                  className={cn(buttonVariants({ className: "w-full", size: "sm" }))}
+                  href={
+                    applicationCompletion.isComplete
+                      ? "/jobs?profile_fit=eligible"
+                      : "/jobs"
+                  }
+                >
+                  더 많은 공고 보기
+                </Link>
+              ) : (
+                <p className="text-sm font-semibold text-slate-500">
+                  아직 공개 공고가 없습니다.
+                </p>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
     </DashboardShell>
   );
