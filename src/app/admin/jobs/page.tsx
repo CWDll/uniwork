@@ -36,22 +36,17 @@ export default async function AdminJobsPage({
     redirect("/login?next=/admin/jobs");
   }
 
-  const { data: jobs } = await (() => {
-    let query = supabase
-      .from("jobs")
-      .select(
-        "id, company_id, title, location, employment_type, category, status, review_note, reviewed_at, reviewed_by, created_at, published_at, closed_at",
-      )
-      .order("created_at", { ascending: false });
+  const { data: allJobs } = await supabase
+    .from("jobs")
+    .select(
+      "id, company_id, title, description, location, employment_type, category, wage_type, wage_amount, visa_support_type, korean_requirement, status, review_note, reviewed_at, reviewed_by, created_at, published_at, closed_at",
+    )
+    .order("created_at", { ascending: false });
+  const jobs = activeStatus
+    ? allJobs?.filter((job) => job.status === activeStatus)
+    : allJobs;
 
-    if (activeStatus) {
-      query = query.eq("status", activeStatus);
-    }
-
-    return query;
-  })();
-
-  const companyIds = Array.from(new Set(jobs?.map((job) => job.company_id) ?? []));
+  const companyIds = Array.from(new Set(allJobs?.map((job) => job.company_id) ?? []));
   const { data: companies } =
     companyIds.length > 0
       ? await supabase
@@ -63,7 +58,7 @@ export default async function AdminJobsPage({
   const companyById = new Map(
     companies?.map((company) => [company.id, company]) ?? [],
   );
-  const jobIds = jobs?.map((job) => job.id) ?? [];
+  const jobIds = allJobs?.map((job) => job.id) ?? [];
   const { data: applications } =
     jobIds.length > 0
       ? await supabase
@@ -79,7 +74,7 @@ export default async function AdminJobsPage({
     );
   });
   const statusCounts = new Map<string, number>();
-  jobs?.forEach((job) => {
+  allJobs?.forEach((job) => {
     statusCounts.set(job.status, (statusCounts.get(job.status) ?? 0) + 1);
   });
 
@@ -128,7 +123,9 @@ export default async function AdminJobsPage({
             <div>
               <h2 className="text-lg font-black">Job operations</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                전체 공고 {jobs?.length ?? 0}개
+                {activeStatus
+                  ? `${getStatusMeta("job", activeStatus).label} 공고 ${jobs?.length ?? 0}개`
+                  : `전체 공고 ${allJobs?.length ?? 0}개`}
               </p>
             </div>
             {activeStatus ? (
@@ -147,6 +144,11 @@ export default async function AdminJobsPage({
               const company = companyById.get(job.company_id);
               const status = getStatusMeta("job", job.status);
               const applicationCount = applicationCountByJobId.get(job.id) ?? 0;
+              const readiness = getJobReadiness(job);
+              const guidance = getJobReviewGuidance({
+                missingCount: readiness.missing.length,
+                status: job.status,
+              });
 
               return (
                 <article
@@ -177,6 +179,35 @@ export default async function AdminJobsPage({
                         label="Created"
                         value={new Date(job.created_at).toLocaleString("ko-KR")}
                       />
+                      <Info
+                        label="Readiness"
+                        value={`${readiness.completed}/${readiness.total} 항목`}
+                      />
+                      <Info label="Next step" value={guidance.title} />
+                    </div>
+                    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        Posting quality
+                      </p>
+                      {readiness.missing.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {readiness.missing.map((item) => (
+                            <span
+                              className="rounded-md bg-white px-2 py-1 text-xs font-black text-amber-700"
+                              key={item}
+                            >
+                              {item}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm font-semibold text-slate-600">
+                          구직자가 판단할 핵심 정보가 입력되어 있습니다.
+                        </p>
+                      )}
+                      <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                        {guidance.detail}
+                      </p>
                     </div>
                     {job.review_note ? (
                       <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-700">
@@ -198,6 +229,10 @@ export default async function AdminJobsPage({
                         name="review_note"
                         placeholder="반려/마감/승인 사유 또는 기업 안내 메모"
                       />
+                      <span className="text-[11px] font-bold normal-case tracking-normal text-slate-500">
+                        반려 처리 시에는 기업 담당자가 수정할 수 있도록 5자 이상
+                        보완 메모를 남겨주세요.
+                      </span>
                     </label>
                     <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
                       <StatusButton
@@ -224,8 +259,23 @@ export default async function AdminJobsPage({
               );
             })
           ) : (
-            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-              검토할 공고가 없습니다.
+            <div className="px-5 py-8">
+              <p className="text-sm font-black text-slate-700">
+                검토할 공고가 없습니다.
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                {activeStatus
+                  ? "다른 상태를 선택하거나 전체 공고 목록을 확인해보세요."
+                  : "기업 담당자가 공고를 등록하면 이 화면에 표시됩니다."}
+              </p>
+              {activeStatus ? (
+                <Link
+                  className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+                  href="/admin/jobs"
+                >
+                  전체 보기
+                </Link>
+              ) : null}
             </div>
           )}
         </div>
@@ -247,15 +297,92 @@ function StatusButton({
 
   return (
     <Button
-      disabled={isCurrent}
       name="status"
       type="submit"
       value={status}
       variant={status === "published" ? "default" : "outline"}
     >
-      {isCurrent ? "현재 상태" : children}
+      {isCurrent ? "메모 저장" : children}
     </Button>
   );
+}
+
+function getJobReadiness(job: {
+  category?: string | null;
+  description?: string | null;
+  employment_type?: string | null;
+  korean_requirement?: string | null;
+  location?: string | null;
+  title?: string | null;
+  visa_support_type?: string | null;
+  wage_amount?: number | null;
+  wage_type?: string | null;
+}) {
+  const checks = [
+    { done: Boolean(job.title?.trim()), label: "제목" },
+    { done: Boolean(job.location?.trim()), label: "근무지" },
+    { done: Boolean(job.employment_type?.trim()), label: "근무형태" },
+    { done: Boolean(job.category?.trim()), label: "카테고리" },
+    { done: Boolean(job.wage_type?.trim()), label: "급여 유형" },
+    { done: job.wage_amount !== null && job.wage_amount !== undefined, label: "급여 금액" },
+    { done: Boolean(job.visa_support_type?.trim()), label: "비자 조건" },
+    { done: Boolean(job.korean_requirement?.trim()), label: "한국어 조건" },
+    {
+      done: (job.description?.trim().length ?? 0) >= 60,
+      label: "설명 60자 이상",
+    },
+  ];
+  const missing = checks.filter((check) => !check.done).map((check) => check.label);
+
+  return {
+    completed: checks.length - missing.length,
+    missing,
+    total: checks.length,
+  };
+}
+
+function getJobReviewGuidance({
+  missingCount,
+  status,
+}: {
+  missingCount: number;
+  status: string;
+}) {
+  if (status === "published" && missingCount === 0) {
+    return {
+      detail: "공개 중인 공고입니다. 신고나 품질 문제가 없다면 유지해도 됩니다.",
+      title: "공개 유지",
+    };
+  }
+
+  if (status === "published") {
+    return {
+      detail: "공개 중이지만 부족한 항목이 있습니다. 기업에 보완 메모를 남기는 것을 검토하세요.",
+      title: "공개 품질 확인",
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      detail: "반려 상태입니다. 기업 담당자가 수정 방향을 이해할 수 있는 메모인지 확인하세요.",
+      title: "보완 대기",
+    };
+  }
+
+  if (status === "closed") {
+    return {
+      detail: "마감된 공고입니다. 지원자 수와 마감 사유가 적절한지 확인하세요.",
+      title: "마감 상태",
+    };
+  }
+
+  return {
+    detail:
+      missingCount > 0
+        ? "초안에 부족한 항목이 있습니다. 공개 전 보완이 필요합니다."
+        : "필수 항목이 준비된 초안입니다. 공개 전 최종 검토가 가능합니다.",
+    title: "초안 검토",
+  };
 }
 
 function Info({ label, value }: { label: string; value: string }) {

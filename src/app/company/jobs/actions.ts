@@ -108,8 +108,8 @@ export async function createCompanyJobAction(
     return { error: "공고 제목은 최소 4자 이상 입력해주세요." };
   }
 
-  if (description.length < 20) {
-    return { error: "공고 설명은 최소 20자 이상 입력해주세요." };
+  if (description.length < 60) {
+    return { error: "공고 설명은 업무, 근무시간, 유의사항을 포함해 최소 60자 이상 입력해주세요." };
   }
 
   const rawWageAmount = String(formData.get("wage_amount") ?? "").trim();

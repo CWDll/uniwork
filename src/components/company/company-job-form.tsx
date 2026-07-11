@@ -77,6 +77,12 @@ export function CompanyJobForm({
         </div>
       </div>
 
+      <div className="mt-4 grid gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-950 sm:grid-cols-3">
+        <span>1. 업무 내용을 구체적으로 작성</span>
+        <span>2. 근무 시간과 장소를 명확히 입력</span>
+        <span>3. 비자/한국어 조건을 실제 기준으로 선택</span>
+      </div>
+
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <label className="grid gap-2 text-sm font-bold text-slate-700 md:col-span-2">
           Company / branch
@@ -172,7 +178,8 @@ Notes:
             required
           />
           <span className="text-xs font-semibold leading-5 text-slate-500">
-            업무, 근무시간, 외국인 유학생 근무 조건 확인 필요 여부를 함께 적어주세요.
+            업무, 근무시간, 외국인 유학생 근무 조건 확인 필요 여부를 포함해
+            60자 이상 적어주세요.
           </span>
         </label>
       </div>
