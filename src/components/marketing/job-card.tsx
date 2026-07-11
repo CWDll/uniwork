@@ -8,9 +8,12 @@ import { cn } from "@/lib/utils";
 
 type Job = {
   companyVerified?: boolean;
+  descriptionQuality?: "complete" | "needs_detail";
   id?: string;
   company: string;
+  koreanRequirement?: string;
   logo: string;
+  publishedAt?: string | null;
   title: string;
   location: string;
   type: string;
@@ -67,7 +70,29 @@ export function JobCard({ job }: { job: Job }) {
           <span className="rounded-md bg-blue-50 px-2 py-1 text-blue-700">
             {job.visa}
           </span>
+          {job.koreanRequirement ? (
+            <span className="rounded-md bg-slate-100 px-2 py-1">
+              {job.koreanRequirement}
+            </span>
+          ) : null}
           <span className="rounded-md bg-slate-100 px-2 py-1">{job.wage}</span>
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2 text-xs font-black">
+          <span
+            className={cn(
+              "rounded-md px-2 py-1",
+              job.descriptionQuality === "complete"
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-amber-50 text-amber-700",
+            )}
+          >
+            {job.descriptionQuality === "complete" ? "정보 충분" : "상세 확인"}
+          </span>
+          {job.publishedAt ? (
+            <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-500">
+              공개 {new Date(job.publishedAt).toLocaleDateString("ko-KR")}
+            </span>
+          ) : null}
         </div>
         {job.eligibility ? (
           <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-slate-500">

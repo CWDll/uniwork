@@ -105,6 +105,14 @@ export default async function JobDetailPage({
     profile: seekerProfile,
     resume,
   });
+  const postingQuality = getPostingQuality({
+    description: job.description,
+    koreanRequirement: job.korean_requirement,
+    location: job.location,
+    visaSupportType: job.visa_support_type,
+    wageAmount: job.wage_amount,
+    wageType: job.wage_type,
+  });
 
   return (
     <PublicShell>
@@ -140,6 +148,30 @@ export default async function JobDetailPage({
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <DecisionSignal
+                label="지원 가능성"
+                tone={getEligibilityTone(eligibility)}
+                value={eligibility.label}
+              />
+              <DecisionSignal
+                label="공고 정보"
+                tone={postingQuality.isComplete ? "green" : "amber"}
+                value={`${postingQuality.completed}/${postingQuality.total}`}
+              />
+              <DecisionSignal
+                label="기업 신뢰"
+                tone={
+                  company?.verification_status === "verified" ? "green" : "slate"
+                }
+                value={
+                  company?.verification_status === "verified"
+                    ? "인증 기업"
+                    : "확인 필요"
+                }
+              />
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <Info label="Location" value={job.location || "-"} />
               <Info label="Type" value={job.employment_type || "-"} />
               <Info label="Wage" value={wage} />
@@ -161,6 +193,30 @@ export default async function JobDetailPage({
                 label="Company address"
                 value={company?.address || job.location || "-"}
               />
+            </div>
+
+            <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <p className="text-sm font-black text-slate-900">지원 전 확인할 점</p>
+              {postingQuality.missing.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {postingQuality.missing.map((item) => (
+                    <span
+                      className="rounded-md bg-white px-2 py-1 text-xs font-black text-amber-700"
+                      key={item}
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm font-semibold text-slate-600">
+                  지원 판단에 필요한 주요 정보가 입력되어 있습니다.
+                </p>
+              )}
+              <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
+                비자 조건과 실제 근무 가능 시간은 지원 후 기업/운영자 확인이
+                필요할 수 있습니다.
+              </p>
             </div>
           </article>
         </div>
@@ -522,6 +578,91 @@ function EligibilityPanel({ eligibility }: { eligibility: JobEligibility }) {
       </p>
     </div>
   );
+}
+
+function DecisionSignal({
+  label,
+  tone,
+  value,
+}: {
+  label: string;
+  tone: "amber" | "blue" | "green" | "red" | "slate";
+  value: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border px-3 py-3",
+        tone === "green" && "border-emerald-100 bg-emerald-50 text-emerald-950",
+        tone === "amber" && "border-amber-100 bg-amber-50 text-amber-950",
+        tone === "red" && "border-red-100 bg-red-50 text-red-950",
+        tone === "blue" && "border-blue-100 bg-blue-50 text-blue-950",
+        tone === "slate" && "border-slate-100 bg-slate-50 text-slate-800",
+      )}
+    >
+      <p className="text-[11px] font-black uppercase tracking-wide opacity-70">
+        {label}
+      </p>
+      <p className="mt-1 break-words text-sm font-black">{value}</p>
+    </div>
+  );
+}
+
+function getEligibilityTone(
+  eligibility: JobEligibility,
+): "amber" | "blue" | "green" | "red" | "slate" {
+  if (eligibility.status === "eligible") {
+    return "green";
+  }
+
+  if (eligibility.status === "review_required") {
+    return "amber";
+  }
+
+  if (eligibility.status === "blocked") {
+    return "red";
+  }
+
+  if (eligibility.status === "sign_in_required") {
+    return "blue";
+  }
+
+  return "slate";
+}
+
+function getPostingQuality({
+  description,
+  koreanRequirement,
+  location,
+  visaSupportType,
+  wageAmount,
+  wageType,
+}: {
+  description?: string | null;
+  koreanRequirement?: string | null;
+  location?: string | null;
+  visaSupportType?: string | null;
+  wageAmount?: number | null;
+  wageType?: string | null;
+}) {
+  const checks = [
+    { done: Boolean(location?.trim()), label: "근무지" },
+    {
+      done: Boolean(wageType?.trim()) && wageAmount !== null && wageAmount !== undefined,
+      label: "급여",
+    },
+    { done: Boolean(visaSupportType?.trim()), label: "비자 조건" },
+    { done: Boolean(koreanRequirement?.trim()), label: "한국어 조건" },
+    { done: (description?.trim().length ?? 0) >= 60, label: "상세 설명" },
+  ];
+  const missing = checks.filter((check) => !check.done).map((check) => check.label);
+
+  return {
+    completed: checks.length - missing.length,
+    isComplete: missing.length === 0,
+    missing,
+    total: checks.length,
+  };
 }
 
 function Info({ label, value }: { label: string; value: string }) {

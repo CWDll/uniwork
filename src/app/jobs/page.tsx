@@ -102,7 +102,7 @@ export default async function JobsPage({
   let jobsQuery = supabase
     .from("jobs")
     .select(
-      "id, company_id, title, location, employment_type, category, wage_type, wage_amount, visa_support_type, status, created_at",
+      "id, company_id, title, description, location, employment_type, category, wage_type, wage_amount, visa_support_type, korean_requirement, status, created_at, published_at",
     )
     .eq("status", "published");
 
@@ -195,9 +195,15 @@ export default async function JobsPage({
         id: job.id,
         company,
         companyVerified: companyVerifiedById.get(String(job.company_id)) ?? false,
+        descriptionQuality:
+          (job.description?.trim().length ?? 0) >= 60
+            ? ("complete" as const)
+            : ("needs_detail" as const),
         featured: false,
+        koreanRequirement: job.korean_requirement || "한국어 조건 협의",
         location: job.location || "-",
         logo: initials || "UW",
+        publishedAt: job.published_at,
         title: job.title,
         type: job.employment_type || "-",
         visa: job.visa_support_type || "D-2/D-4 review",
@@ -393,20 +399,51 @@ export default async function JobsPage({
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-              <h2 className="text-lg font-black">Jobs {jobs.length}</h2>
-              {hasFilters ? (
-                <p className="text-sm font-semibold text-slate-500">
-                  필터가 적용된 결과입니다.
+              <div>
+                <h2 className="text-lg font-black">Jobs {jobs.length}</h2>
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {hasFilters
+                    ? "필터가 적용된 결과입니다."
+                    : "최신 공개 공고를 지원 가능성 기준으로 확인하세요."}
                 </p>
+              </div>
+              {hasFilters ? (
+                <Link
+                  className="text-sm font-black text-blue-700 hover:text-blue-900"
+                  href="/jobs"
+                >
+                  필터 초기화
+                </Link>
               ) : null}
             </div>
             <div className="divide-y divide-slate-100">
               {jobs.length > 0 ? (
                 jobs.map((job) => <JobCard job={job} key={job.id} />)
               ) : (
-                <div className="px-5 py-10 text-sm font-semibold text-slate-500">
-                  조건에 맞는 공개 공고가 없습니다. 검색어 또는 필터를 조정해
-                  주세요.
+                <div className="px-5 py-10">
+                  <p className="text-sm font-black text-slate-700">
+                    조건에 맞는 공개 공고가 없습니다.
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                    검색어 또는 필터를 조정해보세요. 비자 프로필을 입력하면 맞춤
+                    공고 필터도 사용할 수 있습니다.
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {hasFilters ? (
+                      <Link
+                        className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+                        href="/jobs"
+                      >
+                        필터 초기화
+                      </Link>
+                    ) : null}
+                    <Link
+                      className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
+                      href={user ? "/me/profile" : "/login?next=/me/profile"}
+                    >
+                      프로필 보완
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
