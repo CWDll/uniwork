@@ -106,6 +106,12 @@ type SortableApplication = {
   };
 };
 
+type ReviewWorkflow = {
+  detail: string;
+  label: string;
+  tone: "amber" | "blue" | "green" | "red" | "slate";
+};
+
 function compareApplications(
   first: SortableApplication,
   second: SortableApplication,
@@ -357,6 +363,9 @@ export default async function CompanyApplicationsPage({
   ).length;
   const attentionNeededCount = enrichedApplications.filter(
     (item) => item.attention.score >= 40,
+  ).length;
+  const memoedCount = enrichedApplications.filter((item) =>
+    item.application.company_note?.trim(),
   ).length;
   const overdueReviewCount = enrichedApplications.filter(
     (item) => item.attention.flags.isOverdueReview,
@@ -682,8 +691,8 @@ export default async function CompanyApplicationsPage({
           </h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             {hasActiveFilters
-              ? "현재 필터 조건에 맞는 지원자"
-              : "전체 회사/지점의 최신 지원자"}
+              ? `현재 필터 조건에 맞는 지원자 · 메모 ${memoedCount}/${enrichedApplications.length}`
+              : `전체 회사/지점의 최신 지원자 · 메모 ${memoedCount}/${enrichedApplications.length}`}
           </p>
         </div>
         <div className="divide-y divide-slate-100">
@@ -706,6 +715,13 @@ export default async function CompanyApplicationsPage({
                 profilePhotoById.get(application.seeker_id),
               );
               const status = getStatusMeta("application", application.status);
+              const workflow = getReviewWorkflow({
+                attention,
+                application,
+                completion,
+                hasCompleteSnapshot: snapshotMeta.hasCompleteSnapshot,
+              });
+              const missingPreview = completion.missing.slice(0, 3);
 
               return (
                 <article className="grid gap-4 px-4 py-4 sm:px-5" key={application.id}>
@@ -746,6 +762,14 @@ export default async function CompanyApplicationsPage({
                           <CompletionBadge
                             isComplete={snapshotMeta.hasCompleteSnapshot}
                             label={snapshotMeta.label}
+                          />
+                          <CompletionBadge
+                            isComplete={Boolean(application.company_note?.trim())}
+                            label={
+                              application.company_note?.trim()
+                                ? "메모 있음"
+                                : "메모 없음"
+                            }
                           />
                         </div>
                         <p className="mt-1 break-words text-sm font-semibold text-slate-500">
@@ -789,6 +813,23 @@ export default async function CompanyApplicationsPage({
                             value={formatSnapshotTime(snapshotMeta.capturedAt)}
                           />
                         </div>
+                        {!completion.isComplete ? (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {missingPreview.map((missing) => (
+                              <span
+                                className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700"
+                                key={missing}
+                              >
+                                {missing}
+                              </span>
+                            ))}
+                            {completion.missing.length > missingPreview.length ? (
+                              <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
+                                +{completion.missing.length - missingPreview.length}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : null}
                         {attention.score >= 40 ? (
                           <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold leading-6 text-red-900">
                             <span>조치 필요: {attention.summary}</span>
@@ -816,6 +857,11 @@ export default async function CompanyApplicationsPage({
                       </div>
                     </div>
                     <div className="grid gap-2 rounded-xl bg-slate-50 p-3 xl:w-[292px] xl:bg-transparent xl:p-0">
+                      <ReviewWorkflowCard workflow={workflow} />
+                      <Info
+                        label="Last action"
+                        value={formatLastAction(application)}
+                      />
                       <Link
                         className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"
                         href={`/company/applications/${application.id}`}
@@ -857,6 +903,117 @@ function Info({
         {label}
       </p>
       <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
+    </div>
+  );
+}
+
+function formatLastAction(application: {
+  applied_at: string;
+  status_updated_at?: string | null;
+}) {
+  if (application.status_updated_at) {
+    return `상태 변경 ${new Date(application.status_updated_at).toLocaleString("ko-KR")}`;
+  }
+
+  return `접수 ${new Date(application.applied_at).toLocaleString("ko-KR")}`;
+}
+
+function getReviewWorkflow({
+  attention,
+  application,
+  completion,
+  hasCompleteSnapshot,
+}: {
+  attention: ApplicationAttention;
+  application: {
+    company_note?: string | null;
+    status: string;
+  };
+  completion: {
+    isComplete: boolean;
+  };
+  hasCompleteSnapshot: boolean;
+}): ReviewWorkflow {
+  const hasCompanyNote = Boolean(application.company_note?.trim());
+
+  if (attention.flags.isOverdueReview) {
+    return {
+      detail: "검토 중으로 바꾸고 구직자에게 진행 상황을 안내하세요.",
+      label: "오늘 검토 시작",
+      tone: "red",
+    };
+  }
+
+  if (application.status === "submitted") {
+    return {
+      detail: "프로필과 이력서를 확인한 뒤 상태를 검토 중으로 바꾸세요.",
+      label: "신규 지원 검토",
+      tone: "blue",
+    };
+  }
+
+  if (application.status === "reviewing" && !hasCompanyNote) {
+    return {
+      detail: "대기 사유나 다음 안내를 메모로 남기면 구직자가 놓치지 않습니다.",
+      label: "안내 메모 필요",
+      tone: "amber",
+    };
+  }
+
+  if (application.status === "reviewing") {
+    return {
+      detail: "검토가 끝났다면 합격 또는 불합격으로 상태를 정리하세요.",
+      label: "결정 대기",
+      tone: "blue",
+    };
+  }
+
+  if (
+    (application.status === "accepted" || application.status === "rejected") &&
+    !hasCompanyNote
+  ) {
+    return {
+      detail: "최종 상태에 대한 안내 메모를 남기면 지원자 경험이 좋아집니다.",
+      label: "최종 안내 보완",
+      tone: "amber",
+    };
+  }
+
+  if (!completion.isComplete || !hasCompleteSnapshot) {
+    return {
+      detail: "지원 정보가 부족하거나 현재 정보 fallback입니다. 상세에서 확인하세요.",
+      label: "데이터 확인",
+      tone: "amber",
+    };
+  }
+
+  return {
+    detail: "현재 상태와 안내 메모가 정리되어 있습니다.",
+    label: "정리 완료",
+    tone: "green",
+  };
+}
+
+function ReviewWorkflowCard({ workflow }: { workflow: ReviewWorkflow }) {
+  return (
+    <div
+      className={cn(
+        "rounded-xl border p-3",
+        workflow.tone === "red" && "border-red-100 bg-red-50 text-red-950",
+        workflow.tone === "amber" && "border-amber-100 bg-amber-50 text-amber-950",
+        workflow.tone === "blue" && "border-blue-100 bg-blue-50 text-blue-950",
+        workflow.tone === "green" &&
+          "border-emerald-100 bg-emerald-50 text-emerald-950",
+        workflow.tone === "slate" && "border-slate-200 bg-white text-slate-800",
+      )}
+    >
+      <p className="text-xs font-black uppercase tracking-wide opacity-70">
+        Next action
+      </p>
+      <p className="mt-1 text-sm font-black">{workflow.label}</p>
+      <p className="mt-1 text-xs font-semibold leading-5 opacity-80">
+        {workflow.detail}
+      </p>
     </div>
   );
 }
