@@ -133,6 +133,8 @@ export async function saveSeekerProfileAction(
 
   revalidatePath("/me/profile");
   revalidatePath("/me");
+  revalidatePath("/jobs");
+  revalidatePath("/me/applications");
 
   return { message: "프로필이 저장되었습니다." };
 }

@@ -233,9 +233,12 @@ export function SeekerProfileForm({
         </p>
       ) : null}
       {state.message ? (
-        <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-          {state.message}
-        </p>
+        <div className="mt-4 rounded-md bg-emerald-50 px-3 py-3">
+          <p className="text-sm font-semibold text-emerald-700">{state.message}</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-emerald-800">
+            이제 이력서를 확인하면 공고 상세에서 제출 정보 기준으로 지원할 수 있습니다.
+          </p>
+        </div>
       ) : null}
 
       <SubmitButton />

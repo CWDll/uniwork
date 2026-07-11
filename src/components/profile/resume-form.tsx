@@ -27,6 +27,7 @@ type LanguageItem = {
 type Resume = {
   education: EducationItem[] | null;
   experience: ExperienceItem[] | null;
+  id?: string | null;
   intro: string | null;
   languages: LanguageItem[] | null;
   title: string | null;
@@ -179,9 +180,12 @@ export function ResumeForm({ resume }: { resume: Resume | null }) {
         </p>
       ) : null}
       {state.message ? (
-        <p className="mt-4 rounded-md bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-          {state.message}
-        </p>
+        <div className="mt-4 rounded-md bg-emerald-50 px-3 py-3">
+          <p className="text-sm font-semibold text-emerald-700">{state.message}</p>
+          <p className="mt-1 text-xs font-bold leading-5 text-emerald-800">
+            프로필도 완성되어 있다면 공고 상세에서 제출 정보 확인 후 바로 지원할 수 있습니다.
+          </p>
+        </div>
       ) : null}
 
       <SubmitButton />

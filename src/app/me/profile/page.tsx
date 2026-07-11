@@ -1,10 +1,14 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { ProfilePhotoUploader } from "@/components/profile/profile-photo-uploader";
 import { SeekerProfileForm } from "@/components/profile/seeker-profile-form";
+import { buttonVariants } from "@/components/ui/button";
+import { getProfileCompletion } from "@/lib/applications/completeness";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export default async function SeekerProfilePage() {
   const supabase = await createClient();
@@ -29,6 +33,7 @@ export default async function SeekerProfilePage() {
     .eq("id", user.id)
     .maybeSingle();
   const avatarUrl = getProfilePhotoUrl(supabase, accountProfile?.avatar_path);
+  const completion = getProfileCompletion(profile);
 
   return (
     <DashboardShell area="me">
@@ -46,6 +51,55 @@ export default async function SeekerProfilePage() {
       </div>
 
       <div className="grid gap-5">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-black text-slate-900">
+                지원 프로필 완성도 {completion.completedCount}/{completion.totalCount}
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                이 정보는 공고 지원 가능성 판단과 지원 시점 제출본에 사용됩니다.
+              </p>
+            </div>
+            <span
+              className={cn(
+                "w-max rounded-md px-2 py-1 text-xs font-black",
+                completion.isComplete
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-amber-50 text-amber-700",
+              )}
+            >
+              {completion.isComplete ? "지원 준비 완료" : "보완 필요"}
+            </span>
+          </div>
+          {completion.missing.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {completion.missing.map((item) => (
+                <span
+                  className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700"
+                  key={item}
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+                href="/jobs?profile_fit=eligible"
+              >
+                지원 가능한 공고 보기
+              </Link>
+              <Link
+                className={cn(buttonVariants({ size: "sm" }))}
+                href="/me/resume"
+              >
+                이력서 확인
+              </Link>
+            </div>
+          )}
+        </section>
         <ProfilePhotoUploader avatarUrl={avatarUrl} userId={user.id} />
         <SeekerProfileForm
           accountEmail={accountProfile?.email ?? user.email ?? ""}

@@ -112,6 +112,8 @@ export async function saveResumeAction(
 
   revalidatePath("/me/resume");
   revalidatePath("/me");
+  revalidatePath("/jobs");
+  revalidatePath("/me/applications");
   revalidatePath("/company/applications");
 
   return { message: "이력/소개 정보가 저장되었습니다." };
