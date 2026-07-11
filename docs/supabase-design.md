@@ -157,6 +157,9 @@ Important: `owner_id` is intentionally **not unique**. One company-role user can
 - `assigned_partner_id uuid references profiles(id)`
 - `status text default 'received'`
 - `memo text`
+- `request_details jsonb default '{}'`
+- `document_checklist jsonb default '{}'`
+- `contact_snapshot jsonb default '{}'`
 - `created_at timestamptz default now()`
 - `updated_at timestamptz default now()`
 

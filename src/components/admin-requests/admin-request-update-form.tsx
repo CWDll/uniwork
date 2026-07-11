@@ -40,16 +40,16 @@ export function AdminRequestUpdateForm({
           defaultValue={status}
           name="status"
         >
-          <option value="received">received</option>
-          <option value="reviewing">reviewing</option>
-          <option value="partner_needed">partner_needed</option>
-          <option value="assigned">assigned</option>
-          <option value="completed">completed</option>
-          <option value="rejected">rejected</option>
+          <option value="received">접수</option>
+          <option value="reviewing">운영자 검토</option>
+          <option value="partner_needed">행정사 전달 필요</option>
+          <option value="assigned">행정사 배정</option>
+          <option value="completed">완료</option>
+          <option value="rejected">반려</option>
         </select>
       </label>
       <label className="grid gap-2 text-sm font-bold text-slate-700">
-        Operator memo
+        운영자 메모
         <textarea
           className="min-h-24 rounded-md border border-slate-200 bg-white px-3 py-2"
           defaultValue={memo ?? ""}
@@ -57,13 +57,13 @@ export function AdminRequestUpdateForm({
         />
       </label>
       <label className="grid gap-2 text-sm font-bold text-slate-700">
-        Partner
+        외부 행정사/파트너
         <select
           className="h-11 rounded-md border border-slate-200 bg-white px-3"
           defaultValue={assignedPartnerId ?? ""}
           name="assigned_partner_id"
         >
-          <option value="">Unassigned</option>
+          <option value="">미배정</option>
           {partners.map((partner) => (
             <option key={partner.id} value={partner.id}>
               {partner.name || partner.email}
@@ -91,7 +91,7 @@ function SubmitButton() {
 
   return (
     <Button className="w-full" disabled={pending} size="sm" type="submit">
-      {pending ? "Updating..." : "Update"}
+      {pending ? "저장 중..." : "상태 저장"}
     </Button>
   );
 }

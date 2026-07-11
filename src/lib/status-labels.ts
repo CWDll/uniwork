@@ -74,9 +74,17 @@ const statusByDomain = {
       label: "행정사 배정",
       className: "bg-violet-50 text-violet-700",
     },
+    partner_needed: {
+      label: "행정사 전달 필요",
+      className: "bg-violet-50 text-violet-700",
+    },
     completed: {
       label: "완료",
       className: "bg-emerald-50 text-emerald-700",
+    },
+    rejected: {
+      label: "반려",
+      className: "bg-red-50 text-red-700",
     },
   },
 } as const;

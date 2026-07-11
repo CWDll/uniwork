@@ -9,6 +9,14 @@ type AdminRequestState = {
   message?: string;
 };
 
+function compact(value: FormDataEntryValue | null) {
+  return String(value ?? "").trim();
+}
+
+function toArray(values: FormDataEntryValue[]) {
+  return values.map((value) => String(value).trim()).filter(Boolean);
+}
+
 export async function createAdminRequestAction(
   _prevState: AdminRequestState,
   formData: FormData,
@@ -22,11 +30,38 @@ export async function createAdminRequestAction(
     return { error: "로그인이 필요합니다." };
   }
 
-  const type = String(formData.get("type") ?? "").trim();
-  const memo = String(formData.get("memo") ?? "").trim();
+  const type = compact(formData.get("type"));
+  const memo = compact(formData.get("memo"));
+  const currentVisaType = compact(formData.get("current_visa_type"));
+  const alienRegistrationStatus = compact(
+    formData.get("alien_registration_status"),
+  );
+  const school = compact(formData.get("school"));
+  const major = compact(formData.get("major"));
+  const targetStartDate = compact(formData.get("target_start_date"));
+  const plannedWorkHours = compact(formData.get("planned_work_hours"));
+  const contactEmail = compact(formData.get("contact_email"));
+  const contactPhone = compact(formData.get("contact_phone"));
+  const documentsReady = toArray(formData.getAll("documents_ready"));
+  const missingDocumentsNote = compact(formData.get("missing_documents_note"));
+  const handoffConsent = formData.get("handoff_consent") === "on";
 
   if (!type) {
     return { error: "요청 유형을 선택해주세요." };
+  }
+
+  if (!currentVisaType || !alienRegistrationStatus || !school || !contactEmail) {
+    return {
+      error: "현재 체류자격, 외국인등록 상태, 학교/기관, 연락 이메일은 필수입니다.",
+    };
+  }
+
+  if (!contactEmail.includes("@")) {
+    return { error: "연락 이메일 형식을 확인해주세요." };
+  }
+
+  if (!handoffConsent) {
+    return { error: "운영자 검토 및 외부 행정사 전달 동의가 필요합니다." };
   }
 
   const { data: profile } = await supabase
@@ -45,6 +80,8 @@ export async function createAdminRequestAction(
       user_id: user.id,
       purpose: "administrative_request_review",
       data_scope: {
+        contact: true,
+        documents: true,
         profile: true,
         visa: true,
         applications: false,
@@ -60,11 +97,28 @@ export async function createAdminRequestAction(
   }
 
   const { error } = await supabase.from("admin_requests").insert({
-    seeker_id: user.id,
-    type,
     consent_id: consent.id,
+    contact_snapshot: {
+      email: contactEmail,
+      phone: contactPhone || null,
+    },
+    document_checklist: {
+      missing_note: missingDocumentsNote || null,
+      ready: documentsReady,
+    },
     memo,
+    request_details: {
+      alien_registration_status: alienRegistrationStatus,
+      current_visa_type: currentVisaType,
+      handoff_consent: handoffConsent,
+      major: major || null,
+      planned_work_hours: plannedWorkHours || null,
+      school,
+      target_start_date: targetStartDate || null,
+    },
+    seeker_id: user.id,
     status: "received",
+    type,
   });
 
   if (error) {

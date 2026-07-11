@@ -593,6 +593,8 @@ async function main() {
         user_id: seekerUser.id,
         purpose: "administrative_request_review",
         data_scope: {
+          contact: true,
+          documents: true,
           profile: true,
           visa: true,
         },
@@ -610,10 +612,27 @@ async function main() {
         seeker_id: seekerUser.id,
         type: "part_time_work_permission",
         consent_id: consentInsert.data.id,
+        contact_snapshot: {
+          email: seekerUser.email,
+          phone: "010-0000-0000",
+        },
+        document_checklist: {
+          missing_note: "School approval is pending.",
+          ready: ["passport", "alien_registration_card", "certificate_of_enrollment"],
+        },
         memo: "Please review my part-time work permission documents.",
+        request_details: {
+          alien_registration_status: "has_card",
+          current_visa_type: "D-2",
+          handoff_consent: true,
+          major: "Business",
+          planned_work_hours: "Weekdays 18:00-22:00",
+          school: "Uniwork University",
+          target_start_date: "2026-08-01",
+        },
         status: "received",
       })
-      .select("id, status")
+      .select("contact_snapshot, document_checklist, id, request_details, status")
       .single();
 
     assertNoError(adminRequestInsert, "insert admin request as seeker");
@@ -621,10 +640,22 @@ async function main() {
       adminRequestInsert.data.status === "received",
       "Expected admin request to start as received.",
     );
+    assert(
+      adminRequestInsert.data.request_details?.current_visa_type === "D-2",
+      "Expected admin request to store review packet visa details.",
+    );
+    assert(
+      adminRequestInsert.data.document_checklist?.ready?.includes("passport"),
+      "Expected admin request to store document checklist.",
+    );
+    assert(
+      adminRequestInsert.data.contact_snapshot?.email === seekerUser.email,
+      "Expected admin request to store contact snapshot.",
+    );
 
     const adminRequestRead = await adminClient
       .from("admin_requests")
-      .select("id, seeker_id, status")
+      .select("id, seeker_id, status, request_details, document_checklist, contact_snapshot")
       .eq("id", adminRequestInsert.data.id)
       .single();
 
@@ -632,6 +663,10 @@ async function main() {
     assert(
       adminRequestRead.data.seeker_id === seekerUser.id,
       "Expected admin to read seeker admin request.",
+    );
+    assert(
+      adminRequestRead.data.request_details?.handoff_consent === true,
+      "Expected admin to read admin request handoff consent.",
     );
 
     const adminRequestUpdate = await adminClient
@@ -691,7 +726,7 @@ async function main() {
     console.log("- Admin can publish a job, and published jobs are publicly readable.");
     console.log("- Seeker can apply to published jobs with resume_id and snapshots.");
     console.log("- Company owner can read applicant details and update application status.");
-    console.log("- Seeker can create admin requests and admin can update them.");
+    console.log("- Seeker can create admin requests with review packets and admin can update them.");
     console.log("- Admin can assign admin requests to partners.");
     console.log("- Partners can read assigned requests and seeker summaries.");
   } finally {
