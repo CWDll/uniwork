@@ -1,7 +1,11 @@
+import Link from "next/link";
+
 import { AdminRequestUpdateForm } from "@/components/admin-requests/admin-request-update-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { buttonVariants } from "@/components/ui/button";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export default async function AdminRequestsPage() {
   const supabase = await createClient();
@@ -161,6 +165,14 @@ export default async function AdminRequestsPage() {
                         Assigned partner:{" "}
                         {assignedPartner?.name || assignedPartner?.email || "unassigned"}
                       </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Link
+                          className={cn(buttonVariants({ size: "sm", variant: "outline" }))}
+                          href={`/admin/admin-requests/${request.id}/handoff`}
+                        >
+                          전달 초안 보기
+                        </Link>
+                      </div>
                       {request.memo ? (
                         <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-medium leading-6 text-slate-700">
                           {request.memo}
