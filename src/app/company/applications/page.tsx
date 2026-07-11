@@ -422,6 +422,27 @@ export default async function CompanyApplicationsPage({
         </p>
       </div>
 
+      <div className="mb-5 grid gap-3 sm:grid-cols-3">
+        <SummaryCard
+          href="/company/applications?status=submitted&sort=needs_review"
+          label="먼저 볼 지원자"
+          tone={unreviewedCount > 0 ? "blue" : "slate"}
+          value={`${unreviewedCount}명`}
+        />
+        <SummaryCard
+          href="/company/applications?alert=overdue&attention=overdue&sort=action_needed"
+          label="24시간 미검토"
+          tone={overdueReviewCount > 0 ? "red" : "slate"}
+          value={`${overdueReviewCount}명`}
+        />
+        <SummaryCard
+          href="/company/applications?attention=needed&sort=action_needed"
+          label="오늘 처리 대상"
+          tone={attentionNeededCount > 0 ? "amber" : "slate"}
+          value={`${attentionNeededCount}명`}
+        />
+      </div>
+
       <form
         className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_150px_150px_150px_150px_minmax(0,1fr)_auto]"
         action="/company/applications"
@@ -535,8 +556,8 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <div className="flex items-end gap-2">
-          <button className="h-11 rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700">
+        <div className="flex items-end gap-2 md:col-span-2 xl:col-span-1">
+          <button className="h-11 flex-1 rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700 xl:flex-none">
             필터 적용
           </button>
           {hasActiveFilters ? (
@@ -573,7 +594,7 @@ export default async function CompanyApplicationsPage({
         </div>
       ) : null}
 
-      <div className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
         <QuickFilterCard
           active={activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"}
           count={overdueReviewCount}
@@ -627,7 +648,7 @@ export default async function CompanyApplicationsPage({
         />
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-4">
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {applicationStatusOptions.slice(1).map((option) => {
           const count = (applications ?? []).filter(
             (application) => application.status === option.value,
@@ -748,18 +769,22 @@ export default async function CompanyApplicationsPage({
                             value={`${seekerProfile?.school || "학교 미입력"} · ${seekerProfile?.major || "전공 미입력"}`}
                           />
                           <Info
+                            className="hidden sm:block"
                             label="Korean"
                             value={seekerProfile?.korean_level || "미입력"}
                           />
                           <Info
+                            className="hidden sm:block"
                             label="English"
                             value={seekerProfile?.english_level || "미입력"}
                           />
                           <Info
+                            className="hidden sm:block"
                             label="Resume"
                             value={`${resume?.title || "이력서 없음"} · ${resumeCompletion.completedCount}/${resumeCompletion.totalCount}`}
                           />
                           <Info
+                            className="hidden sm:block"
                             label="Submission"
                             value={formatSnapshotTime(snapshotMeta.capturedAt)}
                           />
@@ -790,17 +815,17 @@ export default async function CompanyApplicationsPage({
                         ) : null}
                       </div>
                     </div>
-                    <div className="grid gap-2 xl:w-[292px]">
-                      <ApplicationStatusForm
-                        applicationId={application.id}
-                        currentStatus={application.status}
-                      />
+                    <div className="grid gap-2 rounded-xl bg-slate-50 p-3 xl:w-[292px] xl:bg-transparent xl:p-0">
                       <Link
-                        className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 px-3 text-sm font-black text-slate-700 hover:bg-slate-50"
+                        className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"
                         href={`/company/applications/${application.id}`}
                       >
                         상세 보기
                       </Link>
+                      <ApplicationStatusForm
+                        applicationId={application.id}
+                        currentStatus={application.status}
+                      />
                     </div>
                   </div>
                 </article>
@@ -817,14 +842,55 @@ export default async function CompanyApplicationsPage({
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  className,
+  label,
+  value,
+}: {
+  className?: string;
+  label: string;
+  value: string;
+}) {
   return (
-    <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
+    <div className={cn("min-w-0 rounded-xl bg-slate-50 px-3 py-2", className)}>
       <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
         {label}
       </p>
       <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
     </div>
+  );
+}
+
+function SummaryCard({
+  href,
+  label,
+  tone,
+  value,
+}: {
+  href: string;
+  label: string;
+  tone: "amber" | "blue" | "red" | "slate";
+  value: string;
+}) {
+  return (
+    <Link
+      className={cn(
+        "rounded-2xl border p-4 transition",
+        tone === "red" && "border-red-100 bg-red-50 hover:bg-red-100/60",
+        tone === "amber" && "border-amber-100 bg-amber-50 hover:bg-amber-100/60",
+        tone === "blue" && "border-blue-100 bg-blue-50 hover:bg-blue-100/60",
+        tone === "slate" && "border-slate-200 bg-white hover:bg-slate-50",
+      )}
+      href={href}
+    >
+      <p className="text-sm font-black text-slate-500">{label}</p>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <p className="text-2xl font-black text-slate-950">{value}</p>
+        <span className="rounded-md bg-white/75 px-2 py-1 text-xs font-black text-slate-600">
+          보기
+        </span>
+      </div>
+    </Link>
   );
 }
 

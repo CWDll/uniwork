@@ -41,7 +41,7 @@ export function ApplicationStatusForm({
           />
         </label>
       ) : null}
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 md:grid-cols-3">
         <SubmitButton
           disabled={currentStatus === "reviewing"}
           primary={currentStatus === "submitted"}
