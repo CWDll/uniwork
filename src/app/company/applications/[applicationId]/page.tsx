@@ -45,10 +45,17 @@ type LanguageItem = {
 
 export default async function CompanyApplicationDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ applicationId: string }>;
+  searchParams: Promise<{
+    application_updated?: string;
+    status_updated?: string;
+  }>;
 }) {
   const { applicationId } = await params;
+  const { application_updated: applicationUpdated, status_updated: statusUpdated } =
+    await searchParams;
   const supabase = await createClient();
   const { data: application } = await supabase
     .from("job_applications")
@@ -181,6 +188,19 @@ export default async function CompanyApplicationDetailPage({
 
       <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0">
+          {applicationUpdated ? (
+            <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+              <p className="text-sm font-black text-emerald-900">
+                지원자 상태가 저장되었습니다.
+              </p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-emerald-800">
+                {statusUpdated
+                  ? `${getStatusMeta("application", statusUpdated).label} 상태로 반영했고, 구직자 지원 현황도 최신화했습니다.`
+                  : "변경 내용이 구직자 지원 현황에 반영되었습니다."}
+              </p>
+            </div>
+          ) : null}
+
           <article className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
             <div className="flex flex-wrap items-start gap-4">
               <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-slate-100 text-2xl font-black text-blue-700 sm:size-24">

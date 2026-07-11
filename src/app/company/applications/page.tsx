@@ -25,12 +25,14 @@ type CompanyApplicationsSearchParams = {
   completeness?: string;
   attention?: string;
   alert?: string;
+  application_updated?: string;
   company?: string;
   data?: string;
   job?: string;
   q?: string;
   sort?: string;
   status?: string;
+  status_updated?: string;
 };
 
 const applicationStatusOptions = [
@@ -81,6 +83,10 @@ function buildApplicationsHref(
   const merged = { ...params, ...updates };
 
   Object.entries(merged).forEach(([key, value]) => {
+    if (key === "application_updated" || key === "status_updated") {
+      return;
+    }
+
     const nextValue = compactValue(value);
 
     if (nextValue) {
@@ -160,6 +166,7 @@ export default async function CompanyApplicationsPage({
   const activeCompanyId = compactValue(params.company);
   const activeJobId = compactValue(params.job);
   const activeStatus = compactValue(params.status);
+  const updatedStatus = compactValue(params.status_updated);
   const activeDataFilter = compactValue(params.data);
   const activeCompletenessFilter = compactValue(params.completeness);
   const activeAttentionFilter = compactValue(params.attention);
@@ -600,6 +607,19 @@ export default async function CompanyApplicationsPage({
           >
             알림 대상 보기
           </Link>
+        </div>
+      ) : null}
+
+      {params.application_updated ? (
+        <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
+          <p className="text-sm font-black text-emerald-900">
+            지원자 상태가 저장되었습니다.
+          </p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-emerald-800">
+            {updatedStatus
+              ? `${getStatusMeta("application", updatedStatus).label} 상태로 반영했고, 구직자 지원 현황도 최신화했습니다.`
+              : "변경 내용이 구직자 지원 현황에 반영되었습니다."}
+          </p>
         </div>
       ) : null}
 

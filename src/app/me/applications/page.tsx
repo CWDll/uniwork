@@ -27,6 +27,13 @@ type StatusEvent = {
   to_status: string;
 };
 
+type SeekerStatusGuidance = {
+  detail: string;
+  nextStep: string;
+  title: string;
+  tone: "blue" | "green" | "red" | "slate";
+};
+
 export default async function SeekerApplicationsPage({
   searchParams,
 }: {
@@ -202,6 +209,7 @@ export default async function SeekerApplicationsPage({
               const { application, company, job, resume, snapshotMeta, statusEvents } =
                 item;
               const status = getStatusMeta("application", application.status);
+              const guidance = getApplicationStatusGuidance(application.status);
               const isRecentlyApplied = applied === application.job_id;
 
               return (
@@ -263,6 +271,11 @@ export default async function SeekerApplicationsPage({
                       <p className="mt-3 whitespace-pre-wrap rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
                         기업 안내: {application.company_note}
                       </p>
+                    ) : application.status !== "submitted" ? (
+                      <p className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-600">
+                        아직 기업 안내 메모가 없습니다. 상태가 바뀌면 이 영역에
+                        담당자 안내가 표시됩니다.
+                      </p>
                     ) : null}
                     {statusEvents.length > 0 ? (
                       <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
@@ -286,8 +299,26 @@ export default async function SeekerApplicationsPage({
                     >
                       {status.label}
                     </span>
-                    <p className="text-sm font-semibold leading-6 text-slate-600">
-                      {getApplicationStatusGuidance(application.status)}
+                    <div
+                      className={cn(
+                        "rounded-xl border p-3",
+                        guidance.tone === "blue" &&
+                          "border-blue-100 bg-blue-50 text-blue-950",
+                        guidance.tone === "green" &&
+                          "border-emerald-100 bg-emerald-50 text-emerald-950",
+                        guidance.tone === "red" &&
+                          "border-red-100 bg-red-50 text-red-950",
+                        guidance.tone === "slate" &&
+                          "border-slate-200 bg-white text-slate-800",
+                      )}
+                    >
+                      <p className="text-sm font-black">{guidance.title}</p>
+                      <p className="mt-1 text-sm font-semibold leading-6">
+                        {guidance.detail}
+                      </p>
+                    </div>
+                    <p className="text-xs font-bold leading-5 text-slate-500">
+                      다음 할 일: {guidance.nextStep}
                     </p>
                     {job ? (
                       <Link
@@ -341,20 +372,40 @@ function StatusEventItem({
   );
 }
 
-function getApplicationStatusGuidance(status?: string | null) {
+function getApplicationStatusGuidance(status?: string | null): SeekerStatusGuidance {
   if (status === "reviewing") {
-    return "기업이 지원서를 검토하고 있습니다.";
+    return {
+      detail: "기업 담당자가 프로필과 이력서를 확인하는 단계입니다.",
+      nextStep: "기업 안내 메모가 추가되는지 확인하고, 프로필/이력서를 최신 상태로 유지하세요.",
+      title: "검토가 진행 중입니다",
+      tone: "blue",
+    };
   }
 
   if (status === "accepted") {
-    return "기업이 합격으로 표시했습니다. 기업 안내 메모를 확인해주세요.";
+    return {
+      detail: "기업이 이 지원을 합격으로 표시했습니다.",
+      nextStep: "기업 안내 메모를 확인하고, 연락처와 이메일을 바로 받을 수 있는 상태로 두세요.",
+      title: "합격 처리되었습니다",
+      tone: "green",
+    };
   }
 
   if (status === "rejected") {
-    return "이번 공고는 불합격 처리되었습니다.";
+    return {
+      detail: "이번 공고는 불합격으로 처리되었습니다.",
+      nextStep: "다른 공고를 확인하고, 부족한 프로필/이력서 항목이 있다면 보완하세요.",
+      title: "불합격 처리되었습니다",
+      tone: "red",
+    };
   }
 
-  return "지원서가 기업에 제출되었습니다.";
+  return {
+    detail: "지원서가 기업에 접수되었고 아직 검토 전입니다.",
+    nextStep: "기업이 검토를 시작하면 상태가 바뀝니다. 지원 정보는 계속 최신으로 유지하세요.",
+    title: "지원이 접수되었습니다",
+    tone: "slate",
+  };
 }
 
 function Info({ label, value }: { label: string; value: string }) {

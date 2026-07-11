@@ -15,12 +15,24 @@ function getSafeReturnTo(value: FormDataEntryValue | null) {
   if (
     returnTo === "/company/applications" ||
     returnTo.startsWith("/company/applications?") ||
-    /^\/company\/applications\/[0-9a-f-]+(?:\/print)?$/i.test(returnTo)
+    /^\/company\/applications\/[0-9a-f-]+(?:\?.*)?$/i.test(returnTo)
   ) {
     return returnTo;
   }
 
   return "/company/applications";
+}
+
+function getReturnToWithFeedback(returnTo: string, status: string) {
+  const url = new URL(returnTo, "https://uniwork.local");
+
+  url.searchParams.delete("application_updated");
+  url.searchParams.delete("status_updated");
+  url.searchParams.delete("status_error");
+  url.searchParams.set("application_updated", "1");
+  url.searchParams.set("status_updated", status);
+
+  return `${url.pathname}${url.search}`;
 }
 
 export async function updateApplicationStatusAction(formData: FormData) {
@@ -34,8 +46,12 @@ export async function updateApplicationStatusAction(formData: FormData) {
   const returnTo = getSafeReturnTo(formData.get("return_to"));
   const status = String(formData.get("status") ?? "").trim();
 
+  if (!user) {
+    redirect(returnTo);
+  }
+
   if (!applicationId || !["reviewing", "accepted", "rejected"].includes(status)) {
-    return;
+    redirect(returnTo);
   }
 
   const { data: currentApplication } = await supabase
@@ -62,7 +78,7 @@ export async function updateApplicationStatusAction(formData: FormData) {
     .update(payload)
     .eq("id", applicationId);
 
-  if (!updateError && user) {
+  if (!updateError) {
     await supabase.from("application_status_events").insert({
       actor_id: user.id,
       application_id: applicationId,
@@ -86,8 +102,9 @@ export async function updateApplicationStatusAction(formData: FormData) {
   revalidatePath("/company");
   revalidatePath("/company/applications");
   revalidatePath(`/company/applications/${applicationId}`);
+  revalidatePath("/me/applications");
 
-  redirect(returnTo);
+  redirect(updateError ? returnTo : getReturnToWithFeedback(returnTo, status));
 }
 
 async function sendApplicationStatusEmail({

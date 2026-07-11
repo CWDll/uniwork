@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { updateApplicationStatusAction } from "@/app/company/applications/actions";
@@ -21,6 +22,8 @@ export function ApplicationStatusForm({
   const searchParams = useSearchParams();
   const query = searchParams.toString();
   const returnTo = query ? `${pathname}?${query}` : pathname;
+  const [note, setNote] = useState(currentNote ?? "");
+  const statusHelp = getStatusHelp(currentStatus);
 
   return (
     <form
@@ -31,45 +34,105 @@ export function ApplicationStatusForm({
       <input name="return_to" type="hidden" value={returnTo} />
       {showNoteField ? (
         <label className="grid gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Candidate note
+          지원자 안내 메모
           <textarea
             className="min-h-24 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-slate-700 outline-none focus:border-blue-400"
-            defaultValue={currentNote ?? ""}
             maxLength={500}
             name="company_note"
+            onChange={(event) => setNote(event.target.value)}
             placeholder="구직자에게 보여줄 상태 안내 메모"
+            value={note}
           />
+          <span className="flex items-center justify-between gap-3 text-[11px] font-bold normal-case tracking-normal text-slate-500">
+            <span>이 메모는 구직자 지원 현황과 상태 변경 이력에 표시됩니다.</span>
+            <span>{note.length}/500</span>
+          </span>
         </label>
       ) : null}
+      <p className="text-xs font-semibold leading-5 text-slate-500">
+        {statusHelp}
+      </p>
       <div className="grid gap-2 md:grid-cols-3">
         <SubmitButton
-          disabled={currentStatus === "reviewing"}
+          disabled={currentStatus === "reviewing" && !showNoteField}
           primary={currentStatus === "submitted"}
           status="reviewing"
         >
-          {currentStatus === "reviewing"
-            ? "현재 상태"
-            : currentStatus === "submitted"
-              ? "검토 시작"
-              : "검토 중"}
+          {getStatusButtonLabel({
+            currentStatus,
+            showNoteField,
+            status: "reviewing",
+          })}
         </SubmitButton>
         <SubmitButton
-          disabled={currentStatus === "accepted"}
+          disabled={currentStatus === "accepted" && !showNoteField}
           primary={currentStatus === "reviewing"}
           status="accepted"
         >
-          {currentStatus === "accepted" ? "현재 상태" : "합격 처리"}
+          {getStatusButtonLabel({
+            currentStatus,
+            showNoteField,
+            status: "accepted",
+          })}
         </SubmitButton>
         <SubmitButton
-          disabled={currentStatus === "rejected"}
+          disabled={currentStatus === "rejected" && !showNoteField}
           primary={false}
           status="rejected"
         >
-          {currentStatus === "rejected" ? "현재 상태" : "불합격"}
+          {getStatusButtonLabel({
+            currentStatus,
+            showNoteField,
+            status: "rejected",
+          })}
         </SubmitButton>
       </div>
     </form>
   );
+}
+
+function getStatusHelp(status: string) {
+  if (status === "submitted") {
+    return "처음 확인했다면 검토 시작으로 바꾸고, 필요하면 안내 메모를 남겨주세요.";
+  }
+
+  if (status === "reviewing") {
+    return "검토가 끝났다면 합격 또는 불합격으로 상태를 정리하세요.";
+  }
+
+  if (status === "accepted") {
+    return "합격 상태입니다. 최종 안내가 필요하면 메모를 수정한 뒤 다시 저장하세요.";
+  }
+
+  if (status === "rejected") {
+    return "불합격 상태입니다. 지원자에게 보여줄 안내가 필요하면 메모를 수정하세요.";
+  }
+
+  return "상태를 변경하면 구직자 지원 현황에 바로 반영됩니다.";
+}
+
+function getStatusButtonLabel({
+  currentStatus,
+  showNoteField,
+  status,
+}: {
+  currentStatus: string;
+  showNoteField: boolean;
+  status: "accepted" | "rejected" | "reviewing";
+}) {
+  if (currentStatus === status) {
+    return showNoteField ? "메모 저장" : "현재 상태";
+  }
+
+  if (status === "reviewing") {
+    return currentStatus === "submitted" ? "검토 시작" : "검토 중";
+  }
+
+  if (status === "accepted") {
+    return "합격 처리";
+  }
+
+  return "불합격";
 }
 
 function SubmitButton({
