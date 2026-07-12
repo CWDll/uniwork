@@ -13,7 +13,7 @@ export default async function SeekerAdminRequestsPage() {
     ? await supabase
         .from("admin_requests")
         .select(
-          "id, type, status, memo, request_details, document_checklist, contact_snapshot, created_at, updated_at",
+          "id, type, status, memo, seeker_followup_note, seeker_followup_requested_at, request_details, document_checklist, contact_snapshot, created_at, updated_at",
         )
         .eq("seeker_id", user.id)
         .order("created_at", { ascending: false })
@@ -68,6 +68,24 @@ export default async function SeekerAdminRequestsPage() {
                       <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-600">
                         {request.memo}
                       </p>
+                    ) : null}
+                    {request.seeker_followup_note ? (
+                      <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-3">
+                        <p className="text-xs font-black uppercase tracking-wide text-amber-700">
+                          보완 요청
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-amber-900">
+                          {request.seeker_followup_note}
+                        </p>
+                        {request.seeker_followup_requested_at ? (
+                          <p className="mt-2 text-xs font-bold text-amber-700">
+                            요청일{" "}
+                            {new Date(
+                              request.seeker_followup_requested_at,
+                            ).toLocaleString("ko-KR")}
+                          </p>
+                        ) : null}
+                      </div>
                     ) : null}
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
                       <Info

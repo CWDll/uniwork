@@ -45,7 +45,7 @@ export default async function AdminRequestsPage({
   const { data: allRequests } = await supabase
     .from("admin_requests")
     .select(
-      "id, seeker_id, assigned_partner_id, type, status, memo, request_details, document_checklist, contact_snapshot, created_at, updated_at",
+      "id, seeker_id, assigned_partner_id, type, status, memo, seeker_followup_note, seeker_followup_requested_at, request_details, document_checklist, contact_snapshot, created_at, updated_at",
     )
     .order("created_at", { ascending: false });
   const requests = activeStatus
@@ -77,10 +77,23 @@ export default async function AdminRequestsPage({
     .select("id, name, email")
     .eq("role", "partner")
     .order("created_at", { ascending: false });
+  const requestIds = allRequests?.map((request) => request.id) ?? [];
+  const { data: reviews } =
+    requestIds.length > 0
+      ? await supabase
+          .from("admin_request_reviews")
+          .select(
+            "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at",
+          )
+          .in("request_id", requestIds)
+      : { data: [] };
 
   const profileById = new Map(profiles?.map((profile) => [profile.id, profile]) ?? []);
   const seekerProfileById = new Map(
     seekerProfiles?.map((profile) => [profile.user_id, profile]) ?? [],
+  );
+  const reviewByRequestId = new Map(
+    reviews?.map((review) => [review.request_id, review]) ?? [],
   );
 
   return (
@@ -156,6 +169,7 @@ export default async function AdminRequestsPage({
               const details = parseRequestDetails(request.request_details);
               const documents = parseDocumentChecklist(request.document_checklist);
               const contact = parseContactSnapshot(request.contact_snapshot);
+              const review = reviewByRequestId.get(request.id);
               const readiness = getAdminRequestReadiness({
                 contact,
                 details,
@@ -212,7 +226,21 @@ export default async function AdminRequestsPage({
                           label="Consent"
                           value={details.handoffConsent ? "외부 전달 동의" : "동의 확인 필요"}
                         />
+                        <Info
+                          label="Handoff"
+                          value={`${getHandoffStatusLabel(review?.handoff_status)} · ${review?.reviewed_at ? new Date(review.reviewed_at).toLocaleString("ko-KR") : "검토 이력 없음"}`}
+                        />
                       </div>
+                      {request.seeker_followup_note ? (
+                        <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-3">
+                          <p className="text-xs font-black uppercase tracking-wide text-amber-700">
+                            Seeker follow-up
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-amber-900">
+                            {request.seeker_followup_note}
+                          </p>
+                        </div>
+                      ) : null}
                       <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                         <p className="text-xs font-black uppercase tracking-wide text-slate-400">
                           Handoff checklist
@@ -243,7 +271,17 @@ export default async function AdminRequestsPage({
                             부족 서류/확인사항: {documents.missingNote}
                           </p>
                         ) : null}
+                        {review?.handoff_hold_reason ? (
+                          <p className="mt-2 text-sm font-semibold leading-6 text-amber-900">
+                            전달 보류/확인 사유: {review.handoff_hold_reason}
+                          </p>
+                        ) : null}
                       </div>
+                      {review?.internal_note ? (
+                        <p className="mt-3 whitespace-pre-wrap rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
+                          내부 메모: {review.internal_note}
+                        </p>
+                      ) : null}
                       <p className="mt-2 text-sm font-semibold text-blue-700">
                         Assigned partner:{" "}
                         {assignedPartner?.name || assignedPartner?.email || "unassigned"}
@@ -269,9 +307,13 @@ export default async function AdminRequestsPage({
 
                     <AdminRequestUpdateForm
                       assignedPartnerId={request.assigned_partner_id}
+                      handoffHoldReason={review?.handoff_hold_reason ?? ""}
+                      handoffStatus={review?.handoff_status ?? "not_ready"}
+                      internalNote={review?.internal_note ?? ""}
                       memo={request.memo}
                       partners={partners ?? []}
                       requestId={request.id}
+                      seekerFollowupNote={request.seeker_followup_note ?? ""}
                       status={request.status}
                     />
                   </div>
@@ -396,4 +438,15 @@ function getDocumentLabel(value: string) {
   };
 
   return labels[value] ?? value;
+}
+
+function getHandoffStatusLabel(value: string | null | undefined) {
+  const labels: Record<string, string> = {
+    handed_off: "전달 완료",
+    not_ready: "준비 중",
+    paused: "보류",
+    ready: "전달 준비 완료",
+  };
+
+  return labels[value ?? "not_ready"] ?? "준비 중";
 }

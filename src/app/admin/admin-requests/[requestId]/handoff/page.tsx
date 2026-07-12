@@ -24,7 +24,7 @@ export default async function AdminRequestHandoffDraftPage({
   const { data: request } = await supabase
     .from("admin_requests")
     .select(
-      "id, seeker_id, assigned_partner_id, type, status, memo, request_details, document_checklist, contact_snapshot, created_at, updated_at",
+      "id, seeker_id, assigned_partner_id, type, status, memo, seeker_followup_note, seeker_followup_requested_at, request_details, document_checklist, contact_snapshot, created_at, updated_at",
     )
     .eq("id", requestId)
     .maybeSingle();
@@ -33,8 +33,12 @@ export default async function AdminRequestHandoffDraftPage({
     notFound();
   }
 
-  const [{ data: profile }, { data: seekerProfile }, { data: partner }] =
-    await Promise.all([
+  const [
+    { data: profile },
+    { data: seekerProfile },
+    { data: partner },
+    { data: review },
+  ] = await Promise.all([
       supabase
         .from("profiles")
         .select("id, name, email, phone")
@@ -54,6 +58,13 @@ export default async function AdminRequestHandoffDraftPage({
             .eq("id", request.assigned_partner_id)
             .maybeSingle()
         : Promise.resolve({ data: null }),
+      supabase
+        .from("admin_request_reviews")
+        .select(
+          "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at",
+        )
+        .eq("request_id", request.id)
+        .maybeSingle(),
     ]);
 
   const details = parseRequestDetails(request.request_details);
@@ -72,6 +83,7 @@ export default async function AdminRequestHandoffDraftPage({
     partnerName: partner?.name || partner?.email || "미정",
     profile,
     readiness,
+    review,
     request,
     seekerProfile,
   });
@@ -139,6 +151,11 @@ export default async function AdminRequestHandoffDraftPage({
             tone={partner ? "green" : "slate"}
             value={partner?.name || partner?.email || "미정"}
           />
+          <Signal
+            label="전달 상태"
+            tone={review?.handoff_status === "ready" || review?.handoff_status === "handed_off" ? "green" : review?.handoff_status === "paused" ? "amber" : "slate"}
+            value={getHandoffStatusLabel(review?.handoff_status)}
+          />
         </div>
 
         {readiness.missing.length > 0 ? (
@@ -186,6 +203,27 @@ export default async function AdminRequestHandoffDraftPage({
             {request.memo || "요청 메모가 없습니다."}
           </p>
         </section>
+
+        {request.seeker_followup_note || review?.handoff_hold_reason || review?.internal_note ? (
+          <section className="mt-6 border-t border-slate-100 pt-5">
+            <h2 className="text-lg font-black">운영 확인 사항</h2>
+            {request.seeker_followup_note ? (
+              <p className="mt-2 whitespace-pre-wrap rounded-xl bg-amber-50 p-4 text-sm font-semibold leading-7 text-amber-900">
+                구직자 보완 요청: {request.seeker_followup_note}
+              </p>
+            ) : null}
+            {review?.handoff_hold_reason ? (
+              <p className="mt-2 whitespace-pre-wrap rounded-xl bg-amber-50 p-4 text-sm font-semibold leading-7 text-amber-900">
+                전달 보류/확인 사유: {review.handoff_hold_reason}
+              </p>
+            ) : null}
+            {review?.internal_note ? (
+              <p className="mt-2 whitespace-pre-wrap rounded-xl bg-blue-50 p-4 text-sm font-semibold leading-7 text-blue-900">
+                내부 메모: {review.internal_note}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
 
         <section className="mt-6 border-t border-slate-100 pt-5">
           <h2 className="text-lg font-black">복사용 초안</h2>
@@ -341,6 +379,7 @@ function buildDraftText({
   partnerName,
   profile,
   readiness,
+  review,
   request,
   seekerProfile,
 }: {
@@ -350,10 +389,17 @@ function buildDraftText({
   partnerName: string;
   profile: { email: string | null; name: string | null; phone: string | null } | null;
   readiness: ReturnType<typeof getAdminRequestReadiness>;
+  review: {
+    handoff_hold_reason: string;
+    handoff_status: string;
+    internal_note: string;
+    reviewed_at: string | null;
+  } | null;
   request: {
     created_at: string;
     id: string;
     memo: string | null;
+    seeker_followup_note: string;
     status: string;
     type: string;
   };
@@ -376,6 +422,7 @@ function buildDraftText({
     `현재 상태: ${getStatusMeta("adminRequest", request.status).label}`,
     `접수일: ${new Date(request.created_at).toLocaleString("ko-KR")}`,
     `담당 파트너: ${partnerName}`,
+    `전달 상태: ${getHandoffStatusLabel(review?.handoff_status)}`,
     `전달 준비도: ${readiness.completed}/${readiness.total}`,
     readiness.missing.length > 0 ? `전달 전 확인 필요: ${readiness.missing.join(", ")}` : "전달 전 확인 필요: 없음",
     "",
@@ -405,5 +452,24 @@ function buildDraftText({
     "",
     "[요청 메모]",
     request.memo || "요청 메모 없음",
+    "",
+    "[운영 확인 사항]",
+    request.seeker_followup_note
+      ? `구직자 보완 요청: ${request.seeker_followup_note}`
+      : "구직자 보완 요청: 없음",
+    review?.handoff_hold_reason
+      ? `전달 보류/확인 사유: ${review.handoff_hold_reason}`
+      : "전달 보류/확인 사유: 없음",
   ].join("\n");
+}
+
+function getHandoffStatusLabel(value: string | null | undefined) {
+  const labels: Record<string, string> = {
+    handed_off: "전달 완료",
+    not_ready: "준비 중",
+    paused: "보류",
+    ready: "전달 준비 완료",
+  };
+
+  return labels[value ?? "not_ready"] ?? "준비 중";
 }

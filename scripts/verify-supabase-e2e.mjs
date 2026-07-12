@@ -673,18 +673,67 @@ async function main() {
       .from("admin_requests")
       .update({
         assigned_partner_id: partnerUser.id,
+        seeker_followup_note:
+          "Please upload or prepare the school approval confirmation before handoff.",
+        seeker_followup_requested_at: new Date().toISOString(),
         status: "reviewing",
         memo: "Operator review started.",
         updated_at: new Date().toISOString(),
       })
       .eq("id", adminRequestInsert.data.id)
-      .select("id, status")
+      .select("id, seeker_followup_note, status")
       .single();
 
     assertNoError(adminRequestUpdate, "update admin request as admin");
     assert(
       adminRequestUpdate.data.status === "reviewing",
       "Expected admin request status to be reviewing.",
+    );
+    assert(
+      adminRequestUpdate.data.seeker_followup_note?.includes("school approval"),
+      "Expected admin to store seeker-facing follow-up request.",
+    );
+
+    const adminRequestReview = await adminClient
+      .from("admin_request_reviews")
+      .upsert({
+        handoff_hold_reason: "Waiting for school approval confirmation.",
+        handoff_status: "paused",
+        internal_note: "Check with the assigned partner before sending documents.",
+        request_id: adminRequestInsert.data.id,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: adminUser.id,
+        updated_at: new Date().toISOString(),
+      })
+      .select("handoff_hold_reason, handoff_status, internal_note, request_id")
+      .single();
+
+    assertNoError(adminRequestReview, "upsert admin request review as admin");
+    assert(
+      adminRequestReview.data.handoff_status === "paused",
+      "Expected admin request handoff status to be stored separately.",
+    );
+
+    const seekerFollowupRead = await seekerClient
+      .from("admin_requests")
+      .select("id, seeker_followup_note")
+      .eq("id", adminRequestInsert.data.id)
+      .single();
+
+    assertNoError(seekerFollowupRead, "read seeker follow-up as seeker");
+    assert(
+      seekerFollowupRead.data.seeker_followup_note?.includes("school approval"),
+      "Expected seeker to read only the seeker-facing follow-up request.",
+    );
+
+    const seekerInternalReviewRead = await seekerClient
+      .from("admin_request_reviews")
+      .select("request_id, internal_note")
+      .eq("request_id", adminRequestInsert.data.id);
+
+    assert(
+      seekerInternalReviewRead.error || seekerInternalReviewRead.data?.length === 0,
+      "Expected seeker to be blocked from admin request internal reviews.",
     );
 
     const partnerClient = await signIn(partnerUser.email, password);
@@ -727,6 +776,7 @@ async function main() {
     console.log("- Seeker can apply to published jobs with resume_id and snapshots.");
     console.log("- Company owner can read applicant details and update application status.");
     console.log("- Seeker can create admin requests with review packets and admin can update them.");
+    console.log("- Admin can store seeker follow-up and internal handoff review separately.");
     console.log("- Admin can assign admin requests to partners.");
     console.log("- Partners can read assigned requests and seeker summaries.");
   } finally {
