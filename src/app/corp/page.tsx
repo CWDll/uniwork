@@ -1,4 +1,5 @@
 import { ArrowRight, Building2, FileCheck2, UsersRound } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { PublicShell } from "@/components/layout/public-shell";
@@ -23,6 +24,21 @@ const services = [
   },
 ];
 
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/corp",
+  },
+  description:
+    "외국인 유학생 채용 공고 등록, 지원자 확인, 행정 요청 관리를 Uniwork 기업 대시보드에서 시작하세요.",
+  openGraph: {
+    description:
+      "외국인 유학생 채용을 위한 공고 등록, 지원자 검토, 행정 지원 연결",
+    title: "For Companies | Uniwork",
+    url: "/corp",
+  },
+  title: "For Companies | Uniwork",
+};
+
 export default function CorpPage() {
   return (
     <PublicShell>
@@ -38,10 +54,16 @@ export default function CorpPage() {
             Uniwork는 채용공고, 지원자 확인, 행정 지원 요청을 기업 대시보드에서
             한 번에 관리하는 구조로 설계됩니다.
           </p>
-          <div className="mt-7 flex justify-center">
+          <div className="mt-7 flex flex-col justify-center gap-2 sm:flex-row">
             <Link className={cn(buttonVariants({ size: "lg" }))} href="/company">
               기업 대시보드 보기
               <ArrowRight className="size-4" />
+            </Link>
+            <Link
+              className={cn(buttonVariants({ size: "lg", variant: "outline" }))}
+              href="/signup"
+            >
+              기업 계정 만들기
             </Link>
           </div>
         </div>

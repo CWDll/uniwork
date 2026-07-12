@@ -19,9 +19,11 @@ import { JobCategoryFilters } from "@/components/jobs/job-category-filters";
 import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { applicationTips } from "@/data/seed";
 import { getJobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 type HomeSearchParams = {
   category?: string;
@@ -163,6 +165,30 @@ export default async function Home({
                   Uniwork는 외국인 유학생의 비자, 학교, 가능 근무시간을
                   고려해 지원 가능한 채용공고와 행정 상담 흐름을 연결합니다.
                 </p>
+                <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                  <Link
+                    className={cn(buttonVariants({ className: "w-full" }))}
+                    href="/jobs"
+                  >
+                    공고 보기
+                  </Link>
+                  <Link
+                    className={cn(
+                      buttonVariants({ className: "w-full", variant: "outline" }),
+                    )}
+                    href={user ? "/me/profile" : "/signup"}
+                  >
+                    구직자 시작
+                  </Link>
+                  <Link
+                    className={cn(
+                      buttonVariants({ className: "w-full", variant: "outline" }),
+                    )}
+                    href={user ? "/company" : "/corp"}
+                  >
+                    기업 시작
+                  </Link>
+                </div>
               </div>
 
               <div className="min-w-0 rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-emerald-50 p-4 sm:p-5">

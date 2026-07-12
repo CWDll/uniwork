@@ -1,4 +1,5 @@
 import { BriefcaseBusiness, MapPin, Search, ToggleLeft, ToggleRight } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { JobCategoryFilters } from "@/components/jobs/job-category-filters";
@@ -20,6 +21,21 @@ type JobsSearchParams = {
   q?: string;
   visa_support_type?: string;
   wage_type?: string;
+};
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/jobs",
+  },
+  description:
+    "외국인 유학생이 비자 조건, 근무지, 급여, 한국어 조건을 함께 확인하며 한국 아르바이트 공고를 탐색합니다.",
+  openGraph: {
+    description:
+      "D-2/D-4 유학생을 위한 한국 아르바이트 공고와 지원 가능성 안내",
+    title: "Jobs | Uniwork",
+    url: "/jobs",
+  },
+  title: "Jobs | Uniwork",
 };
 
 const employmentTypes = ["Part-time", "Contract", "Internship", "Full-time"];

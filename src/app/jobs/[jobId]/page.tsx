@@ -11,6 +11,7 @@ import {
   MapPin,
   UserRound,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -22,6 +23,48 @@ import { getJobEligibility, type JobEligibility } from "@/lib/jobs/eligibility";
 import { getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ jobId: string }>;
+}): Promise<Metadata> {
+  const { jobId } = await params;
+  const supabase = await createClient();
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("id, company_id, title, location, employment_type, status")
+    .eq("id", jobId)
+    .eq("status", "published")
+    .maybeSingle();
+
+  if (!job) {
+    return {
+      title: "공고를 찾을 수 없습니다 | Uniwork",
+    };
+  }
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("name")
+    .eq("id", job.company_id)
+    .maybeSingle();
+  const title = `${job.title} | Uniwork`;
+  const description = `${company?.name ?? "Company"} · ${job.location || "Korea"} · ${job.employment_type || "Part-time"} 공고를 확인하고 지원 준비 상태를 점검하세요.`;
+
+  return {
+    alternates: {
+      canonical: `/jobs/${job.id}`,
+    },
+    description,
+    openGraph: {
+      description,
+      title,
+      url: `/jobs/${job.id}`,
+    },
+    title,
+  };
+}
 
 export default async function JobDetailPage({
   params,

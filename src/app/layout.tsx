@@ -29,6 +29,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  category: "jobs",
   formatDetection: {
     telephone: false,
   },
@@ -41,6 +42,21 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
   },
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    description:
+      "외국인 유학생의 비자, 학교, 근무 가능 시간을 고려해 한국 아르바이트 공고와 행정 상담 흐름을 연결합니다.",
+    locale: "ko_KR",
+    siteName: "Uniwork",
+    title: "Uniwork | Foreign student jobs in Korea",
+    type: "website",
+    url: "/",
+  },
+  twitter: {
+    card: "summary",
+    description:
+      "외국인 유학생을 위한 한국 아르바이트 공고, 지원 준비, 행정 요청 관리 서비스",
+    title: "Uniwork | Foreign student jobs in Korea",
+  },
 };
 
 export const viewport: Viewport = {
