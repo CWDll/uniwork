@@ -13,6 +13,7 @@
     "check:deploy": "node scripts/check-deployment-readiness.mjs",
     "seed:sample-jobs": "node scripts/seed-sample-jobs.mjs",
     "verify:production": "node scripts/verify-production-smoke.mjs",
+    "verify:public-journey": "node scripts/verify-public-journey.mjs",
     "verify:resume-access": "node scripts/verify-resume-access.mjs",
     "verify:supabase": "node scripts/verify-supabase-e2e.mjs"
   },

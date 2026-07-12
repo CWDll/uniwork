@@ -55,8 +55,10 @@ Run before and after major releases:
 ```bash
 npm run lint
 npm run build
+npm run check:deploy
 npm run verify:supabase
 npm run verify:resume-access
+npm run verify:public-journey -- https://uniwork-one.vercel.app
 npm run verify:production -- https://uniwork-one.vercel.app
 ```
 
@@ -64,7 +66,10 @@ What they cover:
 
 - `verify:supabase`: auth trigger, role creation, company ownership, verified company job publishing, public job reads, seeker application submission, company applicant access/status updates, admin request packets, supplement submission/acknowledgement, partner assignment and partner read access.
 - `verify:resume-access`: private resume creation, application `resume_id` ownership guard, submission snapshots, company applicant resume access, unrelated company denial.
+- `verify:public-journey`: public home/jobs/company/login/signup pages, PWA manifest, health endpoint, protected route redirect, and not-found recovery page.
 - `verify:production`: deployed health/PWA/metadata, public route assets, and Supabase Auth production callback acceptance when service role key is available.
+
+Manual browser QA is tracked in `docs/manual-qa-checklist.md`.
 
 ## RLS confidence
 
