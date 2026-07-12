@@ -75,6 +75,26 @@ if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
   printWarn(
     "SUPABASE_SERVICE_ROLE_KEY is present locally. Keep it server-only; it is required in Vercel for cron email digests.",
   );
+} else {
+  printWarn(
+    "SUPABASE_SERVICE_ROLE_KEY is missing locally; cron email digests and verification scripts that require admin access will not run.",
+  );
+}
+
+if (process.env.RESEND_API_KEY && process.env.EMAIL_FROM) {
+  printPass("Email delivery env is configured");
+} else {
+  printWarn(
+    "RESEND_API_KEY or EMAIL_FROM is missing; transactional email delivery will be skipped.",
+  );
+}
+
+if (process.env.CRON_SECRET) {
+  printPass("CRON_SECRET is set");
+} else {
+  printWarn(
+    "CRON_SECRET is missing; Vercel Cron routes will reject requests with HTTP 401.",
+  );
 }
 
 const requiredFiles = [
@@ -85,6 +105,7 @@ const requiredFiles = [
   "public/icons/apple-touch-icon.png",
   "src/app/manifest.ts",
   "docs/deployment.md",
+  "docs/operations-readiness.md",
 ];
 
 for (const path of requiredFiles) {
