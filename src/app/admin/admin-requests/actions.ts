@@ -52,18 +52,38 @@ export async function updateAdminRequestAction(
     return { error: "전달 상태를 확인해주세요." };
   }
 
+  const { data: currentRequest } = await supabase
+    .from("admin_requests")
+    .select("seeker_followup_note")
+    .eq("id", requestId)
+    .maybeSingle();
+  const followupNoteChanged =
+    (currentRequest?.seeker_followup_note ?? "") !== seekerFollowupNote;
+
+  const requestUpdate: {
+    assigned_partner_id: string | null;
+    memo: string;
+    seeker_followup_note: string;
+    seeker_followup_requested_at?: string | null;
+    status: string;
+    updated_at: string;
+  } = {
+    assigned_partner_id: partnerId || null,
+    memo,
+    seeker_followup_note: seekerFollowupNote,
+    status,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (!seekerFollowupNote) {
+    requestUpdate.seeker_followup_requested_at = null;
+  } else if (followupNoteChanged) {
+    requestUpdate.seeker_followup_requested_at = new Date().toISOString();
+  }
+
   const { error } = await supabase
     .from("admin_requests")
-    .update({
-      assigned_partner_id: partnerId || null,
-      status,
-      memo,
-      seeker_followup_note: seekerFollowupNote,
-      seeker_followup_requested_at: seekerFollowupNote
-        ? new Date().toISOString()
-        : null,
-      updated_at: new Date().toISOString(),
-    })
+    .update(requestUpdate)
     .eq("id", requestId);
 
   if (error) {
@@ -92,4 +112,36 @@ export async function updateAdminRequestAction(
   revalidatePath("/me/admin-requests");
 
   return { message: "행정 요청이 업데이트되었습니다." };
+}
+
+export async function markAdminRequestSupplementsCheckedAction(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const requestId = String(formData.get("request_id") ?? "").trim();
+
+  if (!user || !requestId) {
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("admin_request_reviews")
+    .upsert({
+      request_id: requestId,
+      reviewed_at: now,
+      reviewed_by: user.id,
+      supplement_checked_at: now,
+      supplement_checked_by: user.id,
+      updated_at: now,
+    });
+
+  if (error) {
+    return;
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/admin-requests");
+  revalidatePath(`/admin/admin-requests/${requestId}/handoff`);
 }

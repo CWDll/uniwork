@@ -771,6 +771,26 @@ async function main() {
       "Expected admin to read one seeker supplement.",
     );
 
+    const supplementCheck = await adminClient
+      .from("admin_request_reviews")
+      .upsert({
+        request_id: adminRequestInsert.data.id,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: adminUser.id,
+        supplement_checked_at: new Date().toISOString(),
+        supplement_checked_by: adminUser.id,
+        updated_at: new Date().toISOString(),
+      })
+      .select("request_id, supplement_checked_at, supplement_checked_by")
+      .single();
+
+    assertNoError(supplementCheck, "mark admin request supplements checked");
+    assert(
+      supplementCheck.data.supplement_checked_by === adminUser.id &&
+        supplementCheck.data.supplement_checked_at,
+      "Expected admin supplement check metadata to be stored.",
+    );
+
     const unrelatedCompanySupplementRead = await companyClient
       .from("admin_request_supplements")
       .select("id")
@@ -824,6 +844,7 @@ async function main() {
     console.log("- Seeker can create admin requests with review packets and admin can update them.");
     console.log("- Admin can store seeker follow-up and internal handoff review separately.");
     console.log("- Seeker can submit admin request supplements and unrelated companies cannot read them.");
+    console.log("- Admin can acknowledge seeker supplement submissions.");
     console.log("- Admin can assign admin requests to partners.");
     console.log("- Partners can read assigned requests and seeker summaries.");
   } finally {

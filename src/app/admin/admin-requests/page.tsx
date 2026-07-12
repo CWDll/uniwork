@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { markAdminRequestSupplementsCheckedAction } from "@/app/admin/admin-requests/actions";
 import { AdminRequestUpdateForm } from "@/components/admin-requests/admin-request-update-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,6 +16,7 @@ type AdminRequestsSearchParams = {
 
 type RequestOperation = {
   hasSupplementAfterFollowup: boolean;
+  hasUncheckedSupplement: boolean;
   isHandoffReady: boolean;
   isWaitingForFollowup: boolean;
   latestActivityAt: string;
@@ -40,9 +42,9 @@ const attentionFilters = [
     value: "followup_waiting",
   },
   {
-    description: "구직자가 새 보완 내용을 제출한 요청",
-    label: "최근 보완 제출",
-    value: "supplement_received",
+    description: "구직자가 제출했고 운영자가 아직 확인하지 않은 요청",
+    label: "새 보완 확인 필요",
+    value: "unchecked_supplement",
   },
   {
     description: "기본 전달 패킷이 채워진 요청",
@@ -111,7 +113,7 @@ export default async function AdminRequestsPage({
           supabase
             .from("admin_request_reviews")
             .select(
-              "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at",
+              "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at, supplement_checked_at",
             )
             .in("request_id", requestIds),
           supabase
@@ -155,6 +157,11 @@ export default async function AdminRequestsPage({
       request,
       supplements: requestSupplements,
     });
+    const latestSupplementAt = latestSupplement?.created_at ?? null;
+    const hasUncheckedSupplement = hasUncheckedSupplementAfterCheck({
+      latestSupplementAt,
+      supplementCheckedAt: reviewByRequestId.get(request.id)?.supplement_checked_at,
+    });
     const isHandoffReady =
       readiness.missing.length === 0 &&
       request.status !== "completed" &&
@@ -162,16 +169,18 @@ export default async function AdminRequestsPage({
 
     operationsByRequestId.set(request.id, {
       hasSupplementAfterFollowup,
+      hasUncheckedSupplement,
       isHandoffReady,
       isWaitingForFollowup,
       latestActivityAt: getLatestActivityAt({
-        latestSupplementAt: latestSupplement?.created_at,
+        latestSupplementAt,
         requestUpdatedAt: request.updated_at,
         reviewUpdatedAt: reviewByRequestId.get(request.id)?.reviewed_at,
       }),
-      latestSupplementAt: latestSupplement?.created_at ?? null,
+      latestSupplementAt,
       priority: getRequestPriority({
         hasSupplementAfterFollowup,
+        hasUncheckedSupplement,
         isHandoffReady,
         isWaitingForFollowup,
         status: request.status,
@@ -186,8 +195,8 @@ export default async function AdminRequestsPage({
     handoff_ready: Array.from(operationsByRequestId.values()).filter(
       (operation) => operation.isHandoffReady,
     ).length,
-    supplement_received: Array.from(operationsByRequestId.values()).filter(
-      (operation) => operation.hasSupplementAfterFollowup,
+    unchecked_supplement: Array.from(operationsByRequestId.values()).filter(
+      (operation) => operation.hasUncheckedSupplement,
     ).length,
   };
   const requests = (activeStatus
@@ -201,8 +210,8 @@ export default async function AdminRequestsPage({
         return operation?.isWaitingForFollowup;
       }
 
-      if (activeAttention === "supplement_received") {
-        return operation?.hasSupplementAfterFollowup;
+      if (activeAttention === "unchecked_supplement") {
+        return operation?.hasUncheckedSupplement;
       }
 
       if (activeAttention === "handoff_ready") {
@@ -307,8 +316,8 @@ export default async function AdminRequestsPage({
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 {activeAttention === "followup_waiting"
                   ? "보완 답변을 기다리는 행정 요청"
-                  : activeAttention === "supplement_received"
-                  ? "구직자가 보완 내용을 제출한 행정 요청"
+                  : activeAttention === "unchecked_supplement"
+                  ? "구직자가 보완 내용을 제출했고 아직 확인하지 않은 요청"
                   : activeAttention === "handoff_ready"
                   ? "외부 전달 준비가 된 행정 요청"
                   : activeStatus
@@ -377,6 +386,11 @@ export default async function AdminRequestsPage({
                             보완 제출
                           </span>
                         ) : null}
+                        {operation?.hasUncheckedSupplement ? (
+                          <span className="rounded-md bg-red-50 px-2 py-1 text-xs font-black text-red-700">
+                            미확인
+                          </span>
+                        ) : null}
                         {operation?.isHandoffReady ? (
                           <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-black text-blue-700">
                             전달 준비
@@ -425,6 +439,14 @@ export default async function AdminRequestsPage({
                               ? new Date(operation.latestSupplementAt).toLocaleString("ko-KR")
                               : "제출 없음"
                           }`}
+                        />
+                        <Info
+                          label="Checked"
+                          value={
+                            review?.supplement_checked_at
+                              ? new Date(review.supplement_checked_at).toLocaleString("ko-KR")
+                              : "확인 이력 없음"
+                          }
                         />
                       </div>
                       {request.seeker_followup_note ? (
@@ -492,9 +514,38 @@ export default async function AdminRequestsPage({
                       ) : null}
                       {requestSupplements.length > 0 ? (
                         <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
-                          <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
-                            Seeker supplements
-                          </p>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                                Seeker supplements
+                              </p>
+                              {operation?.hasUncheckedSupplement ? (
+                                <p className="mt-1 text-xs font-bold text-red-700">
+                                  새 보완 제출이 아직 확인 처리되지 않았습니다.
+                                </p>
+                              ) : null}
+                            </div>
+                            <form action={markAdminRequestSupplementsCheckedAction}>
+                              <input
+                                name="request_id"
+                                type="hidden"
+                                value={request.id}
+                              />
+                              <button
+                                className={cn(
+                                  buttonVariants({
+                                    size: "sm",
+                                    variant: operation?.hasUncheckedSupplement
+                                      ? "default"
+                                      : "outline",
+                                  }),
+                                )}
+                                type="submit"
+                              >
+                                보완 제출 확인
+                              </button>
+                            </form>
+                          </div>
                           <div className="mt-2 grid gap-2">
                             {requestSupplements.slice(0, 3).map((supplement) => {
                               const supplementContact = parseContactSnapshot(
@@ -787,11 +838,13 @@ function getLatestActivityAt({
 
 function getRequestPriority({
   hasSupplementAfterFollowup,
+  hasUncheckedSupplement,
   isHandoffReady,
   isWaitingForFollowup,
   status,
 }: {
   hasSupplementAfterFollowup: boolean;
+  hasUncheckedSupplement: boolean;
   isHandoffReady: boolean;
   isWaitingForFollowup: boolean;
   status: string;
@@ -800,17 +853,42 @@ function getRequestPriority({
     return 0;
   }
 
-  if (hasSupplementAfterFollowup) {
+  if (hasUncheckedSupplement) {
     return 1;
   }
 
-  if (isHandoffReady) {
+  if (hasSupplementAfterFollowup) {
     return 2;
   }
 
-  if (status === "completed" || status === "rejected") {
-    return 4;
+  if (isHandoffReady) {
+    return 3;
   }
 
-  return 3;
+  if (status === "completed" || status === "rejected") {
+    return 5;
+  }
+
+  return 4;
+}
+
+function hasUncheckedSupplementAfterCheck({
+  latestSupplementAt,
+  supplementCheckedAt,
+}: {
+  latestSupplementAt?: string | null;
+  supplementCheckedAt?: string | null;
+}) {
+  if (!latestSupplementAt) {
+    return false;
+  }
+
+  if (!supplementCheckedAt) {
+    return true;
+  }
+
+  return (
+    new Date(latestSupplementAt).getTime() >
+    new Date(supplementCheckedAt).getTime()
+  );
 }
