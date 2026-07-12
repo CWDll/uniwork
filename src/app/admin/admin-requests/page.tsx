@@ -13,6 +13,16 @@ type AdminRequestsSearchParams = {
   status?: string;
 };
 
+type RequestOperation = {
+  hasSupplementAfterFollowup: boolean;
+  isHandoffReady: boolean;
+  isWaitingForFollowup: boolean;
+  latestActivityAt: string;
+  latestSupplementAt: string | null;
+  priority: number;
+  readiness: ReturnType<typeof getAdminRequestReadiness>;
+};
+
 const requestFilters = [
   { value: "", label: "전체" },
   { value: "received", label: "접수" },
@@ -21,6 +31,24 @@ const requestFilters = [
   { value: "assigned", label: "행정사 배정" },
   { value: "completed", label: "완료" },
   { value: "rejected", label: "반려" },
+];
+
+const attentionFilters = [
+  {
+    description: "보완 요청 후 아직 제출 이력이 없는 요청",
+    label: "보완 답변 대기",
+    value: "followup_waiting",
+  },
+  {
+    description: "구직자가 새 보완 내용을 제출한 요청",
+    label: "최근 보완 제출",
+    value: "supplement_received",
+  },
+  {
+    description: "기본 전달 패킷이 채워진 요청",
+    label: "전달 준비 완료",
+    value: "handoff_ready",
+  },
 ];
 
 function buildAdminRequestsHref(status?: string) {
@@ -108,18 +136,94 @@ export default async function AdminRequestsPage({
     const existing = supplementsByRequestId.get(supplement.request_id) ?? [];
     supplementsByRequestId.set(supplement.request_id, [...existing, supplement]);
   });
-  const unansweredFollowupRequests =
-    allRequests?.filter((request) =>
-      hasUnansweredFollowup({
-        request,
-        supplements: supplementsByRequestId.get(request.id) ?? [],
+  const operationsByRequestId = new Map<string, RequestOperation>();
+  allRequests?.forEach((request) => {
+    const requestSupplements = supplementsByRequestId.get(request.id) ?? [];
+    const seekerProfile = seekerProfileById.get(request.seeker_id);
+    const readiness = getAdminRequestReadiness({
+      contact: parseContactSnapshot(request.contact_snapshot),
+      details: parseRequestDetails(request.request_details),
+      documents: parseDocumentChecklist(request.document_checklist),
+      seekerProfile,
+    });
+    const latestSupplement = getLatestSupplement(requestSupplements);
+    const isWaitingForFollowup = hasUnansweredFollowup({
+      request,
+      supplements: requestSupplements,
+    });
+    const hasSupplementAfterFollowup = hasSupplementSubmittedAfterFollowup({
+      request,
+      supplements: requestSupplements,
+    });
+    const isHandoffReady =
+      readiness.missing.length === 0 &&
+      request.status !== "completed" &&
+      request.status !== "rejected";
+
+    operationsByRequestId.set(request.id, {
+      hasSupplementAfterFollowup,
+      isHandoffReady,
+      isWaitingForFollowup,
+      latestActivityAt: getLatestActivityAt({
+        latestSupplementAt: latestSupplement?.created_at,
+        requestUpdatedAt: request.updated_at,
+        reviewUpdatedAt: reviewByRequestId.get(request.id)?.reviewed_at,
       }),
-    ) ?? [];
-  const requests = activeAttention === "followup_waiting"
-    ? unansweredFollowupRequests
-    : activeStatus
-      ? allRequests?.filter((request) => request.status === activeStatus)
-      : allRequests;
+      latestSupplementAt: latestSupplement?.created_at ?? null,
+      priority: getRequestPriority({
+        hasSupplementAfterFollowup,
+        isHandoffReady,
+        isWaitingForFollowup,
+        status: request.status,
+      }),
+      readiness,
+    });
+  });
+  const attentionCounts = {
+    followup_waiting: Array.from(operationsByRequestId.values()).filter(
+      (operation) => operation.isWaitingForFollowup,
+    ).length,
+    handoff_ready: Array.from(operationsByRequestId.values()).filter(
+      (operation) => operation.isHandoffReady,
+    ).length,
+    supplement_received: Array.from(operationsByRequestId.values()).filter(
+      (operation) => operation.hasSupplementAfterFollowup,
+    ).length,
+  };
+  const requests = (activeStatus
+    ? allRequests?.filter((request) => request.status === activeStatus)
+    : allRequests
+  )
+    ?.filter((request) => {
+      const operation = operationsByRequestId.get(request.id);
+
+      if (activeAttention === "followup_waiting") {
+        return operation?.isWaitingForFollowup;
+      }
+
+      if (activeAttention === "supplement_received") {
+        return operation?.hasSupplementAfterFollowup;
+      }
+
+      if (activeAttention === "handoff_ready") {
+        return operation?.isHandoffReady;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      const operationA = operationsByRequestId.get(a.id);
+      const operationB = operationsByRequestId.get(b.id);
+
+      if ((operationA?.priority ?? 99) !== (operationB?.priority ?? 99)) {
+        return (operationA?.priority ?? 99) - (operationB?.priority ?? 99);
+      }
+
+      return (
+        new Date(operationB?.latestActivityAt ?? b.updated_at).getTime() -
+        new Date(operationA?.latestActivityAt ?? a.updated_at).getTime()
+      );
+    });
 
   return (
     <DashboardShell area="admin">
@@ -137,27 +241,36 @@ export default async function AdminRequestsPage({
       </div>
 
       <div className="mb-5 grid gap-3 md:grid-cols-3">
-        <Link
-          className={cn(
-            "rounded-2xl border p-4 transition",
-            activeAttention === "followup_waiting"
-              ? "border-amber-200 bg-amber-50"
-              : "border-slate-200 bg-white hover:bg-amber-50",
-          )}
-          href={
-            activeAttention === "followup_waiting"
-              ? "/admin/admin-requests"
-              : "/admin/admin-requests?attention=followup_waiting"
-          }
-        >
-          <p className="text-sm font-black text-slate-500">보완 답변 대기</p>
-          <p className="mt-1 text-2xl font-black">
-            {unansweredFollowupRequests.length.toLocaleString("ko-KR")}
-          </p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
-            보완 요청 후 아직 제출 이력이 없는 요청
-          </p>
-        </Link>
+        {attentionFilters.map((filter) => {
+          const isActive = activeAttention === filter.value;
+
+          return (
+            <Link
+              className={cn(
+                "rounded-2xl border p-4 transition",
+                isActive
+                  ? "border-amber-200 bg-amber-50"
+                  : "border-slate-200 bg-white hover:bg-amber-50",
+              )}
+              href={
+                isActive
+                  ? "/admin/admin-requests"
+                  : `/admin/admin-requests?attention=${filter.value}`
+              }
+              key={filter.value}
+            >
+              <p className="text-sm font-black text-slate-500">{filter.label}</p>
+              <p className="mt-1 text-2xl font-black">
+                {attentionCounts[
+                  filter.value as keyof typeof attentionCounts
+                ].toLocaleString("ko-KR")}
+              </p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                {filter.description}
+              </p>
+            </Link>
+          );
+        })}
       </div>
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -194,6 +307,10 @@ export default async function AdminRequestsPage({
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 {activeAttention === "followup_waiting"
                   ? "보완 답변을 기다리는 행정 요청"
+                  : activeAttention === "supplement_received"
+                  ? "구직자가 보완 내용을 제출한 행정 요청"
+                  : activeAttention === "handoff_ready"
+                  ? "외부 전달 준비가 된 행정 요청"
                   : activeStatus
                   ? `${getStatusMeta("adminRequest", activeStatus).label} 요청`
                   : "접수된 모든 행정 요청"}
@@ -222,16 +339,16 @@ export default async function AdminRequestsPage({
               const contact = parseContactSnapshot(request.contact_snapshot);
               const review = reviewByRequestId.get(request.id);
               const requestSupplements = supplementsByRequestId.get(request.id) ?? [];
-              const isWaitingForFollowup = hasUnansweredFollowup({
-                request,
-                supplements: requestSupplements,
-              });
-              const readiness = getAdminRequestReadiness({
-                contact,
-                details,
-                documents,
-                seekerProfile,
-              });
+              const operation = operationsByRequestId.get(request.id);
+              const isWaitingForFollowup = operation?.isWaitingForFollowup ?? false;
+              const readiness =
+                operation?.readiness ??
+                getAdminRequestReadiness({
+                  contact,
+                  details,
+                  documents,
+                  seekerProfile,
+                });
 
               return (
                 <article className="grid gap-4 px-4 py-4 sm:px-5" key={request.id}>
@@ -253,6 +370,16 @@ export default async function AdminRequestsPage({
                         {isWaitingForFollowup ? (
                           <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
                             답변 대기
+                          </span>
+                        ) : null}
+                        {operation?.hasSupplementAfterFollowup ? (
+                          <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
+                            보완 제출
+                          </span>
+                        ) : null}
+                        {operation?.isHandoffReady ? (
+                          <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-black text-blue-700">
+                            전달 준비
                           </span>
                         ) : null}
                       </div>
@@ -293,7 +420,11 @@ export default async function AdminRequestsPage({
                         />
                         <Info
                           label="Follow-up"
-                          value={`${requestSupplements.length.toLocaleString("ko-KR")}건 제출`}
+                          value={`${requestSupplements.length.toLocaleString("ko-KR")}건 제출 · ${
+                            operation?.latestSupplementAt
+                              ? new Date(operation.latestSupplementAt).toLocaleString("ko-KR")
+                              : "제출 없음"
+                          }`}
                         />
                       </div>
                       {request.seeker_followup_note ? (
@@ -598,4 +729,88 @@ function hasUnansweredFollowup({
   return !supplements.some(
     (supplement) => new Date(supplement.created_at).getTime() >= requestedAt,
   );
+}
+
+function hasSupplementSubmittedAfterFollowup({
+  request,
+  supplements,
+}: {
+  request: {
+    seeker_followup_note?: string | null;
+    seeker_followup_requested_at?: string | null;
+    status: string;
+  };
+  supplements: { created_at: string }[];
+}) {
+  if (
+    !request.seeker_followup_note ||
+    !request.seeker_followup_requested_at ||
+    request.status === "completed" ||
+    request.status === "rejected"
+  ) {
+    return false;
+  }
+
+  const requestedAt = new Date(request.seeker_followup_requested_at).getTime();
+
+  return supplements.some(
+    (supplement) => new Date(supplement.created_at).getTime() >= requestedAt,
+  );
+}
+
+function getLatestSupplement<T extends { created_at: string }>(supplements: T[]) {
+  return supplements.reduce<T | null>((latest, supplement) => {
+    if (!latest) {
+      return supplement;
+    }
+
+    return new Date(supplement.created_at).getTime() >
+      new Date(latest.created_at).getTime()
+      ? supplement
+      : latest;
+  }, null);
+}
+
+function getLatestActivityAt({
+  latestSupplementAt,
+  requestUpdatedAt,
+  reviewUpdatedAt,
+}: {
+  latestSupplementAt?: string | null;
+  requestUpdatedAt: string;
+  reviewUpdatedAt?: string | null;
+}) {
+  return [latestSupplementAt, requestUpdatedAt, reviewUpdatedAt]
+    .filter((value): value is string => Boolean(value))
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+}
+
+function getRequestPriority({
+  hasSupplementAfterFollowup,
+  isHandoffReady,
+  isWaitingForFollowup,
+  status,
+}: {
+  hasSupplementAfterFollowup: boolean;
+  isHandoffReady: boolean;
+  isWaitingForFollowup: boolean;
+  status: string;
+}) {
+  if (isWaitingForFollowup) {
+    return 0;
+  }
+
+  if (hasSupplementAfterFollowup) {
+    return 1;
+  }
+
+  if (isHandoffReady) {
+    return 2;
+  }
+
+  if (status === "completed" || status === "rejected") {
+    return 4;
+  }
+
+  return 3;
 }
