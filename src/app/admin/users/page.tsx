@@ -1,6 +1,11 @@
+import Link from "next/link";
+
 import { UserRoleForm } from "@/components/admin/users/user-role-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 const roles = ["seeker", "company", "partner", "admin"];
 
@@ -75,9 +80,18 @@ export default async function AdminUsersPage() {
               </article>
             ))
           ) : (
-            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-              아직 사용자가 없습니다.
-            </div>
+            <EmptyState
+              actions={
+                <Link
+                  className={cn(buttonVariants({ size: "sm" }))}
+                  href="/admin/companies"
+                >
+                  기업 인증 목록 보기
+                </Link>
+              }
+              description="회원가입이 발생하면 이 화면에서 역할과 기본 계정 정보를 확인할 수 있습니다."
+              title="아직 사용자가 없습니다."
+            />
           )}
         </div>
       </section>

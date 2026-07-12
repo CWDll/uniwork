@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 
 import { updateCompanyVerificationAction } from "@/app/admin/companies/actions";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -269,24 +270,33 @@ export default async function AdminCompaniesPage({
               );
             })
           ) : (
-            <div className="px-5 py-8">
-              <p className="text-sm font-black text-slate-700">
-                검토할 기업/지점이 없습니다.
-              </p>
-              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                {activeStatus
+            <EmptyState
+              actions={
+                activeStatus ? (
+                  <Link
+                    className={cn(
+                      buttonVariants({ size: "sm", variant: "outline" }),
+                    )}
+                    href="/admin/companies"
+                  >
+                    전체 보기
+                  </Link>
+                ) : (
+                  <Link
+                    className={cn(buttonVariants({ size: "sm" }))}
+                    href="/admin/users"
+                  >
+                    사용자 목록 보기
+                  </Link>
+                )
+              }
+              description={
+                activeStatus
                   ? "다른 상태 필터를 선택하거나 전체 목록을 확인해보세요."
-                  : "기업 담당자가 회사/지점을 등록하면 이 화면에 표시됩니다."}
-              </p>
-              {activeStatus ? (
-                <Link
-                  className="mt-4 inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
-                  href="/admin/companies"
-                >
-                  전체 보기
-                </Link>
-              ) : null}
-            </div>
+                  : "기업 담당자가 회사/지점을 등록하면 인증 검토 대상이 이 화면에 표시됩니다."
+              }
+              title="검토할 기업/지점이 없습니다."
+            />
           )}
         </div>
       </section>

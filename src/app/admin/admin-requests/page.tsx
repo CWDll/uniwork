@@ -5,6 +5,7 @@ import { markAdminRequestSupplementsCheckedAction } from "@/app/admin/admin-requ
 import { AdminRequestUpdateForm } from "@/components/admin-requests/admin-request-update-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -667,9 +668,33 @@ export default async function AdminRequestsPage({
               );
             })
           ) : (
-            <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-              아직 접수된 행정 요청이 없습니다.
-            </div>
+            <EmptyState
+              actions={
+                activeStatus || activeAttention ? (
+                  <Link
+                    className={cn(
+                      buttonVariants({ size: "sm", variant: "outline" }),
+                    )}
+                    href="/admin/admin-requests"
+                  >
+                    전체 보기
+                  </Link>
+                ) : (
+                  <Link
+                    className={cn(buttonVariants({ size: "sm" }))}
+                    href="/admin"
+                  >
+                    운영 대시보드 보기
+                  </Link>
+                )
+              }
+              description={
+                activeStatus || activeAttention
+                  ? "다른 운영 상태를 선택하거나 전체 요청 목록을 확인해보세요."
+                  : "구직자가 행정 요청을 접수하면 보완 요청, 제출 확인, 전달 준비 상태가 이 화면에 표시됩니다."
+              }
+              title="아직 접수된 행정 요청이 없습니다."
+            />
           )}
         </div>
       </section>

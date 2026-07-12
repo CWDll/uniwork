@@ -13,6 +13,7 @@ export function AdminRequestForm() {
     <form
       action={formAction}
       className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+      id="new-admin-request"
     >
       <h2 className="text-lg font-black">새 행정 요청</h2>
       <p className="mt-2 text-sm font-medium leading-6 text-slate-600">

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AdminRequestForm } from "@/components/admin-requests/admin-request-form";
 import { AdminRequestSupplementForm } from "@/components/admin-requests/admin-request-supplement-form";
 import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
@@ -215,9 +216,28 @@ export default async function SeekerAdminRequestsPage() {
                 );
               })
             ) : (
-              <div className="px-5 py-8 text-sm font-semibold text-slate-500">
-                아직 접수한 행정 요청이 없습니다.
-              </div>
+              <EmptyState
+                actions={
+                  <>
+                    <a
+                      className={cn(buttonVariants({ size: "sm" }))}
+                      href="#new-admin-request"
+                    >
+                      새 요청 작성
+                    </a>
+                    <Link
+                      className={cn(
+                        buttonVariants({ size: "sm", variant: "outline" }),
+                      )}
+                      href="/me/profile"
+                    >
+                      프로필 확인
+                    </Link>
+                  </>
+                }
+                description="시간제 취업 허가, 비자 가능성, 서류 검토가 필요하면 왼쪽 양식으로 요청을 접수하세요."
+                title="아직 접수한 행정 요청이 없습니다."
+              />
             )}
           </div>
         </section>

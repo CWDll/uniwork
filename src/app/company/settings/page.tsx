@@ -1,9 +1,13 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CompanySettingsForm } from "@/components/company/company-settings-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
+import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export default async function CompanySettingsPage() {
   const supabase = await createClient();
@@ -38,7 +42,9 @@ export default async function CompanySettingsPage() {
         </p>
       </div>
 
-      <CompanySettingsForm />
+      <div id="company-settings-form">
+        <CompanySettingsForm />
+      </div>
 
       <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
@@ -136,14 +142,28 @@ export default async function CompanySettingsPage() {
               );
             })
           ) : (
-            <div className="px-5 py-8">
-              <p className="text-sm font-black text-slate-700">
-                아직 등록된 회사/지점이 없습니다.
-              </p>
-              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                위 양식에서 회사 정보를 저장하면 운영자가 인증 상태를 확인할 수 있습니다.
-              </p>
-            </div>
+            <EmptyState
+              actions={
+                <>
+                  <a
+                    className={cn(buttonVariants({ size: "sm" }))}
+                    href="#company-settings-form"
+                  >
+                    회사 정보 입력
+                  </a>
+                  <Link
+                    className={cn(
+                      buttonVariants({ size: "sm", variant: "outline" }),
+                    )}
+                    href="/company/jobs"
+                  >
+                    공고 관리 보기
+                  </Link>
+                </>
+              }
+              description="회사/지점을 저장하면 운영자가 인증 정보를 확인하고, 인증 완료 후 공고를 공개 운영할 수 있습니다."
+              title="아직 등록된 회사/지점이 없습니다."
+            />
           )}
         </div>
       </section>
