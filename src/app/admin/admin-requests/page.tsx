@@ -78,15 +78,24 @@ export default async function AdminRequestsPage({
     .eq("role", "partner")
     .order("created_at", { ascending: false });
   const requestIds = allRequests?.map((request) => request.id) ?? [];
-  const { data: reviews } =
+  const [{ data: reviews }, { data: supplements }] =
     requestIds.length > 0
-      ? await supabase
-          .from("admin_request_reviews")
-          .select(
-            "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at",
-          )
-          .in("request_id", requestIds)
-      : { data: [] };
+      ? await Promise.all([
+          supabase
+            .from("admin_request_reviews")
+            .select(
+              "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at",
+            )
+            .in("request_id", requestIds),
+          supabase
+            .from("admin_request_supplements")
+            .select(
+              "id, request_id, message, contact_snapshot, document_checklist, created_at",
+            )
+            .in("request_id", requestIds)
+            .order("created_at", { ascending: false }),
+        ])
+      : [{ data: [] }, { data: [] }];
 
   const profileById = new Map(profiles?.map((profile) => [profile.id, profile]) ?? []);
   const seekerProfileById = new Map(
@@ -95,6 +104,11 @@ export default async function AdminRequestsPage({
   const reviewByRequestId = new Map(
     reviews?.map((review) => [review.request_id, review]) ?? [],
   );
+  const supplementsByRequestId = new Map<string, NonNullable<typeof supplements>>();
+  supplements?.forEach((supplement) => {
+    const existing = supplementsByRequestId.get(supplement.request_id) ?? [];
+    supplementsByRequestId.set(supplement.request_id, [...existing, supplement]);
+  });
 
   return (
     <DashboardShell area="admin">
@@ -170,6 +184,7 @@ export default async function AdminRequestsPage({
               const documents = parseDocumentChecklist(request.document_checklist);
               const contact = parseContactSnapshot(request.contact_snapshot);
               const review = reviewByRequestId.get(request.id);
+              const requestSupplements = supplementsByRequestId.get(request.id) ?? [];
               const readiness = getAdminRequestReadiness({
                 contact,
                 details,
@@ -230,6 +245,10 @@ export default async function AdminRequestsPage({
                           label="Handoff"
                           value={`${getHandoffStatusLabel(review?.handoff_status)} · ${review?.reviewed_at ? new Date(review.reviewed_at).toLocaleString("ko-KR") : "검토 이력 없음"}`}
                         />
+                        <Info
+                          label="Follow-up"
+                          value={`${requestSupplements.length.toLocaleString("ko-KR")}건 제출`}
+                        />
                       </div>
                       {request.seeker_followup_note ? (
                         <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-3">
@@ -281,6 +300,51 @@ export default async function AdminRequestsPage({
                         <p className="mt-3 whitespace-pre-wrap rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
                           내부 메모: {review.internal_note}
                         </p>
+                      ) : null}
+                      {requestSupplements.length > 0 ? (
+                        <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+                          <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                            Seeker supplements
+                          </p>
+                          <div className="mt-2 grid gap-2">
+                            {requestSupplements.slice(0, 3).map((supplement) => {
+                              const supplementContact = parseContactSnapshot(
+                                supplement.contact_snapshot,
+                              );
+                              const supplementDocuments = parseDocumentChecklist(
+                                supplement.document_checklist,
+                              );
+
+                              return (
+                                <div
+                                  className="rounded-lg bg-white p-3"
+                                  key={supplement.id}
+                                >
+                                  <p className="text-xs font-bold text-emerald-700">
+                                    {new Date(supplement.created_at).toLocaleString(
+                                      "ko-KR",
+                                    )}
+                                  </p>
+                                  {supplement.message ? (
+                                    <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
+                                      {supplement.message}
+                                    </p>
+                                  ) : null}
+                                  <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+                                    연락처: {supplementContact.email || "-"} ·{" "}
+                                    {supplementContact.phone || "전화 미입력"} / 서류{" "}
+                                    {supplementDocuments.ready.length}개
+                                  </p>
+                                  {supplementDocuments.missingNote ? (
+                                    <p className="mt-1 text-xs font-bold leading-5 text-amber-700">
+                                      추가 확인: {supplementDocuments.missingNote}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       ) : null}
                       <p className="mt-2 text-sm font-semibold text-blue-700">
                         Assigned partner:{" "}

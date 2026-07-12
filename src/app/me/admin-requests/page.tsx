@@ -1,7 +1,12 @@
+import Link from "next/link";
+
 import { AdminRequestForm } from "@/components/admin-requests/admin-request-form";
+import { AdminRequestSupplementForm } from "@/components/admin-requests/admin-request-supplement-form";
+import { buttonVariants } from "@/components/ui/button";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
+import { cn } from "@/lib/utils";
 
 export default async function SeekerAdminRequestsPage() {
   const supabase = await createClient();
@@ -18,6 +23,22 @@ export default async function SeekerAdminRequestsPage() {
         .eq("seeker_id", user.id)
         .order("created_at", { ascending: false })
     : { data: [] };
+  const requestIds = requests?.map((request) => request.id) ?? [];
+  const { data: supplements } =
+    requestIds.length > 0
+      ? await supabase
+          .from("admin_request_supplements")
+          .select(
+            "id, request_id, message, contact_snapshot, document_checklist, created_at",
+          )
+          .in("request_id", requestIds)
+          .order("created_at", { ascending: false })
+      : { data: [] };
+  const supplementsByRequestId = new Map<string, NonNullable<typeof supplements>>();
+  supplements?.forEach((supplement) => {
+    const existing = supplementsByRequestId.get(supplement.request_id) ?? [];
+    supplementsByRequestId.set(supplement.request_id, [...existing, supplement]);
+  });
 
   return (
     <DashboardShell area="me">
@@ -52,7 +73,7 @@ export default async function SeekerAdminRequestsPage() {
                 const contact = parseContactSnapshot(request.contact_snapshot);
 
                 return (
-                  <article className="px-5 py-4" key={request.id}>
+                  <article className="px-5 py-4" id={`request-${request.id}`} key={request.id}>
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-black">{request.type}</h3>
                       <span
@@ -85,6 +106,22 @@ export default async function SeekerAdminRequestsPage() {
                             ).toLocaleString("ko-KR")}
                           </p>
                         ) : null}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <a
+                            className={cn(buttonVariants({ size: "sm" }))}
+                            href={`#supplement-${request.id}`}
+                          >
+                            보완 내용 입력
+                          </a>
+                          <Link
+                            className={cn(
+                              buttonVariants({ size: "sm", variant: "outline" }),
+                            )}
+                            href="/me/profile"
+                          >
+                            프로필 수정
+                          </Link>
+                        </div>
                       </div>
                     ) : null}
                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -109,6 +146,67 @@ export default async function SeekerAdminRequestsPage() {
                       <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
                         부족한 서류: {documents.missingNote}
                       </p>
+                    ) : null}
+                    {(() => {
+                      const requestSupplements =
+                        supplementsByRequestId.get(request.id) ?? [];
+
+                      return requestSupplements.length > 0 ? (
+                        <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                          <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                            제출한 보완 이력
+                          </p>
+                          <div className="mt-2 grid gap-2">
+                            {requestSupplements.map((supplement) => {
+                              const supplementContact = parseContactSnapshot(
+                                supplement.contact_snapshot,
+                              );
+                              const supplementDocuments = parseDocumentChecklist(
+                                supplement.document_checklist,
+                              );
+
+                              return (
+                                <div
+                                  className="rounded-lg bg-white p-3"
+                                  key={supplement.id}
+                                >
+                                  <p className="text-xs font-bold text-slate-400">
+                                    {new Date(supplement.created_at).toLocaleString(
+                                      "ko-KR",
+                                    )}
+                                  </p>
+                                  {supplement.message ? (
+                                    <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-700">
+                                      {supplement.message}
+                                    </p>
+                                  ) : null}
+                                  <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+                                    연락처: {supplementContact.email || "-"} ·{" "}
+                                    {supplementContact.phone || "전화 미입력"} / 서류{" "}
+                                    {supplementDocuments.ready.length}개
+                                  </p>
+                                  {supplementDocuments.missingNote ? (
+                                    <p className="mt-1 text-xs font-bold leading-5 text-amber-700">
+                                      추가 확인: {supplementDocuments.missingNote}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null;
+                    })()}
+                    {request.seeker_followup_note &&
+                    request.status !== "completed" &&
+                    request.status !== "rejected" ? (
+                      <div id={`supplement-${request.id}`}>
+                        <AdminRequestSupplementForm
+                          contactEmail={contact.email}
+                          contactPhone={contact.phone}
+                          requestId={request.id}
+                        />
+                      </div>
                     ) : null}
                     <p className="mt-3 text-xs font-bold text-slate-400">
                       Created {new Date(request.created_at).toLocaleString("ko-KR")}

@@ -38,6 +38,7 @@ export default async function AdminRequestHandoffDraftPage({
     { data: seekerProfile },
     { data: partner },
     { data: review },
+    { data: supplements },
   ] = await Promise.all([
       supabase
         .from("profiles")
@@ -65,6 +66,11 @@ export default async function AdminRequestHandoffDraftPage({
         )
         .eq("request_id", request.id)
         .maybeSingle(),
+      supabase
+        .from("admin_request_supplements")
+        .select("id, message, contact_snapshot, document_checklist, created_at")
+        .eq("request_id", request.id)
+        .order("created_at", { ascending: false }),
     ]);
 
   const details = parseRequestDetails(request.request_details);
@@ -86,6 +92,7 @@ export default async function AdminRequestHandoffDraftPage({
     review,
     request,
     seekerProfile,
+    supplements: supplements ?? [],
   });
 
   return (
@@ -222,6 +229,53 @@ export default async function AdminRequestHandoffDraftPage({
                 내부 메모: {review.internal_note}
               </p>
             ) : null}
+          </section>
+        ) : null}
+
+        {supplements && supplements.length > 0 ? (
+          <section className="mt-6 border-t border-slate-100 pt-5">
+            <h2 className="text-lg font-black">구직자 보완 제출 이력</h2>
+            <div className="mt-3 grid gap-3">
+              {supplements.map((supplement) => {
+                const supplementContact = parseContactSnapshot(
+                  supplement.contact_snapshot,
+                );
+                const supplementDocuments = parseDocumentChecklist(
+                  supplement.document_checklist,
+                );
+
+                return (
+                  <div
+                    className="rounded-xl border border-emerald-100 bg-emerald-50 p-4"
+                    key={supplement.id}
+                  >
+                    <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
+                      {new Date(supplement.created_at).toLocaleString("ko-KR")}
+                    </p>
+                    {supplement.message ? (
+                      <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-7 text-emerald-950">
+                        {supplement.message}
+                      </p>
+                    ) : null}
+                    <p className="mt-2 text-sm font-semibold leading-6 text-slate-700">
+                      연락처: {supplementContact.email || "-"} ·{" "}
+                      {supplementContact.phone || "전화 미입력"}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-700">
+                      추가 준비 서류:{" "}
+                      {supplementDocuments.ready.length > 0
+                        ? supplementDocuments.ready.map(getDocumentLabel).join(", ")
+                        : "선택 없음"}
+                    </p>
+                    {supplementDocuments.missingNote ? (
+                      <p className="mt-2 whitespace-pre-wrap rounded-lg bg-white p-3 text-sm font-semibold leading-6 text-amber-900">
+                        추가 확인: {supplementDocuments.missingNote}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </section>
         ) : null}
 
@@ -382,6 +436,7 @@ function buildDraftText({
   review,
   request,
   seekerProfile,
+  supplements,
 }: {
   contact: ReturnType<typeof parseContactSnapshot>;
   details: ReturnType<typeof parseRequestDetails>;
@@ -412,6 +467,13 @@ function buildDraftText({
     school: string | null;
     visa_type: string | null;
   } | null;
+  supplements: {
+    contact_snapshot: unknown;
+    created_at: string;
+    document_checklist: unknown;
+    id: string;
+    message: string;
+  }[];
 }) {
   return [
     "[Uniwork 행정 요청 전달 준비 초안]",
@@ -460,6 +522,34 @@ function buildDraftText({
     review?.handoff_hold_reason
       ? `전달 보류/확인 사유: ${review.handoff_hold_reason}`
       : "전달 보류/확인 사유: 없음",
+    "",
+    "[구직자 보완 제출 이력]",
+    supplements.length > 0
+      ? supplements
+          .map((supplement, index) => {
+            const supplementContact = parseContactSnapshot(
+              supplement.contact_snapshot,
+            );
+            const supplementDocuments = parseDocumentChecklist(
+              supplement.document_checklist,
+            );
+
+            return [
+              `${index + 1}. ${new Date(supplement.created_at).toLocaleString("ko-KR")}`,
+              `메시지: ${supplement.message || "없음"}`,
+              `연락처: ${supplementContact.email || "미입력"} / ${supplementContact.phone || "전화 미입력"}`,
+              `추가 준비 서류: ${
+                supplementDocuments.ready.length > 0
+                  ? supplementDocuments.ready.map(getDocumentLabel).join(", ")
+                  : "선택 없음"
+              }`,
+              supplementDocuments.missingNote
+                ? `추가 확인: ${supplementDocuments.missingNote}`
+                : "추가 확인: 없음",
+            ].join("\n");
+          })
+          .join("\n\n")
+      : "제출된 보완 이력 없음",
   ].join("\n");
 }
 

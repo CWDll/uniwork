@@ -736,6 +736,52 @@ async function main() {
       "Expected seeker to be blocked from admin request internal reviews.",
     );
 
+    const supplementInsert = await seekerClient
+      .from("admin_request_supplements")
+      .insert({
+        contact_snapshot: {
+          email: seekerUser.email,
+          phone: "010-1111-2222",
+        },
+        document_checklist: {
+          missing_note: "School approval will be ready tomorrow.",
+          ready: ["school_approval"],
+        },
+        message: "I confirmed the school approval timeline.",
+        request_id: adminRequestInsert.data.id,
+        seeker_id: seekerUser.id,
+      })
+      .select("id, message, request_id")
+      .single();
+
+    assertNoError(supplementInsert, "insert admin request supplement as seeker");
+    assert(
+      supplementInsert.data.message.includes("school approval"),
+      "Expected seeker supplement message to be stored.",
+    );
+
+    const adminSupplementRead = await adminClient
+      .from("admin_request_supplements")
+      .select("id, message, request_id")
+      .eq("request_id", adminRequestInsert.data.id);
+
+    assertNoError(adminSupplementRead, "read admin request supplements as admin");
+    assert(
+      adminSupplementRead.data?.length === 1,
+      "Expected admin to read one seeker supplement.",
+    );
+
+    const unrelatedCompanySupplementRead = await companyClient
+      .from("admin_request_supplements")
+      .select("id")
+      .eq("request_id", adminRequestInsert.data.id);
+
+    assert(
+      unrelatedCompanySupplementRead.error ||
+        unrelatedCompanySupplementRead.data?.length === 0,
+      "Expected unrelated company to be blocked from admin request supplements.",
+    );
+
     const partnerClient = await signIn(partnerUser.email, password);
     const partnerRequestRead = await partnerClient
       .from("admin_requests")
@@ -777,6 +823,7 @@ async function main() {
     console.log("- Company owner can read applicant details and update application status.");
     console.log("- Seeker can create admin requests with review packets and admin can update them.");
     console.log("- Admin can store seeker follow-up and internal handoff review separately.");
+    console.log("- Seeker can submit admin request supplements and unrelated companies cannot read them.");
     console.log("- Admin can assign admin requests to partners.");
     console.log("- Partners can read assigned requests and seeker summaries.");
   } finally {
