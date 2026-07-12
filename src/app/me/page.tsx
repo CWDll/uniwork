@@ -61,7 +61,7 @@ export default async function MePage() {
   const [
     { data: profile },
     { data: applications, count: applicationCount },
-    { count: adminRequestCount },
+    { data: adminRequests, count: adminRequestCount },
     { data: resume },
   ] = await Promise.all([
       supabase
@@ -80,8 +80,12 @@ export default async function MePage() {
         .order("applied_at", { ascending: false }),
       supabase
         .from("admin_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("seeker_id", user.id),
+        .select(
+          "id, type, status, seeker_followup_note, seeker_followup_requested_at, updated_at",
+          { count: "exact" },
+        )
+        .eq("seeker_id", user.id)
+        .order("updated_at", { ascending: false }),
       supabase
         .from("resumes")
         .select("id, title, intro, education, experience, languages")
@@ -207,13 +211,34 @@ export default async function MePage() {
       (applicationStatusCounts.get(application.status) ?? 0) + 1,
     );
   });
+  const activeFollowupRequests =
+    adminRequests?.filter(
+      (request) =>
+        request.seeker_followup_note &&
+        request.status !== "completed" &&
+        request.status !== "rejected",
+    ) ?? [];
+  const latestFollowupRequest = activeFollowupRequests[0];
   const dashboardAlerts = [
+    ...(latestFollowupRequest
+      ? [
+          {
+            href: `/me/admin-requests#request-${latestFollowupRequest.id}`,
+            label: "행정 요청 보완 필요",
+            note: `${getAdminRequestTypeLabel(latestFollowupRequest.type)} · ${
+              latestFollowupRequest.seeker_followup_note
+            }`,
+            tone: "amber",
+          },
+        ]
+      : []),
     ...(!applicationCompletion.profile.isComplete
       ? [
           {
             href: "/me/profile",
             label: "프로필 보완 필요",
             note: applicationCompletion.profile.missing.slice(0, 3).join(", "),
+            tone: "slate",
           },
         ]
       : []),
@@ -223,6 +248,7 @@ export default async function MePage() {
             href: "/me/resume",
             label: "이력서 보완 필요",
             note: applicationCompletion.resume.missing.slice(0, 3).join(", "),
+            tone: "slate",
           },
         ]
       : []),
@@ -232,6 +258,7 @@ export default async function MePage() {
             href: "/me/applications?status=accepted",
             label: "합격 처리된 지원",
             note: `${applicationStatusCounts.get("accepted")}건의 합격 상태를 확인하세요`,
+            tone: "green",
           },
         ]
       : []),
@@ -413,12 +440,19 @@ export default async function MePage() {
               {dashboardAlerts.length > 0 ? (
                 dashboardAlerts.map((alert) => (
                   <Link
-                    className="rounded-xl border border-slate-100 bg-slate-50 p-3 transition hover:bg-blue-50"
+                    className={cn(
+                      "rounded-xl border p-3 transition hover:bg-blue-50",
+                      alert.tone === "amber" && "border-amber-100 bg-amber-50",
+                      alert.tone === "green" && "border-emerald-100 bg-emerald-50",
+                      alert.tone === "slate" && "border-slate-100 bg-slate-50",
+                    )}
                     href={alert.href}
                     key={alert.label}
                   >
-                    <p className="text-sm font-black text-slate-900">{alert.label}</p>
-                    <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                    <p className="text-sm font-black text-slate-900">
+                      {alert.label}
+                    </p>
+                    <p className="mt-1 line-clamp-3 text-xs font-semibold leading-5 text-slate-600">
                       {alert.note || "상세 내용을 확인해주세요."}
                     </p>
                   </Link>
@@ -491,4 +525,15 @@ export default async function MePage() {
       </div>
     </DashboardShell>
   );
+}
+
+function getAdminRequestTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    document_review: "서류 사전 검토",
+    other: "기타 상담",
+    part_time_work_permission: "시간제 취업 허가 검토",
+    visa_eligibility_review: "비자 지원 가능성 검토",
+  };
+
+  return labels[value] ?? value;
 }
