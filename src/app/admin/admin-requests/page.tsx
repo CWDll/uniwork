@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type AdminRequestsSearchParams = {
+  attention?: string;
   status?: string;
 };
 
@@ -33,6 +34,7 @@ export default async function AdminRequestsPage({
 }) {
   const params = await searchParams;
   const activeStatus = params.status?.trim() ?? "";
+  const activeAttention = params.attention?.trim() ?? "";
   const supabase = await createClient();
   const {
     data: { user },
@@ -48,9 +50,6 @@ export default async function AdminRequestsPage({
       "id, seeker_id, assigned_partner_id, type, status, memo, seeker_followup_note, seeker_followup_requested_at, request_details, document_checklist, contact_snapshot, created_at, updated_at",
     )
     .order("created_at", { ascending: false });
-  const requests = activeStatus
-    ? allRequests?.filter((request) => request.status === activeStatus)
-    : allRequests;
   const statusCounts = new Map<string, number>();
   allRequests?.forEach((request) => {
     statusCounts.set(request.status, (statusCounts.get(request.status) ?? 0) + 1);
@@ -109,6 +108,18 @@ export default async function AdminRequestsPage({
     const existing = supplementsByRequestId.get(supplement.request_id) ?? [];
     supplementsByRequestId.set(supplement.request_id, [...existing, supplement]);
   });
+  const unansweredFollowupRequests =
+    allRequests?.filter((request) =>
+      hasUnansweredFollowup({
+        request,
+        supplements: supplementsByRequestId.get(request.id) ?? [],
+      }),
+    ) ?? [];
+  const requests = activeAttention === "followup_waiting"
+    ? unansweredFollowupRequests
+    : activeStatus
+      ? allRequests?.filter((request) => request.status === activeStatus)
+      : allRequests;
 
   return (
     <DashboardShell area="admin">
@@ -123,6 +134,30 @@ export default async function AdminRequestsPage({
           MVP에서는 운영자가 요청을 검토하고 상태를 수동으로 관리합니다.
           행정사 계정/배정 UI는 다음 단계에서 확장합니다.
         </p>
+      </div>
+
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        <Link
+          className={cn(
+            "rounded-2xl border p-4 transition",
+            activeAttention === "followup_waiting"
+              ? "border-amber-200 bg-amber-50"
+              : "border-slate-200 bg-white hover:bg-amber-50",
+          )}
+          href={
+            activeAttention === "followup_waiting"
+              ? "/admin/admin-requests"
+              : "/admin/admin-requests?attention=followup_waiting"
+          }
+        >
+          <p className="text-sm font-black text-slate-500">보완 답변 대기</p>
+          <p className="mt-1 text-2xl font-black">
+            {unansweredFollowupRequests.length.toLocaleString("ko-KR")}
+          </p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+            보완 요청 후 아직 제출 이력이 없는 요청
+          </p>
+        </Link>
       </div>
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
@@ -157,12 +192,14 @@ export default async function AdminRequestsPage({
                 Request queue {requests?.length ?? 0}
               </h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                {activeStatus
+                {activeAttention === "followup_waiting"
+                  ? "보완 답변을 기다리는 행정 요청"
+                  : activeStatus
                   ? `${getStatusMeta("adminRequest", activeStatus).label} 요청`
                   : "접수된 모든 행정 요청"}
               </p>
             </div>
-            {activeStatus ? (
+            {activeStatus || activeAttention ? (
               <Link
                 className="text-sm font-black text-blue-700 hover:text-blue-900"
                 href="/admin/admin-requests"
@@ -185,6 +222,10 @@ export default async function AdminRequestsPage({
               const contact = parseContactSnapshot(request.contact_snapshot);
               const review = reviewByRequestId.get(request.id);
               const requestSupplements = supplementsByRequestId.get(request.id) ?? [];
+              const isWaitingForFollowup = hasUnansweredFollowup({
+                request,
+                supplements: requestSupplements,
+              });
               const readiness = getAdminRequestReadiness({
                 contact,
                 details,
@@ -209,6 +250,11 @@ export default async function AdminRequestsPage({
                         >
                           {getStatusMeta("adminRequest", request.status).label}
                         </span>
+                        {isWaitingForFollowup ? (
+                          <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
+                            답변 대기
+                          </span>
+                        ) : null}
                       </div>
                       <p className="mt-1 break-words text-sm font-semibold text-slate-500">
                         {profile?.name || profile?.email || "Seeker"} ·{" "}
@@ -251,12 +297,24 @@ export default async function AdminRequestsPage({
                         />
                       </div>
                       {request.seeker_followup_note ? (
-                        <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-3">
+                        <div
+                          className={cn(
+                            "mt-3 rounded-xl border p-3",
+                            isWaitingForFollowup
+                              ? "border-amber-100 bg-amber-50"
+                              : "border-emerald-100 bg-emerald-50",
+                          )}
+                        >
                           <p className="text-xs font-black uppercase tracking-wide text-amber-700">
                             Seeker follow-up
                           </p>
                           <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-amber-900">
                             {request.seeker_followup_note}
+                          </p>
+                          <p className="mt-2 text-xs font-bold leading-5 text-slate-600">
+                            {isWaitingForFollowup
+                              ? "보완 요청 후 아직 구직자 제출 이력이 없습니다."
+                              : "보완 요청 이후 구직자 제출 이력이 있습니다."}
                           </p>
                         </div>
                       ) : null}
@@ -513,4 +571,31 @@ function getHandoffStatusLabel(value: string | null | undefined) {
   };
 
   return labels[value ?? "not_ready"] ?? "준비 중";
+}
+
+function hasUnansweredFollowup({
+  request,
+  supplements,
+}: {
+  request: {
+    seeker_followup_note?: string | null;
+    seeker_followup_requested_at?: string | null;
+    status: string;
+  };
+  supplements: { created_at: string }[];
+}) {
+  if (
+    !request.seeker_followup_note ||
+    !request.seeker_followup_requested_at ||
+    request.status === "completed" ||
+    request.status === "rejected"
+  ) {
+    return false;
+  }
+
+  const requestedAt = new Date(request.seeker_followup_requested_at).getTime();
+
+  return !supplements.some(
+    (supplement) => new Date(supplement.created_at).getTime() >= requestedAt,
+  );
 }

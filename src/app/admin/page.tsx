@@ -49,15 +49,30 @@ export default async function AdminPage() {
       .select("id", { count: "exact", head: true }),
     supabase
       .from("admin_requests")
-      .select("status, request_details, document_checklist, contact_snapshot"),
+      .select(
+        "id, status, seeker_followup_note, seeker_followup_requested_at, request_details, document_checklist, contact_snapshot",
+      ),
     supabase
       .from("admin_requests")
       .select(
-        "id, seeker_id, type, status, memo, request_details, document_checklist, contact_snapshot, created_at",
+        "id, seeker_id, type, status, memo, seeker_followup_note, seeker_followup_requested_at, request_details, document_checklist, contact_snapshot, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
+  const adminRequestIds = adminRequests?.map((request) => request.id) ?? [];
+  const { data: adminRequestSupplements } =
+    adminRequestIds.length > 0
+      ? await supabase
+          .from("admin_request_supplements")
+          .select("request_id, created_at")
+          .in("request_id", adminRequestIds)
+      : { data: [] };
+  const supplementsByRequestId = new Map<string, { created_at: string }[]>();
+  adminRequestSupplements?.forEach((supplement) => {
+    const existing = supplementsByRequestId.get(supplement.request_id) ?? [];
+    supplementsByRequestId.set(supplement.request_id, [...existing, supplement]);
+  });
   const recentSeekerIds = Array.from(
     new Set(recentRequests?.map((request) => request.seeker_id) ?? []),
   );
@@ -106,6 +121,7 @@ export default async function AdminPage() {
   const statusCounts = new Map<string, number>();
   let handoffReadyCount = 0;
   let handoffIncompleteCount = 0;
+  let unansweredFollowupCount = 0;
 
   adminRequests?.forEach((request) => {
     statusCounts.set(request.status, (statusCounts.get(request.status) ?? 0) + 1);
@@ -120,6 +136,15 @@ export default async function AdminPage() {
       handoffReadyCount += 1;
     } else if (request.status !== "completed" && request.status !== "rejected") {
       handoffIncompleteCount += 1;
+    }
+
+    if (
+      hasUnansweredFollowup({
+        request,
+        supplements: supplementsByRequestId.get(request.id) ?? [],
+      })
+    ) {
+      unansweredFollowupCount += 1;
     }
   });
   const workItems = [
@@ -137,9 +162,15 @@ export default async function AdminPage() {
     },
     {
       href: "/admin/admin-requests",
-      label: "정보 보완 필요",
+      label: "기본 정보 부족",
       tone: handoffIncompleteCount ? "amber" : "slate",
       value: `${handoffIncompleteCount}건`,
+    },
+    {
+      href: "/admin/admin-requests?attention=followup_waiting",
+      label: "보완 답변 대기",
+      tone: unansweredFollowupCount ? "amber" : "slate",
+      value: `${unansweredFollowupCount}건`,
     },
   ] as const;
 
@@ -194,7 +225,7 @@ export default async function AdminPage() {
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-black">오늘 처리할 일</h2>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {workItems.map((item) => (
             <Link
               className={cn(
@@ -251,6 +282,10 @@ export default async function AdminPage() {
             recentRequests.map((request) => {
               const profile = profileById.get(request.seeker_id);
               const seekerProfile = seekerProfileById.get(request.seeker_id);
+              const isWaitingForFollowup = hasUnansweredFollowup({
+                request,
+                supplements: supplementsByRequestId.get(request.id) ?? [],
+              });
               const readiness = getAdminRequestReadiness({
                 contact: parseContactSnapshot(request.contact_snapshot),
                 details: parseRequestDetails(request.request_details),
@@ -284,6 +319,11 @@ export default async function AdminPage() {
                         >
                           {readiness.completed}/{readiness.total} 준비
                         </span>
+                        {isWaitingForFollowup ? (
+                          <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
+                            답변 대기
+                          </span>
+                        ) : null}
                       </div>
                       <p className="mt-1 text-sm font-semibold text-slate-500">
                         {profile?.name || profile?.email || "Seeker"} ·{" "}
@@ -293,6 +333,11 @@ export default async function AdminPage() {
                       {readiness.missing.length > 0 ? (
                         <p className="mt-2 text-xs font-bold leading-5 text-amber-700">
                           확인 필요: {readiness.missing.slice(0, 4).join(", ")}
+                        </p>
+                      ) : null}
+                      {isWaitingForFollowup ? (
+                        <p className="mt-2 text-xs font-bold leading-5 text-amber-700">
+                          보완 요청 후 아직 구직자 답변이 없습니다.
                         </p>
                       ) : null}
                     </div>
@@ -314,6 +359,33 @@ export default async function AdminPage() {
         </div>
       </section>
     </DashboardShell>
+  );
+}
+
+function hasUnansweredFollowup({
+  request,
+  supplements,
+}: {
+  request: {
+    seeker_followup_note?: string | null;
+    seeker_followup_requested_at?: string | null;
+    status: string;
+  };
+  supplements: { created_at: string }[];
+}) {
+  if (
+    !request.seeker_followup_note ||
+    !request.seeker_followup_requested_at ||
+    request.status === "completed" ||
+    request.status === "rejected"
+  ) {
+    return false;
+  }
+
+  const requestedAt = new Date(request.seeker_followup_requested_at).getTime();
+
+  return !supplements.some(
+    (supplement) => new Date(supplement.created_at).getTime() >= requestedAt,
   );
 }
 
