@@ -62,7 +62,7 @@ export default async function AdminRequestHandoffDraftPage({
       supabase
         .from("admin_request_reviews")
         .select(
-          "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at",
+          "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at, supplement_checked_at",
         )
         .eq("request_id", request.id)
         .maybeSingle(),
@@ -82,6 +82,12 @@ export default async function AdminRequestHandoffDraftPage({
     documents,
     seekerProfile,
   });
+  const timeline = buildRequestTimeline({
+    readiness,
+    request,
+    review,
+    supplements: supplements ?? [],
+  });
   const draftText = buildDraftText({
     contact,
     details,
@@ -93,6 +99,7 @@ export default async function AdminRequestHandoffDraftPage({
     request,
     seekerProfile,
     supplements: supplements ?? [],
+    timeline,
   });
 
   return (
@@ -280,6 +287,30 @@ export default async function AdminRequestHandoffDraftPage({
         ) : null}
 
         <section className="mt-6 border-t border-slate-100 pt-5">
+          <h2 className="text-lg font-black">운영 처리 타임라인</h2>
+          <div className="mt-3 grid gap-3">
+            {timeline.map((event) => (
+              <div
+                className="grid gap-2 rounded-xl border border-slate-100 bg-slate-50 p-4 sm:grid-cols-[160px_minmax(0,1fr)]"
+                key={`${event.at}-${event.title}`}
+              >
+                <p className="text-xs font-black text-slate-400">
+                  {new Date(event.at).toLocaleString("ko-KR")}
+                </p>
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900">
+                    {event.title}
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-600">
+                    {event.detail}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-6 border-t border-slate-100 pt-5">
           <h2 className="text-lg font-black">복사용 초안</h2>
           <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
             {draftText}
@@ -437,6 +468,7 @@ function buildDraftText({
   request,
   seekerProfile,
   supplements,
+  timeline,
 }: {
   contact: ReturnType<typeof parseContactSnapshot>;
   details: ReturnType<typeof parseRequestDetails>;
@@ -449,6 +481,7 @@ function buildDraftText({
     handoff_status: string;
     internal_note: string;
     reviewed_at: string | null;
+    supplement_checked_at?: string | null;
   } | null;
   request: {
     created_at: string;
@@ -474,6 +507,7 @@ function buildDraftText({
     id: string;
     message: string;
   }[];
+  timeline: RequestTimelineEvent[];
 }) {
   return [
     "[Uniwork 행정 요청 전달 준비 초안]",
@@ -550,7 +584,107 @@ function buildDraftText({
           })
           .join("\n\n")
       : "제출된 보완 이력 없음",
+    "",
+    "[운영 처리 타임라인]",
+    timeline.length > 0
+      ? timeline
+          .map(
+            (event, index) =>
+              `${index + 1}. ${new Date(event.at).toLocaleString("ko-KR")} - ${event.title}\n${event.detail}`,
+          )
+          .join("\n\n")
+      : "처리 이력 없음",
   ].join("\n");
+}
+
+type RequestTimelineEvent = {
+  at: string;
+  detail: string;
+  title: string;
+};
+
+function buildRequestTimeline({
+  readiness,
+  request,
+  review,
+  supplements,
+}: {
+  readiness: ReturnType<typeof getAdminRequestReadiness>;
+  request: {
+    created_at: string;
+    seeker_followup_note?: string | null;
+    seeker_followup_requested_at?: string | null;
+    status: string;
+    updated_at: string;
+  };
+  review:
+    | {
+        handoff_status: string;
+        reviewed_at: string | null;
+        supplement_checked_at?: string | null;
+      }
+    | null;
+  supplements: {
+    created_at: string;
+    document_checklist: unknown;
+    message: string | null;
+  }[];
+}) {
+  const events: RequestTimelineEvent[] = [
+    {
+      at: request.created_at,
+      detail: `초기 상태: ${getStatusMeta("adminRequest", request.status).label}`,
+      title: "행정 요청 접수",
+    },
+  ];
+
+  if (request.seeker_followup_note && request.seeker_followup_requested_at) {
+    events.push({
+      at: request.seeker_followup_requested_at,
+      detail: request.seeker_followup_note,
+      title: "구직자 보완 요청",
+    });
+  }
+
+  supplements.forEach((supplement) => {
+    const documents = parseDocumentChecklist(supplement.document_checklist);
+
+    events.push({
+      at: supplement.created_at,
+      detail:
+        supplement.message ||
+        `추가 준비 서류 ${documents.ready.length.toLocaleString("ko-KR")}개`,
+      title: "구직자 보완 제출",
+    });
+  });
+
+  if (review?.supplement_checked_at) {
+    events.push({
+      at: review.supplement_checked_at,
+      detail: "운영자가 최신 보완 제출을 확인했습니다.",
+      title: "보완 제출 확인",
+    });
+  }
+
+  if (review?.reviewed_at) {
+    events.push({
+      at: review.reviewed_at,
+      detail: `전달 상태: ${getHandoffStatusLabel(review.handoff_status)}`,
+      title: "운영자 검토 저장",
+    });
+  }
+
+  if (readiness.missing.length === 0) {
+    events.push({
+      at: request.updated_at,
+      detail: "외부 전달에 필요한 기본 정보가 준비되어 있습니다.",
+      title: "전달 패킷 준비 완료",
+    });
+  }
+
+  return events
+    .filter((event) => !Number.isNaN(new Date(event.at).getTime()))
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
 function getHandoffStatusLabel(value: string | null | undefined) {

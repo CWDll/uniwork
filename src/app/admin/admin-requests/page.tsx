@@ -25,6 +25,12 @@ type RequestOperation = {
   readiness: ReturnType<typeof getAdminRequestReadiness>;
 };
 
+type RequestTimelineEvent = {
+  at: string;
+  detail: string;
+  title: string;
+};
+
 const requestFilters = [
   { value: "", label: "전체" },
   { value: "received", label: "접수" },
@@ -359,6 +365,14 @@ export default async function AdminRequestsPage({
                   seekerProfile,
                 });
 
+              const currentReadiness = readiness;
+              const timeline = buildRequestTimeline({
+                readiness: currentReadiness,
+                request,
+                review,
+                supplements: requestSupplements,
+              }).slice(0, 4);
+
               return (
                 <article className="grid gap-4 px-4 py-4 sm:px-5" key={request.id}>
                   <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -366,7 +380,7 @@ export default async function AdminRequestsPage({
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="break-words font-black">{request.type}</h3>
                         <span className="rounded-md bg-blue-50 px-2 py-1 text-xs font-black text-blue-700">
-                          {readiness.completed}/{readiness.total} 준비
+                          {currentReadiness.completed}/{currentReadiness.total} 준비
                         </span>
                         <span
                           className={getStatusBadgeClassName(
@@ -475,9 +489,9 @@ export default async function AdminRequestsPage({
                         <p className="text-xs font-black uppercase tracking-wide text-slate-400">
                           Handoff checklist
                         </p>
-                        {readiness.missing.length > 0 ? (
+                        {currentReadiness.missing.length > 0 ? (
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {readiness.missing.map((item) => (
+                            {currentReadiness.missing.map((item) => (
                               <span
                                 className="rounded-md bg-white px-2 py-1 text-xs font-black text-amber-700"
                                 key={item}
@@ -512,6 +526,34 @@ export default async function AdminRequestsPage({
                           내부 메모: {review.internal_note}
                         </p>
                       ) : null}
+                      <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
+                        <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                          Operations timeline
+                        </p>
+                        <div className="mt-3 grid gap-3">
+                          {timeline.map((event) => (
+                            <div
+                              className="grid grid-cols-[84px_minmax(0,1fr)] gap-3"
+                              key={`${event.at}-${event.title}`}
+                            >
+                              <p className="text-[11px] font-bold leading-5 text-slate-400">
+                                {new Date(event.at).toLocaleDateString("ko-KR", {
+                                  month: "2-digit",
+                                  day: "2-digit",
+                                })}
+                              </p>
+                              <div className="min-w-0">
+                                <p className="text-sm font-black text-slate-800">
+                                  {event.title}
+                                </p>
+                                <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-slate-500">
+                                  {event.detail}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                       {requestSupplements.length > 0 ? (
                         <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3">
                           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -891,4 +933,88 @@ function hasUncheckedSupplementAfterCheck({
     new Date(latestSupplementAt).getTime() >
     new Date(supplementCheckedAt).getTime()
   );
+}
+
+function buildRequestTimeline({
+  readiness,
+  request,
+  review,
+  supplements,
+}: {
+  readiness: ReturnType<typeof getAdminRequestReadiness>;
+  request: {
+    created_at: string;
+    seeker_followup_note?: string | null;
+    seeker_followup_requested_at?: string | null;
+    status: string;
+    updated_at: string;
+  };
+  review:
+    | {
+        handoff_status: string;
+        reviewed_at: string | null;
+        supplement_checked_at?: string | null;
+      }
+    | undefined;
+  supplements: {
+    created_at: string;
+    document_checklist: unknown;
+    message: string | null;
+  }[];
+}) {
+  const events: RequestTimelineEvent[] = [
+    {
+      at: request.created_at,
+      detail: `초기 상태: ${getStatusMeta("adminRequest", request.status).label}`,
+      title: "행정 요청 접수",
+    },
+  ];
+
+  if (request.seeker_followup_note && request.seeker_followup_requested_at) {
+    events.push({
+      at: request.seeker_followup_requested_at,
+      detail: request.seeker_followup_note,
+      title: "구직자 보완 요청",
+    });
+  }
+
+  supplements.forEach((supplement) => {
+    const documents = parseDocumentChecklist(supplement.document_checklist);
+
+    events.push({
+      at: supplement.created_at,
+      detail:
+        supplement.message ||
+        `추가 준비 서류 ${documents.ready.length.toLocaleString("ko-KR")}개`,
+      title: "구직자 보완 제출",
+    });
+  });
+
+  if (review?.supplement_checked_at) {
+    events.push({
+      at: review.supplement_checked_at,
+      detail: "운영자가 최신 보완 제출을 확인했습니다.",
+      title: "보완 제출 확인",
+    });
+  }
+
+  if (review?.reviewed_at) {
+    events.push({
+      at: review.reviewed_at,
+      detail: `전달 상태: ${getHandoffStatusLabel(review.handoff_status)}`,
+      title: "운영자 검토 저장",
+    });
+  }
+
+  if (readiness.missing.length === 0) {
+    events.push({
+      at: request.updated_at,
+      detail: "외부 전달에 필요한 기본 정보가 준비되어 있습니다.",
+      title: "전달 패킷 준비 완료",
+    });
+  }
+
+  return events
+    .filter((event) => !Number.isNaN(new Date(event.at).getTime()))
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
