@@ -222,6 +222,22 @@ export default async function CompanyApplicationDetailPage({
                 권한 또는 네트워크 상태를 확인한 뒤 다시 시도해주세요. 같은 문제가
                 반복되면 운영자에게 문의해주세요.
               </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link
+                  className={cn(buttonVariants({ size: "sm" }))}
+                  href={`/company/applications/${applicationId}`}
+                >
+                  오류 알림 닫기
+                </Link>
+                <Link
+                  className={cn(
+                    buttonVariants({ size: "sm", variant: "outline" }),
+                  )}
+                  href="/company/applications"
+                >
+                  지원자 목록
+                </Link>
+              </div>
             </div>
           ) : null}
 

@@ -642,6 +642,20 @@ export default async function CompanyApplicationsPage({
             권한 또는 네트워크 상태를 확인한 뒤 다시 시도해주세요. 같은 문제가
             반복되면 운영자에게 문의해주세요.
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              className="inline-flex h-9 items-center justify-center rounded-md bg-red-600 px-3 text-sm font-black text-white hover:bg-red-700"
+              href="/company/applications"
+            >
+              오류 알림 닫기
+            </Link>
+            <Link
+              className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-sm font-black text-red-700 hover:bg-red-50"
+              href="/company/settings"
+            >
+              회사 설정 확인
+            </Link>
+          </div>
         </div>
       ) : null}
 

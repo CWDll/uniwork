@@ -14,10 +14,10 @@ export default function NotFound() {
           요청한 페이지를 찾을 수 없습니다
         </h1>
         <p className="mt-3 text-sm font-semibold leading-6 text-slate-600">
-          주소가 바뀌었거나 접근 권한이 없는 페이지일 수 있습니다. 필요한 작업으로
-          바로 이동해 다시 확인해주세요.
+          주소가 바뀌었거나, 로그인 계정에 접근 권한이 없는 페이지일 수
+          있습니다. 필요한 작업 화면으로 이동해 다시 확인해주세요.
         </p>
-        <div className="mt-6 grid gap-2 sm:grid-cols-3">
+        <div className="mt-6 grid gap-2 sm:grid-cols-2">
           <Link
             className={cn(buttonVariants({ className: "w-full" }))}
             href="/jobs"
@@ -35,6 +35,12 @@ export default function NotFound() {
             href="/company"
           >
             기업 대시보드
+          </Link>
+          <Link
+            className={cn(buttonVariants({ className: "w-full", variant: "outline" }))}
+            href="/login"
+          >
+            다시 로그인
           </Link>
         </div>
       </section>
