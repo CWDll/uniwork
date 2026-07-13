@@ -1,13 +1,23 @@
 "use client";
 
-import { useActionState } from "react";
+import { RotateCcw, Upload } from "lucide-react";
+import { useActionState, useState, type ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
 
 import { createCompanyAction } from "@/app/company/settings/actions";
 import { Button } from "@/components/ui/button";
+import {
+  allowedCompanyRegistrationDocumentTypes,
+  maxCompanyRegistrationDocumentSize,
+} from "@/lib/company-documents";
 
 export function CompanySettingsForm() {
   const [state, formAction] = useActionState(createCompanyAction, {});
+  const [registrationFileName, setRegistrationFileName] = useState("");
+
+  function handleRegistrationFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setRegistrationFileName(event.target.files?.[0]?.name ?? "");
+  }
 
   return (
     <form
@@ -17,6 +27,33 @@ export function CompanySettingsForm() {
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Company / branch name" name="name" />
         <Field label="Business number" name="business_number" />
+        <label className="grid gap-2 text-sm font-bold text-slate-700 md:col-span-2">
+          Business registration document
+          <span className="rounded-md bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-500">
+            {Math.round(maxCompanyRegistrationDocumentSize / 1024 / 1024)}MB
+            이하의 PDF, JPG, JPEG, PNG 파일만 업로드 가능해요.
+          </span>
+          {registrationFileName ? (
+            <span className="flex h-11 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
+              {registrationFileName}
+            </span>
+          ) : null}
+          <input
+            accept={allowedCompanyRegistrationDocumentTypes.join(",")}
+            className="sr-only"
+            name="business_registration_document"
+            onChange={handleRegistrationFileChange}
+            type="file"
+          />
+          <span className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-blue-600 bg-white px-4 text-sm font-black text-blue-700">
+            {registrationFileName ? (
+              <RotateCcw className="size-4" />
+            ) : (
+              <Upload className="size-4" />
+            )}
+            {registrationFileName ? "다시 업로드" : "업로드하기"}
+          </span>
+        </label>
         <Field label="Industry" name="industry" />
         <Field label="Address" name="address" />
         <Field label="Manager name" name="manager_name" />

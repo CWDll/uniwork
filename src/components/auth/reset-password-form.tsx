@@ -2,42 +2,32 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import Link from "next/link";
 
-import { loginAction } from "@/app/auth/actions";
+import { updatePasswordAction } from "@/app/reset-password/actions";
 import { Button } from "@/components/ui/button";
 
-export function LoginForm({ next }: { next?: string }) {
-  const [state, formAction] = useActionState(loginAction, {});
+export function ResetPasswordForm() {
+  const [state, formAction] = useActionState(updatePasswordAction, {});
 
   return (
     <form action={formAction} className="mt-6 grid gap-4">
-      {next ? <input name="next" type="hidden" value={next} /> : null}
       <label className="grid gap-2 text-sm font-bold text-slate-700">
-        Email
+        새 비밀번호
         <input
-          autoComplete="email"
+          autoComplete="new-password"
           className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
-          name="email"
-          placeholder="you@example.com"
-          type="email"
+          name="password"
+          placeholder="8자 이상"
+          type="password"
         />
       </label>
       <label className="grid gap-2 text-sm font-bold text-slate-700">
-        <span className="flex items-center justify-between gap-3">
-          Password
-          <Link
-            className="text-xs font-black text-blue-700 hover:text-blue-900"
-            href="/forgot-password"
-          >
-            비밀번호 재설정
-          </Link>
-        </span>
+        새 비밀번호 확인
         <input
-          autoComplete="current-password"
+          autoComplete="new-password"
           className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
-          name="password"
-          placeholder="••••••••"
+          name="password_confirm"
+          placeholder="한 번 더 입력"
           type="password"
         />
       </label>
@@ -56,7 +46,7 @@ function SubmitButton() {
 
   return (
     <Button className="h-11" disabled={pending}>
-      {pending ? "Logging in..." : "Log in"}
+      {pending ? "변경 중..." : "비밀번호 변경"}
     </Button>
   );
 }

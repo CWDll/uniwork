@@ -43,9 +43,27 @@ export default async function AdminCompaniesPage({
   const { data: allCompanies } = await supabase
     .from("companies")
     .select(
-      "id, owner_id, name, business_number, industry, address, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at, created_at",
+      "id, owner_id, name, business_number, business_registration_path, industry, address, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at, created_at",
     )
     .order("created_at", { ascending: false });
+  const documentPaths = Array.from(
+    new Set(
+      allCompanies
+        ?.map((company) => company.business_registration_path)
+        .filter((path): path is string => Boolean(path)) ?? [],
+    ),
+  );
+  const documentUrlByPath = new Map<string, string>();
+
+  for (const path of documentPaths) {
+    const { data } = await supabase.storage
+      .from("company-registration-documents")
+      .createSignedUrl(path, 60 * 10);
+
+    if (data?.signedUrl) {
+      documentUrlByPath.set(path, data.signedUrl);
+    }
+  }
   const companies = activeStatus
     ? allCompanies?.filter((company) => company.verification_status === activeStatus)
     : allCompanies;
@@ -135,6 +153,7 @@ export default async function AdminCompaniesPage({
               );
               const readiness = getCompanyReadiness({
                 address: company.address,
+                businessRegistrationPath: company.business_registration_path,
                 businessNumber: company.business_number,
                 managerName: company.manager_name,
                 managerPhone: company.manager_phone,
@@ -184,6 +203,14 @@ export default async function AdminCompaniesPage({
                         value={`${readiness.completed}/${readiness.total} 항목`}
                       />
                       <Info
+                        label="Business document"
+                        value={
+                          company.business_registration_path
+                            ? "제출 완료"
+                            : "미제출"
+                        }
+                      />
+                      <Info
                         label="Created"
                         value={new Date(company.created_at).toLocaleString("ko-KR")}
                       />
@@ -196,6 +223,29 @@ export default async function AdminCompaniesPage({
                         }
                       />
                     </div>
+                    {company.business_registration_path ? (
+                      <div className="mt-3">
+                        {documentUrlByPath.get(company.business_registration_path) ? (
+                          <a
+                            className={cn(
+                              buttonVariants({ size: "sm", variant: "outline" }),
+                            )}
+                            href={documentUrlByPath.get(
+                              company.business_registration_path,
+                            )}
+                            rel="noreferrer"
+                            target="_blank"
+                          >
+                            사업자등록증 보기
+                          </a>
+                        ) : (
+                          <p className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-500">
+                            사업자등록증이 제출되었지만 임시 확인 링크를 만들지
+                            못했습니다.
+                          </p>
+                        )}
+                      </div>
+                    ) : null}
                     <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">
                         Verification checklist
@@ -306,12 +356,14 @@ export default async function AdminCompaniesPage({
 
 function getCompanyReadiness({
   address,
+  businessRegistrationPath,
   businessNumber,
   managerName,
   managerPhone,
   notificationEmail,
 }: {
   address?: string | null;
+  businessRegistrationPath?: string | null;
   businessNumber?: string | null;
   managerName?: string | null;
   managerPhone?: string | null;
@@ -319,6 +371,7 @@ function getCompanyReadiness({
 }) {
   const checks = [
     { done: Boolean(businessNumber?.trim()), label: "사업자번호" },
+    { done: Boolean(businessRegistrationPath?.trim()), label: "사업자등록증" },
     { done: Boolean(address?.trim()), label: "주소" },
     { done: Boolean(managerName?.trim()), label: "담당자명" },
     { done: Boolean(managerPhone?.trim()), label: "담당자 연락처" },

@@ -22,7 +22,7 @@ export default async function CompanySettingsPage() {
   const { data: companies } = await supabase
     .from("companies")
     .select(
-      "id, name, business_number, industry, address, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at",
+      "id, name, business_number, business_registration_path, industry, address, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at",
     )
     .eq("owner_id", user.id)
     .order("created_at", { ascending: false });
@@ -62,6 +62,7 @@ export default async function CompanySettingsPage() {
               );
               const readiness = getCompanyReadiness({
                 address: company.address,
+                businessRegistrationPath: company.business_registration_path,
                 businessNumber: company.business_number,
                 managerName: company.manager_name,
                 managerPhone: company.manager_phone,
@@ -104,6 +105,14 @@ export default async function CompanySettingsPage() {
                       <Info
                         label="Readiness"
                         value={`${readiness.completed}/${readiness.total} 항목`}
+                      />
+                      <Info
+                        label="Business document"
+                        value={
+                          company.business_registration_path
+                            ? "제출 완료"
+                            : "미제출"
+                        }
                       />
                       <Info label="Next step" value={guidance.title} />
                     </div>
@@ -173,12 +182,14 @@ export default async function CompanySettingsPage() {
 
 function getCompanyReadiness({
   address,
+  businessRegistrationPath,
   businessNumber,
   managerName,
   managerPhone,
   notificationEmail,
 }: {
   address?: string | null;
+  businessRegistrationPath?: string | null;
   businessNumber?: string | null;
   managerName?: string | null;
   managerPhone?: string | null;
@@ -186,6 +197,7 @@ function getCompanyReadiness({
 }) {
   const checks = [
     { done: Boolean(businessNumber?.trim()), label: "사업자번호" },
+    { done: Boolean(businessRegistrationPath?.trim()), label: "사업자등록증" },
     { done: Boolean(address?.trim()), label: "주소" },
     { done: Boolean(managerName?.trim()), label: "담당자명" },
     { done: Boolean(managerPhone?.trim()), label: "담당자 연락처" },

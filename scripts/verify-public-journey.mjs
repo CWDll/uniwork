@@ -133,6 +133,11 @@ await assertPage(new URL("/signup", targetUrl), "Signup", [
   "기업",
 ]);
 
+await assertPage(new URL("/forgot-password", targetUrl), "Forgot password", [
+  "비밀번호 재설정",
+  "재설정 메일 보내기",
+]);
+
 const manifestResponse = await fetch(new URL("/manifest.webmanifest", targetUrl), {
   cache: "no-store",
 });

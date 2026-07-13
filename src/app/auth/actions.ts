@@ -3,6 +3,12 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import {
+  allowedCompanyRegistrationDocumentTypes,
+  companyRegistrationDocumentsBucket,
+  getCompanyRegistrationDocumentExtension,
+  maxCompanyRegistrationDocumentSize,
+} from "@/lib/company-documents";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,6 +25,16 @@ function getSafeNextPath(value: FormDataEntryValue | null) {
   }
 
   return next;
+}
+
+function getCompanyDocumentFile(formData: FormData) {
+  const value = formData.get("business_registration_document");
+
+  if (!(value instanceof File) || value.size === 0) {
+    return null;
+  }
+
+  return value;
 }
 
 export async function loginAction(
@@ -58,6 +74,8 @@ export async function signupAction(
   const companyName = String(formData.get("company_name") ?? "").trim();
   const managerName = String(formData.get("manager_name") ?? "").trim();
   const managerPhone = String(formData.get("manager_phone") ?? "").trim();
+  const businessNumber = String(formData.get("business_number") ?? "").trim();
+  const businessRegistrationDocument = getCompanyDocumentFile(formData);
 
   if (!name || !email || !password) {
     return { error: "이름, 이메일, 비밀번호를 모두 입력해주세요." };
@@ -67,10 +85,34 @@ export async function signupAction(
     return { error: "비밀번호는 최소 8자 이상으로 입력해주세요." };
   }
 
-  if (safeRole === "company" && (!companyName || !managerName || !managerPhone)) {
+  if (
+    safeRole === "company" &&
+    (!companyName ||
+      !managerName ||
+      !managerPhone ||
+      !businessNumber ||
+      !businessRegistrationDocument)
+  ) {
     return {
-      error: "기업 회원은 기업명, 담당자명, 담당자 휴대폰 번호를 입력해주세요.",
+      error:
+        "기업 회원은 기업명, 담당자명, 담당자 휴대폰 번호, 사업자등록번호, 사업자등록증을 입력해주세요.",
     };
+  }
+
+  if (safeRole === "company" && businessRegistrationDocument) {
+    if (
+      !allowedCompanyRegistrationDocumentTypes.includes(
+        businessRegistrationDocument.type,
+      )
+    ) {
+      return {
+        error: "사업자등록증은 PDF, JPG, JPEG, PNG 파일만 업로드할 수 있습니다.",
+      };
+    }
+
+    if (businessRegistrationDocument.size > maxCompanyRegistrationDocumentSize) {
+      return { error: "사업자등록증은 5MB 이하로 업로드해주세요." };
+    }
   }
 
   if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -116,10 +158,27 @@ export async function signupAction(
 
   if (safeRole === "company" && data.user && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const admin = createAdminClient();
+    let businessRegistrationPath: string | null = null;
+
+    if (businessRegistrationDocument) {
+      businessRegistrationPath = `${data.user.id}/business-registration.${getCompanyRegistrationDocumentExtension(businessRegistrationDocument)}`;
+      const { error: uploadError } = await admin.storage
+        .from(companyRegistrationDocumentsBucket)
+        .upload(businessRegistrationPath, businessRegistrationDocument, {
+          contentType: businessRegistrationDocument.type,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        return { error: uploadError.message };
+      }
+    }
+
     const { error: companyError } = await admin.from("companies").insert({
       owner_id: data.user.id,
       name: companyName,
-      business_number: String(formData.get("business_number") ?? "").trim(),
+      business_number: businessNumber,
+      business_registration_path: businessRegistrationPath,
       industry: String(formData.get("industry") ?? "").trim(),
       address: String(formData.get("address") ?? "").trim(),
       manager_name: managerName,
