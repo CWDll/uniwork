@@ -9,6 +9,16 @@ type ForgotPasswordState = {
   message?: string;
 };
 
+function getPasswordResetErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("rate limit")) {
+    return "비밀번호 재설정 메일을 너무 자주 요청했습니다. 잠시 후 다시 시도해주세요.";
+  }
+
+  return message;
+}
+
 export async function requestPasswordResetAction(
   _prevState: ForgotPasswordState,
   formData: FormData,
@@ -26,7 +36,7 @@ export async function requestPasswordResetAction(
   });
 
   if (error) {
-    return { error: error.message };
+    return { error: getPasswordResetErrorMessage(error.message) };
   }
 
   return {
