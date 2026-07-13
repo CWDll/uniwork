@@ -1,4 +1,4 @@
-import { ArrowRight, Building2, FileCheck2, UsersRound } from "lucide-react";
+import { ArrowRight, BadgeCheck, FileCheck2, UsersRound } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -18,9 +18,10 @@ const services = [
     icon: UsersRound,
   },
   {
-    title: "행정 지원 연결",
-    description: "필요한 요청은 운영자가 검토한 뒤 행정사 파트너에게 수동 배정합니다.",
-    icon: Building2,
+    title: "인증 기업 운영",
+    description:
+      "운영자 인증을 받은 기업은 공고를 등록하고 지원자 상태를 안정적으로 관리합니다.",
+    icon: BadgeCheck,
   },
 ];
 
@@ -29,10 +30,10 @@ export const metadata: Metadata = {
     canonical: "/corp",
   },
   description:
-    "외국인 유학생 채용 공고 등록, 지원자 확인, 행정 요청 관리를 Uniwork 기업 대시보드에서 시작하세요.",
+    "외국인 유학생 채용 공고 등록, 지원자 확인, 인증 기업 운영을 Uniwork 기업 대시보드에서 시작하세요.",
   openGraph: {
     description:
-      "외국인 유학생 채용을 위한 공고 등록, 지원자 검토, 행정 지원 연결",
+      "외국인 유학생 채용을 위한 공고 등록, 지원자 검토, 인증 기업 운영",
     title: "For Companies | Uniwork",
     url: "/corp",
   },
@@ -51,8 +52,9 @@ export default function CorpPage() {
             외국인 유학생 채용을 더 쉽게 시작하세요
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-base font-medium leading-7 text-slate-600">
-            Uniwork는 채용공고, 지원자 확인, 행정 지원 요청을 기업 대시보드에서
-            한 번에 관리하는 구조로 설계됩니다.
+            Uniwork는 채용공고 등록, 지원자 확인, 인증 기업 운영을 기업
+            대시보드에서 관리하는 구조로 설계됩니다. 비자 등 행정 절차 지원은
+            구직자가 Uniwork 운영팀에 별도로 요청하는 흐름입니다.
           </p>
           <div className="mt-7 flex flex-col justify-center gap-2 sm:flex-row">
             <Link className={cn(buttonVariants({ size: "lg" }))} href="/company">
@@ -61,7 +63,7 @@ export default function CorpPage() {
             </Link>
             <Link
               className={cn(buttonVariants({ size: "lg", variant: "outline" }))}
-              href="/signup"
+              href="/signup?role=company"
             >
               기업 계정 만들기
             </Link>

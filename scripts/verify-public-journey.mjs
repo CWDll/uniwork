@@ -112,7 +112,7 @@ printPass("Home links PWA manifest");
 
 await assertPage(new URL("/jobs", targetUrl), "Jobs", [
   "Jobs | Uniwork",
-  "Search jobs",
+  "검색 및 필터",
   "지원 가능성을 먼저 확인하는 채용공고",
 ]);
 
@@ -129,8 +129,8 @@ await assertPage(new URL("/login", targetUrl), "Login", [
 
 await assertPage(new URL("/signup", targetUrl), "Signup", [
   "Sign up",
-  "Seeker",
-  "Company",
+  "구직자",
+  "기업",
 ]);
 
 const manifestResponse = await fetch(new URL("/manifest.webmanifest", targetUrl), {

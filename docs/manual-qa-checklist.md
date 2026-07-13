@@ -1,83 +1,90 @@
-# Uniwork manual QA checklist
+# Uniwork 수동 QA 체크리스트
 
-Last reviewed: 2026-07-12
+최종 확인일: 2026-07-13
 
-Use this checklist before a controlled production release. Do not commit QA account passwords to this file; keep them in the release handoff message or password manager only.
+출시 전 브라우저에서 직접 확인할 항목입니다. QA 계정 비밀번호는 이 문서에 커밋하지 말고, 작업 전달 메시지나 비밀번호 관리 도구에만 보관하세요.
 
-## 0. Pre-flight
+## 0. 사전 확인
 
-- [ ] Production URL opens: https://uniwork-one.vercel.app
-- [ ] `npm run check:deploy` passes, with only known email/cron warnings if email is intentionally disabled.
-- [ ] `npm run lint` passes.
-- [ ] `npm run build` passes.
-- [ ] `npm run verify:supabase` passes.
-- [ ] `npm run verify:resume-access` passes.
-- [ ] `npm run verify:public-journey -- https://uniwork-one.vercel.app` passes.
-- [ ] `npm run verify:production -- https://uniwork-one.vercel.app` passes.
-- [ ] Known limitation is acknowledged: real email delivery is disabled until a Resend verified sender/domain is configured.
+- [ ] Production URL이 열린다: https://uniwork-one.vercel.app
+- [ ] `npm run check:deploy`가 통과한다. 이메일/cron을 의도적으로 꺼둔 상태라면 해당 warning만 허용한다.
+- [ ] `npm run lint`가 통과한다.
+- [ ] `npm run build`가 통과한다.
+- [ ] `npm run verify:supabase`가 통과한다.
+- [ ] `npm run verify:resume-access`가 통과한다.
+- [ ] `npm run verify:public-journey -- https://uniwork-one.vercel.app`가 통과한다.
+- [ ] `npm run verify:production -- https://uniwork-one.vercel.app`가 통과한다.
+- [ ] Resend 인증 도메인을 붙이기 전까지 실제 이메일 발송은 비활성 상태라는 점을 운영자가 알고 있다.
 
-## 1. Public visitor
+## 1. 비로그인 방문자
 
-- [ ] Home `/` shows clear seeker/company CTAs: `공고 보기`, `구직자 시작`, `기업 시작`.
-- [ ] Jobs `/jobs` loads without login and shows job cards or a useful empty state.
-- [ ] Jobs filters work for keyword, location, category, employment type, wage, visa, and profile-fit toggle.
-- [ ] Job detail opens from a public job card and shows application CTA.
-- [ ] Company landing `/corp` explains employer value and links to signup/company dashboard.
-- [ ] Login `/login` and signup `/signup` are reachable from public navigation.
-- [ ] Unknown URL shows the friendly not-found screen and recovery links.
-- [ ] Mobile width around 390px has no overlapping nav, CTA, filter, card, or footer text.
+- [ ] 홈 `/`에서 `공고 보기`, `구직자 시작`, `기업 시작` CTA가 명확하게 보인다.
+- [ ] 비로그인 상태에서 `구직자 시작`은 `/login?next=/me/profile`로 이동한다.
+- [ ] `기업 시작`은 `/corp`로 이동한다.
+- [ ] 공고 목록 `/jobs`가 로그인 없이 열리고, 공고 카드나 유용한 빈 화면이 보인다.
+- [ ] `/jobs`의 검색/필터가 하나의 영역에서 동작한다.
+- [ ] 키워드, 지역, 세부 지역, 직종, 고용 형태, 급여, 비자, 한국어 조건 필터가 어색하지 않다.
+- [ ] 공고 카드를 누르면 상세 페이지가 열리고 지원 CTA가 보인다.
+- [ ] 기업 랜딩 `/corp`는 기업용 가치 제안과 기업 계정 생성/대시보드 이동을 설명한다.
+- [ ] `/corp`에서 행정 지원이 기업 기능처럼 보이지 않는다. 행정 지원은 구직자가 Uniwork 운영팀에 요청하는 흐름이다.
+- [ ] 로그인 `/login`과 회원가입 `/signup`이 public navigation에서 접근 가능하다.
+- [ ] 이미 가입된 이메일로 다시 회원가입하면 “이미 가입된 이메일” 안내가 나온다.
+- [ ] 존재하지 않는 URL은 친절한 404 화면과 복구 버튼을 보여준다.
+- [ ] 404 화면의 복구 버튼이 불필요하게 다른 계정 로그인을 유도하지 않는다.
+- [ ] 모바일 390px 안팎에서 nav, CTA, 필터, 공고 카드, footer 문구가 겹치지 않는다.
 
-## 2. Seeker account
+## 2. 구직자 계정
 
-- [ ] Login succeeds with the QA seeker account.
-- [ ] `/me` dashboard shows meaningful application/profile/admin-request summaries.
-- [ ] `/me/profile` can save core identity, visa, school, work availability, contact, and photo fields.
-- [ ] `/me/resume` can save introduction, education, experience, languages, skills, and contact preferences.
-- [ ] `/jobs` shows profile-based application readiness after profile/resume data exists.
-- [ ] Applying to a job uses the current profile/resume snapshot and links `job_applications.resume_id`.
-- [ ] If profile/resume data is incomplete, the application screen shows missing-information guidance and CTA links.
-- [ ] `/me/applications` shows submitted applications and status changes.
-- [ ] `/me/admin-requests` can create an administrative document review request.
-- [ ] Admin-request supplement flow lets the seeker respond after an admin asks for more information.
-- [ ] Seeker cannot access company/admin operational data through sidebar or direct URL.
+- [ ] QA 구직자 계정으로 로그인된다.
+- [ ] `/me` 대시보드가 지원 현황, 프로필, 이력서, 행정 요청 요약을 의미 있게 보여준다.
+- [ ] `/me/profile`에서 국적, 비자, 학교, 전공, 가능 근무시간, 연락처, 프로필 사진을 저장할 수 있다.
+- [ ] `/me/resume`에서 자기소개, 학력, 경력, 언어, 스킬, 연락 선호 정보를 저장할 수 있다.
+- [ ] 프로필/이력서 입력 후 `/jobs`에서 내 조건 기반 지원 가능성 안내가 보인다.
+- [ ] 공고 지원 시 현재 프로필/이력서 스냅샷이 저장되고 `job_applications.resume_id`가 연결된다.
+- [ ] 프로필/이력서가 부족하면 지원 화면에서 부족한 정보 안내와 보완 CTA가 보인다.
+- [ ] `/me/applications`에서 제출한 지원과 상태 변경 내역이 보인다.
+- [ ] `/me/admin-requests`에서 행정 서류 검토 요청을 만들 수 있다.
+- [ ] admin이 보완을 요청하면 구직자가 보완 내용을 제출할 수 있다.
+- [ ] 구직자 계정으로 기업/admin 운영 데이터에 직접 접근할 수 없다.
 
-## 3. Company account
+## 3. 기업 계정
 
-- [ ] Login succeeds with the QA company account.
-- [ ] `/company` dashboard shows useful counts, recent applicants, and operational next actions.
-- [ ] `/company/settings` shows verification status and company profile fields clearly.
-- [ ] Verified company can create and publish a job without per-job admin approval.
-- [ ] Unverified company sees verification guidance instead of a confusing failure.
-- [ ] `/company/jobs` lists company-owned jobs with status, applicant counts, and useful empty states.
-- [ ] `/company/applications` supports filters/sorting for applicant status, readiness, completeness, job, and date.
-- [ ] Applicant detail shows profile, resume, application snapshot, readiness, and status history.
-- [ ] Applicant print/PDF view is readable and includes profile/resume/admin context where available.
-- [ ] Company can update only its own applicants and cannot open another company's applicant detail URL.
+- [ ] QA 기업 계정으로 로그인된다.
+- [ ] `/company` 대시보드가 지원자 수, 최근 지원자, 운영 next action을 보여준다.
+- [ ] `/company/settings`에서 인증 상태와 회사 정보가 명확히 보인다.
+- [ ] 미인증 기업은 공고 작성 실패만 보이는 것이 아니라 인증 안내를 볼 수 있다.
+- [ ] 인증 기업은 공고별 admin 승인 없이 공고를 만들고 공개할 수 있다.
+- [ ] `/company/jobs`에서 회사 소유 공고, 상태, 지원자 수, 빈 화면 안내가 보인다.
+- [ ] `/company/applications`에서 지원자 상태, 완성도, 공고, 날짜 기준 필터/정렬이 동작한다.
+- [ ] 지원자 상세에서 프로필, 이력서, 지원 스냅샷, 지원 가능성, 상태 히스토리가 보인다.
+- [ ] 지원자 출력/PDF 화면이 읽기 좋고 필요한 프로필/이력 정보가 포함된다.
+- [ ] 기업은 자기 회사 지원자만 수정할 수 있고, 다른 회사 지원자 상세 URL은 열 수 없다.
 
-## 4. Admin account
+## 4. 관리자 계정
 
-- [ ] Login succeeds with the QA admin or owner admin account.
-- [ ] `/admin` dashboard highlights company verification, job operations, user/application/admin-request counts, and stale items.
-- [ ] `/admin/companies` can approve or request supplements for a company.
-- [ ] `/admin/jobs` can inspect public job quality and operational status.
-- [ ] `/admin/users` can filter users and identify role/profile completeness issues.
-- [ ] `/admin/admin-requests` shows request packet completeness, supplements, admin notes, and handoff readiness.
-- [ ] Admin can request seeker supplement and later acknowledge the submitted supplement.
-- [ ] Handoff draft page creates a usable manual packet without treating the external partner process as fully automated.
-- [ ] Admin-only pages are blocked for seeker/company accounts.
+- [ ] QA admin 또는 실제 owner admin 계정으로 로그인된다.
+- [ ] `/admin` 대시보드가 기업 인증, 공고 운영, 사용자/지원/행정 요청 수, 오래된 항목을 보여준다.
+- [ ] `/admin/companies`에서 기업을 승인하거나 보완 요청할 수 있다.
+- [ ] `/admin/jobs`에서 공개 공고 품질과 운영 상태를 확인할 수 있다.
+- [ ] `/admin/users`에서 사용자 역할과 프로필 완성 이슈를 필터링할 수 있다.
+- [ ] `/admin/admin-requests`에서 행정 요청 정보, 보완 제출, admin 메모, 전달 준비 상태가 보인다.
+- [ ] admin이 구직자에게 보완 요청을 남기고, 제출 후 확인 처리할 수 있다.
+- [ ] handoff draft 화면은 외부 행정사에게 수동 전달할 수 있는 패킷처럼 보인다.
+- [ ] handoff가 외부 파트너에게 완전 자동 전송되는 것처럼 보이지 않는다.
+- [ ] admin 전용 페이지는 구직자/기업 계정으로 접근할 수 없다.
 
-## 5. Error and recovery states
+## 5. 에러와 복구 상태
 
-- [ ] Invalid login shows a clear form error.
-- [ ] Protected routes redirect unauthenticated users to login with a return path.
-- [ ] Missing profile/resume/company records show recovery CTAs rather than a blank page.
-- [ ] Empty application/job/admin-request lists explain what to do next.
-- [ ] Failed save actions preserve context and show a visible error.
-- [ ] Browser back/refresh after form submissions does not create duplicate confusing records.
+- [ ] 잘못된 로그인 정보는 명확한 form error를 보여준다.
+- [ ] 보호된 라우트는 비로그인 사용자를 로그인 화면으로 보내고, return path를 유지한다.
+- [ ] 프로필, 이력서, 회사 정보가 없을 때 빈 화면 대신 다음 행동 CTA가 보인다.
+- [ ] 지원, 공고, 행정 요청 목록이 비어 있을 때 사용자가 다음에 할 일을 알 수 있다.
+- [ ] 저장 실패 시 기존 맥락을 유지하면서 보이는 에러를 보여준다.
+- [ ] form 제출 후 뒤로가기/새로고침이 혼란스러운 중복 데이터를 만들지 않는다.
 
-## 6. Release notes
+## 6. 릴리즈 기록
 
-- [ ] Record the deployed commit SHA.
-- [ ] Record which SQL migrations were manually applied in Supabase.
-- [ ] Record whether email/cron is enabled or intentionally disabled.
-- [ ] Rotate or delete QA credentials before broad public launch.
+- [ ] 배포된 commit SHA를 기록한다.
+- [ ] Supabase SQL Editor에서 직접 적용한 migration을 기록한다.
+- [ ] 이메일/cron이 활성인지, 의도적으로 비활성인지 기록한다.
+- [ ] 넓은 공개 출시 전 QA 계정 비밀번호를 변경하거나 QA 계정을 삭제한다.

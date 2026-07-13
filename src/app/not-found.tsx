@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { NotFoundBackButton } from "@/components/navigation/not-found-actions";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -36,12 +37,7 @@ export default function NotFound() {
           >
             기업 대시보드
           </Link>
-          <Link
-            className={cn(buttonVariants({ className: "w-full", variant: "outline" }))}
-            href="/login"
-          >
-            다시 로그인
-          </Link>
+          <NotFoundBackButton />
         </div>
       </section>
     </main>

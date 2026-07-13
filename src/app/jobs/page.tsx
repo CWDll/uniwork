@@ -1,4 +1,4 @@
-import { BriefcaseBusiness, MapPin, Search, ToggleLeft, ToggleRight } from "lucide-react";
+import { ToggleLeft, ToggleRight } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -6,7 +6,6 @@ import { JobCategoryFilters } from "@/components/jobs/job-category-filters";
 import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
 import { PageHeading } from "@/components/marketing/page-heading";
-import { Button } from "@/components/ui/button";
 import { getJobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -37,8 +36,6 @@ export const metadata: Metadata = {
   },
   title: "Jobs | Uniwork",
 };
-
-const employmentTypes = ["Part-time", "Contract", "Internship", "Full-time"];
 
 function getParam(value: string | undefined) {
   return value?.trim() ?? "";
@@ -258,93 +255,7 @@ export default async function JobsPage({
 
   return (
     <PublicShell>
-      <section className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:px-8">
-        <aside className="rounded-2xl border border-slate-200 bg-white p-4 lg:sticky lg:top-20 lg:h-max">
-          <h2 className="text-lg font-black">Search jobs</h2>
-          <form action="/jobs" className="mt-4 grid gap-3">
-            <label className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-3">
-              <Search className="size-4 text-slate-400" />
-              <input
-                defaultValue={q}
-                className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
-                name="q"
-                placeholder="Keyword"
-              />
-            </label>
-            <label className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-3">
-              <MapPin className="size-4 text-slate-400" />
-              <input
-                defaultValue={location}
-                className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
-                name="location"
-                placeholder="Location"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-              <span className="flex items-center gap-2 text-slate-500">
-                <BriefcaseBusiness className="size-4" />
-                Employment type
-              </span>
-              <select
-                className="h-11 rounded-xl border-0 bg-slate-50 px-3 text-sm font-bold text-slate-600 outline-none"
-                defaultValue={employmentType}
-                name="employment_type"
-              >
-                <option value="">All types</option>
-                {employmentTypes.map((type) => (
-                  <option key={type} value={type}>
-                    {type}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {category ? (
-              <input name="category" type="hidden" value={category} />
-            ) : null}
-            {visaSupportType ? (
-              <input
-                name="visa_support_type"
-                type="hidden"
-                value={visaSupportType}
-              />
-            ) : null}
-            {wageType ? (
-              <input name="wage_type" type="hidden" value={wageType} />
-            ) : null}
-            {koreanRequirement ? (
-              <input
-                name="korean_requirement"
-                type="hidden"
-                value={koreanRequirement}
-              />
-            ) : null}
-            {effectiveProfileFit ? (
-              <input name="profile_fit" type="hidden" value={effectiveProfileFit} />
-            ) : null}
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
-              Minimum wage
-              <input
-                className="h-11 rounded-xl border-0 bg-slate-50 px-3 text-sm font-bold text-slate-600 outline-none"
-                defaultValue={
-                  Number.isFinite(minWage) && minWage > 0 ? String(minWage) : ""
-                }
-                inputMode="numeric"
-                name="min_wage"
-                placeholder="12000"
-              />
-            </label>
-            <Button className="h-11 rounded-xl">Apply filters</Button>
-            {hasFilters ? (
-              <Link
-                className="text-center text-sm font-black text-slate-500 hover:text-blue-700"
-                href="/jobs"
-              >
-                Reset filters
-              </Link>
-            ) : null}
-          </form>
-        </aside>
-
+      <section className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
         <div className="min-w-0">
           <PageHeading
             eyebrow="Jobs"
@@ -406,8 +317,13 @@ export default async function JobsPage({
                 visa_support_type: visaSupportType,
                 wage_type: wageType,
               }}
-              defaultOpen={hasFilters}
+              defaultOpen
               getHref={(updates) => buildJobsHref(params, updates)}
+              hasFilters={hasFilters}
+              minWage={
+                Number.isFinite(minWage) && minWage > 0 ? String(minWage) : ""
+              }
+              q={q}
               showAdvanced
               showProfileFit={Boolean(user)}
             />

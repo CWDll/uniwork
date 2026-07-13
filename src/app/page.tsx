@@ -176,7 +176,7 @@ export default async function Home({
                     className={cn(
                       buttonVariants({ className: "w-full", variant: "outline" }),
                     )}
-                    href={user ? "/me/profile" : "/signup"}
+                    href={user ? "/me/profile" : "/login?next=/me/profile"}
                   >
                     구직자 시작
                   </Link>

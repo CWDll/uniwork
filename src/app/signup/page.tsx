@@ -4,7 +4,14 @@ import type { ReactElement } from "react";
 import { SignupForm } from "@/components/auth/signup-form";
 import { PublicShell } from "@/components/layout/public-shell";
 
-export default function SignupPage() {
+export default async function SignupPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ role?: string }>;
+}) {
+  const params = await searchParams;
+  const initialRole = params.role === "company" ? "company" : "seeker";
+
   return (
     <PublicShell>
       <section className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-8 sm:px-6 md:grid-cols-[0.9fr_1.1fr]">
@@ -27,7 +34,7 @@ export default function SignupPage() {
           </div>
         </aside>
 
-        <SignupForm />
+        <SignupForm initialRole={initialRole} />
       </section>
     </PublicShell>
   );
