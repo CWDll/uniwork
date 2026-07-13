@@ -112,7 +112,7 @@ export function SignupForm({ initialRole = "seeker" }: { initialRole?: string })
                 placeholder="010-0000-0000"
               />
             </label>
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
+            <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
               사업자등록번호
               <input
                 className="h-11 rounded-md border border-slate-200 px-3"
@@ -120,7 +120,7 @@ export function SignupForm({ initialRole = "seeker" }: { initialRole?: string })
                 placeholder="000-00-00000"
               />
             </label>
-            <label className="grid gap-2 text-sm font-bold text-slate-700">
+            <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
               사업자등록증
               <span className="rounded-md bg-white/70 px-3 py-2 text-xs font-semibold leading-5 text-slate-500">
                 {Math.round(maxCompanyRegistrationDocumentSize / 1024 / 1024)}
