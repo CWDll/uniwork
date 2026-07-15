@@ -46,6 +46,12 @@ export function JobCategoryFilters({
     }));
   }
 
+  function resetDraft() {
+    setDraftFilters({});
+    setDraftQuery("");
+    setDraftMinWage("");
+  }
+
   const hiddenEntries = Object.entries(draftFilters).filter(([, value]) => value);
 
   return (
@@ -73,6 +79,7 @@ export function JobCategoryFilters({
             <Link
               className="text-xs font-black text-blue-700 hover:text-blue-900"
               href="/jobs"
+              onClick={resetDraft}
             >
               필터 초기화
             </Link>

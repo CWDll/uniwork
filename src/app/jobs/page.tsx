@@ -301,6 +301,18 @@ export default async function JobsPage({
     (clampedSavedPage - 1) * savedPageSize,
     clampedSavedPage * savedPageSize,
   );
+  const filterStateKey = JSON.stringify({
+    category,
+    employmentType,
+    effectiveProfileFit,
+    koreanRequirement,
+    location,
+    minWage: Number.isFinite(minWage) && minWage > 0 ? String(minWage) : "",
+    q,
+    savedOnly,
+    visaSupportType,
+    wageType,
+  });
 
   return (
     <PublicShell>
@@ -370,6 +382,7 @@ export default async function JobsPage({
               }}
               defaultOpen
               hasFilters={hasFilters}
+              key={filterStateKey}
               minWage={
                 Number.isFinite(minWage) && minWage > 0 ? String(minWage) : ""
               }
