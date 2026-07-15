@@ -1,5 +1,8 @@
+"use client";
+
 import { ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -7,7 +10,6 @@ import { cn } from "@/lib/utils";
 export function JobCategoryFilters({
   activeFilters,
   defaultOpen = true,
-  getHref,
   hasFilters = false,
   minWage,
   q,
@@ -15,16 +17,32 @@ export function JobCategoryFilters({
 }: {
   activeFilters: JobFilterValues;
   defaultOpen?: boolean;
-  getHref: (updates: JobFilterValues) => string;
+  getHref?: (updates: JobFilterValues) => string;
   hasFilters?: boolean;
   minWage?: string;
   q?: string;
   showAdvanced?: boolean;
 }) {
-  const activeRegion = getActiveRegion(activeFilters.location);
+  const [draftFilters, setDraftFilters] = useState<JobFilterValues>(activeFilters);
+  const [draftQuery, setDraftQuery] = useState(q ?? "");
+  const [draftMinWage, setDraftMinWage] = useState(minWage ?? "");
+  const activeRegion = getActiveRegion(draftFilters.location);
   const activeCities = activeRegion
     ? (locationGroups.find((group) => group.label === activeRegion)?.cities ?? [])
     : [];
+
+  function updateFilter(name: keyof JobFilterValues, value: string) {
+    setDraftFilters((current) => ({
+      ...current,
+      [name]: value || undefined,
+      ...(name === "location" &&
+      locationGroups.some((group) => group.label === value)
+        ? { location: value }
+        : {}),
+    }));
+  }
+
+  const hiddenEntries = Object.entries(draftFilters).filter(([, value]) => value);
 
   return (
     <details
@@ -49,113 +67,129 @@ export function JobCategoryFilters({
         </span>
       </summary>
 
-      <div className="mt-3 border-t border-slate-100 pt-3">
-        <form action="/jobs" className="grid gap-3 md:grid-cols-[minmax(0,1fr)_160px_auto]">
-          {hiddenFilterFields.map((field) => {
-            const value = activeFilters[field];
-
-            return value ? (
-              <input key={field} name={field} type="hidden" value={value} />
-            ) : null;
-          })}
+      <form action="/jobs" className="mt-3 border-t border-slate-100 pt-3">
+        {hiddenEntries.map(([field, value]) => (
+          <input key={field} name={field} type="hidden" value={value} />
+        ))}
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_160px_auto]">
           <label className="flex min-w-0 items-center gap-2 rounded-xl bg-slate-50 px-3 py-3">
             <Search className="size-4 shrink-0 text-slate-400" />
             <input
               className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none"
-              defaultValue={q}
               name="q"
+              onChange={(event) => setDraftQuery(event.target.value)}
               placeholder="검색어 입력"
+              value={draftQuery}
             />
           </label>
           <label className="min-w-0">
             <input
               className="h-11 w-full rounded-xl border-0 bg-slate-50 px-3 text-sm font-bold text-slate-600 outline-none"
-              defaultValue={minWage}
               inputMode="numeric"
               name="min_wage"
+              onChange={(event) => setDraftMinWage(event.target.value)}
               placeholder="최소 시급"
+              value={draftMinWage}
             />
           </label>
-          <Button className="h-11 rounded-xl">검색 적용</Button>
-        </form>
+          <Button className="h-11 rounded-xl">필터 적용</Button>
+        </div>
 
         <div className="grid min-w-0 gap-4">
           <div className="mt-4 grid gap-4 border-t border-slate-100 pt-4">
             <FilterGroup
-              activeValue={activeFilters.category}
+              activeValue={draftFilters.category}
               allLabel="All Jobs"
-              getHref={(value) =>
-                getHref({ category: value === "All Jobs" ? "" : value })
-              }
               label="직종"
+              onSelect={(value) =>
+                updateFilter("category", value === "All Jobs" ? "" : value)
+              }
               options={categories}
             />
 
             {showAdvanced ? (
               <>
                 <FilterGroup
-                  activeValue={activeFilters.location}
+                  activeValue={draftFilters.location}
                   allLabel="All regions"
-                  getHref={(value) =>
-                    getHref({ location: value === "All regions" ? "" : value })
-                  }
                   label="지역"
-                  options={["All regions", ...locationGroups.map((group) => group.label)]}
+                  onSelect={(value) =>
+                    updateFilter("location", value === "All regions" ? "" : value)
+                  }
+                  options={[
+                    "All regions",
+                    ...locationGroups.map((group) => group.label),
+                  ]}
                 />
                 {activeRegion && activeCities.length > 0 ? (
                   <FilterGroup
-                    activeValue={activeFilters.location}
+                    activeValue={draftFilters.location}
                     allLabel="All cities"
-                    getHref={(value) =>
-                      getHref({ location: value === "All cities" ? activeRegion : value })
-                    }
                     label={`${activeRegion} 세부 지역`}
+                    onSelect={(value) =>
+                      updateFilter(
+                        "location",
+                        value === "All cities" ? activeRegion : value,
+                      )
+                    }
                     options={["All cities", ...activeCities]}
                   />
                 ) : null}
                 <FilterGroup
-                  activeValue={activeFilters.employment_type}
+                  activeValue={draftFilters.employment_type}
                   allLabel="All types"
-                  getHref={(value) =>
-                    getHref({ employment_type: value === "All types" ? "" : value })
-                  }
                   label="고용 형태"
+                  onSelect={(value) =>
+                    updateFilter(
+                      "employment_type",
+                      value === "All types" ? "" : value,
+                    )
+                  }
                   options={employmentFilters}
                 />
                 <FilterGroup
-                  activeValue={activeFilters.visa_support_type}
+                  activeValue={draftFilters.visa_support_type}
                   allLabel="All visas"
-                  getHref={(value) =>
-                    getHref({ visa_support_type: value === "All visas" ? "" : value })
-                  }
                   label="비자"
+                  onSelect={(value) =>
+                    updateFilter(
+                      "visa_support_type",
+                      value === "All visas" ? "" : value,
+                    )
+                  }
                   options={visaFilters}
                 />
                 <FilterGroup
-                  activeValue={activeFilters.wage_type}
+                  activeValue={draftFilters.wage_type}
                   allLabel="All wages"
-                  getHref={(value) =>
-                    getHref({ wage_type: value === "All wages" ? "" : value })
-                  }
                   label="급여"
+                  onSelect={(value) =>
+                    updateFilter("wage_type", value === "All wages" ? "" : value)
+                  }
                   options={wageFilters}
                 />
                 <FilterGroup
-                  activeValue={activeFilters.korean_requirement}
+                  activeValue={draftFilters.korean_requirement}
                   allLabel="Any Korean"
-                  getHref={(value) =>
-                    getHref({
-                      korean_requirement: value === "Any Korean" ? "" : value,
-                    })
-                  }
                   label="한국어"
+                  onSelect={(value) =>
+                    updateFilter(
+                      "korean_requirement",
+                      value === "Any Korean" ? "" : value,
+                    )
+                  }
                   options={koreanFilters}
                 />
+                <div className="rounded-xl border border-amber-100 bg-amber-50 px-3 py-3 text-sm font-semibold leading-6 text-amber-900">
+                  <span className="font-black">조건 확인 필요</span>는 내 비자로
+                  지원 자체는 가능하지만, 공고의 비자 문구가 정확히 일치하지
+                  않거나 근무시간/학교 확인처럼 운영자 검토가 필요한 경우입니다.
+                </div>
               </>
             ) : null}
           </div>
         </div>
-      </div>
+      </form>
     </details>
   );
 }
@@ -165,30 +199,23 @@ type JobFilterValues = {
   employment_type?: string;
   korean_requirement?: string;
   location?: string;
+  profile_fit?: string;
+  saved?: string;
   visa_support_type?: string;
   wage_type?: string;
 };
 
-const hiddenFilterFields: Array<keyof JobFilterValues> = [
-  "category",
-  "employment_type",
-  "korean_requirement",
-  "location",
-  "visa_support_type",
-  "wage_type",
-];
-
 function FilterGroup({
   activeValue,
   allLabel,
-  getHref,
   label,
+  onSelect,
   options,
 }: {
   activeValue?: string;
   allLabel: string;
-  getHref: (value: string) => string;
   label: string;
+  onSelect: (value: string) => void;
   options: string[];
 }) {
   return (
@@ -196,24 +223,25 @@ function FilterGroup({
       <p className="mb-2 px-1 text-xs font-black uppercase tracking-wide text-slate-400">
         {label}
       </p>
-      <div className="flex w-full max-w-full gap-2 overflow-x-auto pb-1">
+      <div className="flex flex-wrap gap-2">
         {options.map((option) => {
           const selected =
             (!activeValue && option === allLabel) || activeValue === option;
 
           return (
-            <Link
+            <button
               className={cn(
-                "shrink-0 rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700",
+                "rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700",
                 selected
                   ? "border-blue-600 bg-blue-600 text-white"
                   : "hover:border-blue-200 hover:text-blue-700",
               )}
-              href={getHref(option)}
               key={option}
+              onClick={() => onSelect(option)}
+              type="button"
             >
               {getOptionLabel(option)}
-            </Link>
+            </button>
           );
         })}
       </div>
@@ -261,10 +289,6 @@ const locationGroups = [
     label: "광주광역시",
     cities: ["동구", "서구", "북구"],
   },
-  {
-    label: "Remote",
-    cities: [],
-  },
 ];
 
 const employmentFilters = [
@@ -283,19 +307,14 @@ function getOptionLabel(option: string) {
   const labels: Record<string, string> = {
     "All Jobs": "전체 직종",
     "All cities": "전체 세부 지역",
-    "All fit": "전체 조건",
     "All regions": "전체 지역",
     "All types": "전체 형태",
     "All visas": "전체 비자",
     "All wages": "전체 급여",
     "Any Korean": "전체 한국어",
-    blocked: "지원 제한",
-    eligible: "지원 가능",
     hourly: "시급",
     monthly: "월급",
-    profile_required: "프로필 필요",
     project: "건별",
-    review_required: "검토 필요",
   };
 
   return labels[option] ?? option;

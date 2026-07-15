@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, CheckCircle2, Clock3, ShieldAlert } from "lucide-react";
+import type { FormEvent } from "react";
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -70,6 +71,7 @@ export function SeekerProfileForm({
   profile: SeekerProfile | null;
 }) {
   const [state, formAction] = useActionState(saveSeekerProfileAction, {});
+  const [clientError, setClientError] = useState("");
   const [draft, setDraft] = useState({
     alien_registration_status: profile?.alien_registration_status ?? "has_card",
     email_notifications_enabled: emailNotificationsEnabled,
@@ -89,13 +91,28 @@ export function SeekerProfileForm({
   const isStudentVisa = draft.visa_type === "D-2" || draft.visa_type === "D-4";
 
   function updateDraft(name: keyof typeof draft, value: string | boolean | string[]) {
+    setClientError("");
     setDraft((current) => ({ ...current, [name]: value }));
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (draft.preferred_locations.length === 0 || draft.preferred_job_types.length === 0) {
+      event.preventDefault();
+      setClientError("희망 근무 지역과 희망 직무를 최소 1개 이상 선택해주세요.");
+      return;
+    }
+
+    if (!draft.weekday_availability.trim() && !draft.weekend_availability.trim()) {
+      event.preventDefault();
+      setClientError("평일 또는 주말 근무 가능 시간을 입력해주세요.");
+    }
   }
 
   return (
     <form
       action={formAction}
       className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+      onSubmit={handleSubmit}
     >
       <VisaGuidancePanel guidance={visaGuidance} />
 
@@ -271,9 +288,9 @@ export function SeekerProfileForm({
         </div>
       ) : null}
 
-      {state.error ? (
+      {clientError || state.error ? (
         <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
-          {state.error}
+          {clientError || state.error}
         </p>
       ) : null}
       {state.message ? (

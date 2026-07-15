@@ -363,6 +363,8 @@ export default async function JobsPage({
                 employment_type: employmentType,
                 korean_requirement: koreanRequirement,
                 location,
+                profile_fit: effectiveProfileFit,
+                saved: savedOnly ? "1" : "",
                 visa_support_type: visaSupportType,
                 wage_type: wageType,
               }}

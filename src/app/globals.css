@@ -9,6 +9,10 @@
   --brand-strong: #1d4ed8;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
