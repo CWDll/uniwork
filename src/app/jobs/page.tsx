@@ -369,7 +369,6 @@ export default async function JobsPage({
                 wage_type: wageType,
               }}
               defaultOpen
-              getHref={(updates) => buildJobsHref(params, updates)}
               hasFilters={hasFilters}
               minWage={
                 Number.isFinite(minWage) && minWage > 0 ? String(minWage) : ""

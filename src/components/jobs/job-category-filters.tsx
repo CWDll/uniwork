@@ -17,7 +17,6 @@ export function JobCategoryFilters({
 }: {
   activeFilters: JobFilterValues;
   defaultOpen?: boolean;
-  getHref?: (updates: JobFilterValues) => string;
   hasFilters?: boolean;
   minWage?: string;
   q?: string;

@@ -33,14 +33,6 @@ function getParam(value: string | undefined) {
   return value?.trim() ?? "";
 }
 
-function getHomeCategoryHref(category: string) {
-  if (category === "All Jobs") {
-    return "/";
-  }
-
-  return `/?category=${encodeURIComponent(category)}`;
-}
-
 function getJobsCategoryHref(category: string) {
   if (category === "All Jobs") {
     return "/jobs";
@@ -291,9 +283,6 @@ export default async function Home({
           <JobCategoryFilters
             activeFilters={{ category }}
             defaultOpen
-            getHref={(updates) =>
-              getHomeCategoryHref(updates.category || "All Jobs")
-            }
           />
 
           <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">

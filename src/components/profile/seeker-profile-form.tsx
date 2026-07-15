@@ -2,8 +2,7 @@
 
 import { AlertCircle, CheckCircle2, Clock3, ShieldAlert } from "lucide-react";
 import type { FormEvent } from "react";
-import { useActionState, useState } from "react";
-import { useFormStatus } from "react-dom";
+import { useState, useTransition } from "react";
 
 import { saveSeekerProfileAction } from "@/app/me/profile/actions";
 import { Button } from "@/components/ui/button";
@@ -70,8 +69,9 @@ export function SeekerProfileForm({
   notificationEmail: string;
   profile: SeekerProfile | null;
 }) {
-  const [state, formAction] = useActionState(saveSeekerProfileAction, {});
+  const [state, setState] = useState<{ error?: string; message?: string }>({});
   const [clientError, setClientError] = useState("");
+  const [isPending, startTransition] = useTransition();
   const [draft, setDraft] = useState({
     alien_registration_status: profile?.alien_registration_status ?? "has_card",
     email_notifications_enabled: emailNotificationsEnabled,
@@ -92,25 +92,33 @@ export function SeekerProfileForm({
 
   function updateDraft(name: keyof typeof draft, value: string | boolean | string[]) {
     setClientError("");
+    setState({});
     setDraft((current) => ({ ...current, [name]: value }));
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     if (draft.preferred_locations.length === 0 || draft.preferred_job_types.length === 0) {
-      event.preventDefault();
       setClientError("희망 근무 지역과 희망 직무를 최소 1개 이상 선택해주세요.");
       return;
     }
 
     if (!draft.weekday_availability.trim() && !draft.weekend_availability.trim()) {
-      event.preventDefault();
       setClientError("평일 또는 주말 근무 가능 시간을 입력해주세요.");
+      return;
     }
+
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      setClientError("");
+      setState(await saveSeekerProfileAction({}, formData));
+    });
   }
 
   return (
     <form
-      action={formAction}
       className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
       onSubmit={handleSubmit}
     >
@@ -302,7 +310,7 @@ export function SeekerProfileForm({
         </div>
       ) : null}
 
-      <SubmitButton />
+      <SubmitButton pending={isPending} />
     </form>
   );
 }
@@ -486,9 +494,7 @@ function CheckboxGroup({
   );
 }
 
-function SubmitButton() {
-  const { pending } = useFormStatus();
-
+function SubmitButton({ pending }: { pending: boolean }) {
   return (
     <Button className="mt-6 h-11 w-full sm:w-auto" disabled={pending}>
       {pending ? "저장 중..." : "프로필 저장"}
