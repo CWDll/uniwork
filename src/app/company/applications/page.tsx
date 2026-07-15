@@ -637,16 +637,14 @@ export default async function CompanyApplicationsPage({
         </div>
         {visibleApplications.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="min-w-[1120px] w-full text-left">
+            <table className="w-full min-w-[760px] table-fixed text-left">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
-                  <th className="px-5 py-3">지원자</th>
-                  <th className="px-5 py-3">지원 공고</th>
-                  <th className="px-5 py-3">프로필 요약</th>
-                  <th className="px-5 py-3">지원일</th>
-                  <th className="px-5 py-3">상태</th>
-                  <th className="px-5 py-3">최근 수정일</th>
-                  <th className="px-5 py-3">관리</th>
+                  <th className="w-[26%] px-4 py-3">지원자</th>
+                  <th className="w-[27%] px-4 py-3">지원 공고</th>
+                  <th className="w-[25%] px-4 py-3">프로필 요약</th>
+                  <th className="w-[12%] px-4 py-3">상태</th>
+                  <th className="w-[10%] px-4 py-3">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -669,7 +667,7 @@ export default async function CompanyApplicationsPage({
 
                   return (
                     <tr className="align-top hover:bg-slate-50" key={application.id}>
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-sm font-black text-blue-700">
                             {avatarUrl ? (
@@ -685,51 +683,51 @@ export default async function CompanyApplicationsPage({
                           </div>
                           <div className="min-w-0">
                             <Link
-                              className="block max-w-48 truncate font-black text-slate-950 hover:text-blue-700"
+                              className="block truncate font-black text-slate-950 hover:text-blue-700"
                               href={`/company/applications/${application.id}`}
                             >
                               {profile?.name || profile?.email || "Applicant"}
                             </Link>
-                            <p className="mt-1 max-w-48 truncate text-xs font-bold text-slate-500">
+                            <p className="mt-1 truncate text-xs font-bold text-slate-500">
                               {profile?.email ?? "-"}
                             </p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-5 py-4">
-                        <p className="max-w-64 truncate text-sm font-black text-slate-900">
+                      <td className="px-4 py-4">
+                        <p className="truncate text-sm font-black text-slate-900">
                           {job?.title ?? "Job"}
                         </p>
-                        <p className="mt-1 max-w-64 truncate text-xs font-bold text-slate-500">
+                        <p className="mt-1 truncate text-xs font-bold text-slate-500">
                           {company?.name ?? "Company"} · {job?.location ?? "-"} ·{" "}
                           {job?.employment_type ?? "-"}
                         </p>
+                        <p className="mt-2 text-xs font-bold text-slate-400">
+                          지원일 {new Date(application.applied_at).toLocaleString("ko-KR")}
+                        </p>
                       </td>
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-4">
                         <div className="grid gap-1 text-xs font-bold leading-5 text-slate-600">
-                          <span>
+                          <span className="truncate">
                             {seekerProfile?.visa_type || "비자 미입력"} ·{" "}
                             {seekerProfile?.nationality || "국적 미입력"}
                           </span>
-                          <span>
+                          <span className="truncate">
                             한국어 {seekerProfile?.korean_level || "미입력"} · 영어{" "}
                             {seekerProfile?.english_level || "미입력"}
                           </span>
-                          <span className="max-w-72 truncate">
+                          <span className="truncate">
                             {seekerProfile?.school || "학교 미입력"} ·{" "}
                             {seekerProfile?.major || "전공 미입력"}
                           </span>
-                          <span>
+                          <span className="truncate">
                             정보 {completion.completedCount}/{completion.totalCount} ·{" "}
                             이력서 {resume?.title || "없음"}{" "}
                             {resume ? `${resumeCompletion.completedCount}/${resumeCompletion.totalCount}` : ""}
                           </span>
                         </div>
                       </td>
-                      <td className="px-5 py-4 text-sm font-bold text-slate-600">
-                        {new Date(application.applied_at).toLocaleString("ko-KR")}
-                      </td>
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-4">
                         <span
                           className={cn(
                             getStatusBadgeClassName("application", application.status),
@@ -738,14 +736,14 @@ export default async function CompanyApplicationsPage({
                         >
                           {status.label}
                         </span>
+                        <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
+                          수정 {formatLastAction(application)}
+                        </p>
                       </td>
-                      <td className="px-5 py-4 text-sm font-bold text-slate-600">
-                        {formatLastAction(application)}
-                      </td>
-                      <td className="px-5 py-4">
+                      <td className="px-4 py-4">
                         <div className="flex justify-start">
                           <Link
-                            className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"
+                            className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md bg-blue-600 px-3 text-xs font-black text-white hover:bg-blue-700"
                             href={`/company/applications/${application.id}`}
                           >
                             상세 보기
