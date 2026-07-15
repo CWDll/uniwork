@@ -3,8 +3,8 @@ import {
   BriefcaseBusiness,
   CheckCircle2,
   FilePlus2,
-  Gauge,
   UsersRound,
+  Gauge,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -208,16 +208,10 @@ export default async function CompanyPage() {
     { label: "Published jobs", value: publishedJobs.length, icon: BriefcaseBusiness },
     { label: "Applicants", value: applicantCount ?? 0, icon: UsersRound },
     {
-      label: "Needs action",
-      value: attentionApplications.length,
-      icon: AlertTriangle,
-    },
-    {
       label: "24h unreviewed",
       value: overdueReviewApplications.length,
       icon: AlertTriangle,
     },
-    { label: "No applicants", value: jobsWithoutApplicants.length, icon: Gauge },
   ];
   const actionCards = [
     {
@@ -348,7 +342,7 @@ export default async function CompanyPage() {
         </div>
       ) : null}
 
-      <div className="mt-5 grid gap-4 md:grid-cols-3 xl:grid-cols-5">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((metric) => {
           const Icon = metric.icon;
 
@@ -390,7 +384,7 @@ export default async function CompanyPage() {
               return (
                 <Link
                   className={cn(
-                    "rounded-2xl border p-4 transition hover:bg-slate-50",
+                    "flex min-h-48 flex-col rounded-2xl border p-4 transition hover:bg-slate-50",
                     item.tone === "red" && "border-red-100 bg-red-50",
                     item.tone === "amber" && "border-amber-100 bg-amber-50",
                     item.tone === "blue" && "border-blue-100 bg-blue-50",
@@ -403,10 +397,10 @@ export default async function CompanyPage() {
                   <p className="mt-3 text-sm font-black text-slate-950">
                     {item.label}
                   </p>
-                  <p className="mt-1 min-h-10 text-sm font-semibold leading-5 text-slate-600">
+                  <p className="mt-1 text-sm font-semibold leading-5 text-slate-600">
                     {item.note}
                   </p>
-                  <span className="mt-3 inline-flex rounded-md bg-white/80 px-2 py-1 text-xs font-black text-slate-700">
+                  <span className="mt-auto inline-flex w-max rounded-md bg-white/80 px-2 py-1 text-xs font-black text-slate-700">
                     {item.cta}
                   </span>
                 </Link>
@@ -500,7 +494,7 @@ export default async function CompanyPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                     <span className="rounded-md bg-slate-100 px-2 py-1 text-xs font-black text-slate-600">
-                      priority {item.attention.score}
+                      확인 필요
                     </span>
                     <Link
                       className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"

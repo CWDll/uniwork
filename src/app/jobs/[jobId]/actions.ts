@@ -46,12 +46,14 @@ export async function applyToJobAction(
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, status, visa_support_type")
+    .select("id, status, visa_support_type, closed_at")
     .eq("id", jobId)
     .eq("status", "published")
     .maybeSingle();
 
-  if (!job) {
+  const nowTime = new Date().getTime();
+
+  if (!job || (job.closed_at && new Date(job.closed_at).getTime() <= nowTime)) {
     return { error: "지원 가능한 공개 공고를 찾을 수 없습니다." };
   }
 

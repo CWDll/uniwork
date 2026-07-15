@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
 import { createCompanyJobAction } from "@/app/company/jobs/actions";
@@ -54,19 +54,26 @@ export function CompanyJobForm({
   disabled: boolean;
 }) {
   const [state, formAction] = useActionState(createCompanyJobAction, {});
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.successKey) {
-      formRef.current?.reset();
-    }
-  }, [state.successKey]);
+  const [values, setValues] = useState({
+    category: categoryOptions[0],
+    closed_at: "",
+    description: "",
+    employment_type: employmentTypeOptions[0],
+    korean_requirement: koreanRequirementOptions[0],
+    location: "",
+    title: "",
+    visa_support_type: visaSupportOptions[0],
+    wage_amount: "",
+    wage_type: wageTypeOptions[0].value,
+  });
+  function updateValue(name: keyof typeof values, value: string) {
+    setValues((current) => ({ ...current, [name]: value }));
+  }
 
   return (
     <form
       action={formAction}
       className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
-      ref={formRef}
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -103,37 +110,47 @@ export function CompanyJobForm({
           help="예: 홍대 주말 카페 스태프"
           label="Title"
           name="title"
+          onChange={(value) => updateValue("title", value)}
           placeholder="Hongdae weekend cafe staff"
           required
+          value={values.title}
         />
         <Field
           disabled={disabled}
           help="구/동 또는 지점명을 포함하면 구직자가 판단하기 쉽습니다."
           label="Location"
           name="location"
+          onChange={(value) => updateValue("location", value)}
           placeholder="Seoul, Hongdae"
           required
+          value={values.location}
         />
         <SelectField
           disabled={disabled}
           label="Employment type"
           name="employment_type"
+          onChange={(value) => updateValue("employment_type", value)}
           options={employmentTypeOptions.map((option) => ({
             label: option,
             value: option,
           }))}
+          value={values.employment_type}
         />
         <SelectField
           disabled={disabled}
           label="Category"
           name="category"
+          onChange={(value) => updateValue("category", value)}
           options={categoryOptions.map((option) => ({ label: option, value: option }))}
+          value={values.category}
         />
         <SelectField
           disabled={disabled}
           label="Wage type"
           name="wage_type"
+          onChange={(value) => updateValue("wage_type", value)}
           options={wageTypeOptions}
+          value={values.wage_type}
         />
         <Field
           disabled={disabled}
@@ -141,25 +158,40 @@ export function CompanyJobForm({
           inputMode="numeric"
           label="Wage amount"
           name="wage_amount"
+          onChange={(value) => updateValue("wage_amount", value)}
           placeholder="12000"
+          value={values.wage_amount}
         />
         <SelectField
           disabled={disabled}
           label="Visa support"
           name="visa_support_type"
+          onChange={(value) => updateValue("visa_support_type", value)}
           options={visaSupportOptions.map((option) => ({
             label: option,
             value: option,
           }))}
+          value={values.visa_support_type}
         />
         <SelectField
           disabled={disabled}
           label="Korean requirement"
           name="korean_requirement"
+          onChange={(value) => updateValue("korean_requirement", value)}
           options={koreanRequirementOptions.map((option) => ({
             label: option,
             value: option,
           }))}
+          value={values.korean_requirement}
+        />
+        <Field
+          disabled={disabled}
+          help="비워두면 상시 채용처럼 운영됩니다. 입력하면 해당 시각 이후 자동으로 마감 처리됩니다."
+          label="Closing date/time"
+          name="closed_at"
+          onChange={(value) => updateValue("closed_at", value)}
+          type="datetime-local"
+          value={values.closed_at}
         />
         <label className="grid gap-2 text-sm font-bold text-slate-700 md:col-span-2">
           Description
@@ -167,6 +199,7 @@ export function CompanyJobForm({
             className="min-h-32 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
             disabled={disabled}
             name="description"
+            onChange={(event) => updateValue("description", event.target.value)}
             placeholder={`Responsibilities:
 - Customer service and simple store tasks
 
@@ -176,6 +209,7 @@ Working hours:
 Notes:
 - D-2/D-4 students must confirm legal working-hour conditions before starting.`}
             required
+            value={values.description}
           />
           <span className="text-xs font-semibold leading-5 text-slate-500">
             업무, 근무시간, 외국인 유학생 근무 조건 확인 필요 여부를 포함해
@@ -206,16 +240,22 @@ function Field({
   inputMode,
   label,
   name,
+  onChange,
   placeholder,
   required,
+  type = "text",
+  value,
 }: {
   disabled: boolean;
   help?: string;
   inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
   label: string;
   name: string;
+  onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
+  type?: string;
+  value: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -225,8 +265,11 @@ function Field({
         disabled={disabled}
         inputMode={inputMode}
         name={name}
+        onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         required={required}
+        type={type}
+        value={value}
       />
       {help ? (
         <span className="text-xs font-semibold leading-5 text-slate-500">{help}</span>
@@ -239,12 +282,16 @@ function SelectField({
   disabled,
   label,
   name,
+  onChange,
   options,
+  value,
 }: {
   disabled: boolean;
   label: string;
   name: string;
+  onChange: (value: string) => void;
   options: { label: string; value: string }[];
+  value: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -253,6 +300,8 @@ function SelectField({
         className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400 disabled:bg-slate-50"
         disabled={disabled}
         name={name}
+        onChange={(event) => onChange(event.target.value)}
+        value={value}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

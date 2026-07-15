@@ -100,14 +100,17 @@ export default async function CompanySettingsPage() {
                     <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                       <Info
                         label="Manager"
-                        value={`${company.manager_name || "담당자명 미입력"} · ${company.manager_phone || "연락처 미입력"}`}
+                        lines={[
+                          company.manager_name || "담당자명 미입력",
+                          company.manager_phone || "연락처 미입력",
+                        ]}
                       />
                       <Info
-                        label="Readiness"
+                        label="등록 완성도"
                         value={`${readiness.completed}/${readiness.total} 항목`}
                       />
                       <Info
-                        label="Business document"
+                        label="사업자등록증"
                         value={
                           company.business_registration_path
                             ? "제출 완료"
@@ -128,6 +131,14 @@ export default async function CompanySettingsPage() {
                         ))}
                       </div>
                     ) : null}
+                    <details className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                      <summary className="cursor-pointer text-sm font-black text-blue-700">
+                        제출 정보 수정/보완
+                      </summary>
+                      <div className="mt-3">
+                        <CompanySettingsForm company={company} mode="edit" />
+                      </div>
+                    </details>
                     {company.verification_note ? (
                       <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-700">
                         운영자 메모: {company.verification_note}
@@ -197,11 +208,11 @@ function getCompanyReadiness({
 }) {
   const checks = [
     { done: Boolean(businessNumber?.trim()), label: "사업자번호" },
-    { done: Boolean(businessRegistrationPath?.trim()), label: "사업자등록증" },
-    { done: Boolean(address?.trim()), label: "주소" },
-    { done: Boolean(managerName?.trim()), label: "담당자명" },
-    { done: Boolean(managerPhone?.trim()), label: "담당자 연락처" },
-    { done: Boolean(notificationEmail?.trim()), label: "알림 이메일" },
+    { done: Boolean(businessRegistrationPath?.trim()), label: "사업자등록증 미제출" },
+    { done: Boolean(address?.trim()), label: "주소 미입력" },
+    { done: Boolean(managerName?.trim()), label: "담당자명 미입력" },
+    { done: Boolean(managerPhone?.trim()), label: "담당자 연락처 미입력" },
+    { done: Boolean(notificationEmail?.trim()), label: "알림 이메일 미입력" },
   ];
   const missing = checks.filter((check) => !check.done).map((check) => check.label);
 
@@ -236,13 +247,31 @@ function getVerificationGuidance(status?: string | null) {
   };
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({
+  label,
+  lines,
+  value,
+}: {
+  label: string;
+  lines?: string[];
+  value?: string;
+}) {
   return (
     <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
       <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
         {label}
       </p>
-      <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
+      {lines ? (
+        <div className="mt-1 grid gap-1">
+          {lines.map((line) => (
+            <p className="break-words text-sm font-bold text-slate-700" key={line}>
+              {line}
+            </p>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
+      )}
     </div>
   );
 }

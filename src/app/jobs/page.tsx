@@ -193,8 +193,13 @@ export default async function JobsPage({
     nullsFirst: false,
   });
 
+  const nowTime = new Date().getTime();
+  const activeDbJobs =
+    dbJobs?.filter(
+      (job) => !job.closed_at || new Date(job.closed_at).getTime() > nowTime,
+    ) ?? [];
   const companyIds = Array.from(
-    new Set(dbJobs?.map((job) => job.company_id) ?? []),
+    new Set(activeDbJobs.map((job) => job.company_id) ?? []),
   );
   const { data: companies } =
     companyIds.length > 0
@@ -225,7 +230,7 @@ export default async function JobsPage({
   const savedJobIds = new Set(savedRows?.map((row) => String(row.job_id)) ?? []);
 
   const jobsWithEligibility =
-    dbJobs?.map((job) => {
+    activeDbJobs.map((job) => {
       const company = companyNameById.get(String(job.company_id)) ?? "Company";
       const initials = company
         .split(/\s+/)
@@ -264,7 +269,7 @@ export default async function JobsPage({
           visaType: seekerProfile?.visa_type,
         }),
       };
-    }) ?? [];
+    });
   const jobs = jobsWithEligibility
     .filter((job) => {
       if (effectiveProfileFit !== "eligible") {
@@ -555,13 +560,5 @@ export default async function JobsPage({
 }
 
 function isActiveJob(job: { closedAt?: string | null; status?: string | null }) {
-  if (job.status !== "published") {
-    return false;
-  }
-
-  if (!job.closedAt) {
-    return true;
-  }
-
-  return new Date(job.closedAt).getTime() > Date.now();
+  return job.status === "published";
 }

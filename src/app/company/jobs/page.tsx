@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { closeCompanyJobAction } from "@/app/company/jobs/actions";
 import { CompanyJobForm } from "@/components/company/company-job-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type CompanyJobsSearchParams = {
+  company?: string;
+  page?: string;
   status?: string;
 };
 
@@ -20,23 +23,30 @@ const jobStatusFilters = [
   { value: "closed", label: "마감" },
 ];
 
-function getJobNextStep(status: string) {
-  switch (status) {
-    case "draft":
-      return "아직 공개되지 않은 공고입니다.";
-    case "published":
-      return "지원자 현황을 확인하세요.";
-    case "rejected":
-      return "운영자 피드백 확인 후 다시 등록이 필요합니다.";
-    case "closed":
-      return "마감된 공고입니다.";
-    default:
-      return "상태 확인이 필요합니다.";
-  }
+function buildCompanyJobsHref(
+  params: CompanyJobsSearchParams,
+  updates: Partial<CompanyJobsSearchParams>,
+) {
+  const nextParams = new URLSearchParams();
+  const merged = { ...params, ...updates };
+
+  Object.entries(merged).forEach(([key, value]) => {
+    const nextValue = value?.trim();
+
+    if (nextValue) {
+      nextParams.set(key, nextValue);
+    }
+  });
+
+  const query = nextParams.toString();
+
+  return query ? `/company/jobs?${query}` : "/company/jobs";
 }
 
-function buildCompanyJobsHref(status?: string) {
-  return status ? `/company/jobs?status=${status}` : "/company/jobs";
+function getValidPage(value: string | undefined) {
+  const page = Number(value?.trim());
+
+  return Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
 }
 
 export default async function CompanyJobsPage({
@@ -46,6 +56,8 @@ export default async function CompanyJobsPage({
 }) {
   const params = await searchParams;
   const activeStatus = params.status?.trim() ?? "";
+  const activeCompanyId = params.company?.trim() ?? "";
+  const activePage = getValidPage(params.page);
   const supabase = await createClient();
   const {
     data: { user },
@@ -78,9 +90,43 @@ export default async function CompanyJobsPage({
           .in("company_id", companyIds)
           .order("created_at", { ascending: false })
       : { data: [] };
-  const jobs = activeStatus
-    ? allJobs?.filter((job) => job.status === activeStatus)
-    : allJobs;
+  const nowTime = new Date().getTime();
+  const expiredPublishedJobIds =
+    allJobs
+      ?.filter(
+        (job) =>
+          job.status === "published" &&
+          job.closed_at &&
+          new Date(job.closed_at).getTime() <= nowTime,
+      )
+      .map((job) => job.id) ?? [];
+
+  if (expiredPublishedJobIds.length > 0) {
+    await supabase
+      .from("jobs")
+      .update({ status: "closed" })
+      .in("id", expiredPublishedJobIds);
+  }
+
+  const normalizedJobs =
+    allJobs?.map((job) =>
+      expiredPublishedJobIds.includes(job.id) ? { ...job, status: "closed" } : job,
+    ) ?? [];
+  const jobs = normalizedJobs.filter((job) => {
+    if (activeStatus && job.status !== activeStatus) {
+      return false;
+    }
+
+    if (activeCompanyId && job.company_id !== activeCompanyId) {
+      return false;
+    }
+
+    return true;
+  });
+  const pageSize = 10;
+  const totalPages = Math.max(1, Math.ceil(jobs.length / pageSize));
+  const clampedPage = Math.min(activePage, totalPages);
+  const visibleJobs = jobs.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
   const allJobIds = allJobs?.map((job) => job.id) ?? [];
   const { data: applications } =
     allJobIds.length > 0
@@ -97,7 +143,7 @@ export default async function CompanyJobsPage({
     );
   });
   const statusCounts = new Map<string, number>();
-  allJobs?.forEach((job) => {
+  normalizedJobs.forEach((job) => {
     statusCounts.set(job.status, (statusCounts.get(job.status) ?? 0) + 1);
   });
 
@@ -184,7 +230,10 @@ export default async function CompanyJobsPage({
                   ? "border-blue-200 bg-blue-50"
                   : "border-slate-200 bg-white hover:bg-slate-50",
               )}
-              href={buildCompanyJobsHref(isActive ? "" : filter.value)}
+              href={buildCompanyJobsHref(params, {
+                page: "",
+                status: isActive ? "" : filter.value,
+              })}
               key={filter.value}
             >
               <p className="text-sm font-black text-slate-500">{filter.label}</p>
@@ -207,7 +256,28 @@ export default async function CompanyJobsPage({
                   : "등록된 모든 회사/지점의 공고 목록"}
               </p>
             </div>
-            {activeStatus ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <form action="/company/jobs">
+                {activeStatus ? (
+                  <input name="status" type="hidden" value={activeStatus} />
+                ) : null}
+                <select
+                  className="h-10 rounded-md border border-slate-200 px-3 text-sm font-bold text-slate-700"
+                  defaultValue={activeCompanyId}
+                  name="company"
+                >
+                  <option value="">전체 회사/지점</option>
+                  {companies?.map((company) => (
+                    <option key={company.id} value={company.id}>
+                      {company.name}
+                    </option>
+                  ))}
+                </select>
+                <button className="ml-2 h-10 rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700">
+                  보기
+                </button>
+              </form>
+            {activeStatus || activeCompanyId ? (
               <Link
                 className="text-sm font-black text-blue-700 hover:text-blue-900"
                 href="/company/jobs"
@@ -215,11 +285,12 @@ export default async function CompanyJobsPage({
                 전체 보기
               </Link>
             ) : null}
+            </div>
           </div>
         </div>
         <div className="divide-y divide-slate-100">
-          {jobs && jobs.length > 0 ? (
-            jobs.map((job) => {
+          {visibleJobs.length > 0 ? (
+            visibleJobs.map((job) => {
               const status = getStatusMeta("job", job.status);
               const applicationCount = applicationCountByJobId.get(job.id) ?? 0;
 
@@ -246,10 +317,21 @@ export default async function CompanyJobsPage({
                         value={`${applicationCount.toLocaleString("ko-KR")}명`}
                       />
                       <Info
-                        label="Created"
-                        value={new Date(job.created_at).toLocaleDateString("ko-KR")}
+                        label="Published"
+                        value={
+                          job.published_at
+                            ? new Date(job.published_at).toLocaleDateString("ko-KR")
+                            : "-"
+                        }
                       />
-                      <Info label="Next step" value={getJobNextStep(job.status)} />
+                      <Info
+                        label="Closes"
+                        value={
+                          job.closed_at
+                            ? new Date(job.closed_at).toLocaleString("ko-KR")
+                            : "상시"
+                        }
+                      />
                     </div>
                     {job.review_note ? (
                       <p
@@ -280,12 +362,24 @@ export default async function CompanyJobsPage({
                       지원자 보기
                     </Link>
                     {job.status === "published" ? (
-                      <Link
-                        className={cn(buttonVariants({ size: "sm" }))}
-                        href={`/jobs/${job.id}`}
-                      >
-                        공개 페이지
-                      </Link>
+                      <>
+                        <Link
+                          className={cn(buttonVariants({ size: "sm" }))}
+                          href={`/jobs/${job.id}`}
+                        >
+                          공개 페이지
+                        </Link>
+                        <form action={closeCompanyJobAction}>
+                          <input name="job_id" type="hidden" value={job.id} />
+                          <button
+                            className={cn(
+                              buttonVariants({ size: "sm", variant: "outline" }),
+                            )}
+                          >
+                            공고 닫기
+                          </button>
+                        </form>
+                      </>
                     ) : null}
                   </div>
                 </article>
@@ -328,6 +422,37 @@ export default async function CompanyJobsPage({
             </div>
           )}
         </div>
+        {jobs.length > pageSize ? (
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
+            <Link
+              aria-disabled={clampedPage <= 1}
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                clampedPage <= 1 && "pointer-events-none opacity-40",
+              )}
+              href={buildCompanyJobsHref(params, {
+                page: String(clampedPage - 1),
+              })}
+            >
+              이전
+            </Link>
+            <p className="text-sm font-black text-slate-500">
+              {clampedPage} / {totalPages}
+            </p>
+            <Link
+              aria-disabled={clampedPage >= totalPages}
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                clampedPage >= totalPages && "pointer-events-none opacity-40",
+              )}
+              href={buildCompanyJobsHref(params, {
+                page: String(clampedPage + 1),
+              })}
+            >
+              다음
+            </Link>
+          </div>
+        ) : null}
       </section>
     </DashboardShell>
   );

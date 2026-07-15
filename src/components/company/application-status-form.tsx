@@ -53,17 +53,19 @@ export function ApplicationStatusForm({
         {statusHelp}
       </p>
       <div className="grid gap-2 md:grid-cols-3">
-        <SubmitButton
-          disabled={currentStatus === "reviewing" && !showNoteField}
-          primary={currentStatus === "submitted"}
-          status="reviewing"
-        >
-          {getStatusButtonLabel({
-            currentStatus,
-            showNoteField,
-            status: "reviewing",
-          })}
-        </SubmitButton>
+        {currentStatus === "submitted" || showNoteField ? (
+          <SubmitButton
+            disabled={currentStatus === "reviewing" && !showNoteField}
+            primary={currentStatus === "submitted"}
+            status="reviewing"
+          >
+            {getStatusButtonLabel({
+              currentStatus,
+              showNoteField,
+              status: "reviewing",
+            })}
+          </SubmitButton>
+        ) : null}
         <SubmitButton
           disabled={currentStatus === "accepted" && !showNoteField}
           primary={currentStatus === "reviewing"}

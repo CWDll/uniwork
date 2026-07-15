@@ -33,12 +33,13 @@ export async function generateMetadata({
   const supabase = await createClient();
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, company_id, title, location, employment_type, status")
+    .select("id, company_id, title, location, employment_type, status, closed_at")
     .eq("id", jobId)
     .eq("status", "published")
     .maybeSingle();
+  const nowTime = new Date().getTime();
 
-  if (!job) {
+  if (!job || (job.closed_at && new Date(job.closed_at).getTime() <= nowTime)) {
     return {
       title: "공고를 찾을 수 없습니다 | Uniwork",
     };
@@ -80,13 +81,17 @@ export default async function JobDetailPage({
   const { data: job } = await supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, location, employment_type, category, wage_type, wage_amount, visa_support_type, korean_requirement, status, published_at",
+      "id, company_id, title, description, location, employment_type, category, wage_type, wage_amount, visa_support_type, korean_requirement, status, published_at, closed_at",
     )
     .eq("id", jobId)
     .eq("status", "published")
     .maybeSingle();
+  const detailNowTime = new Date().getTime();
 
-  if (!job) {
+  if (
+    !job ||
+    (job.closed_at && new Date(job.closed_at).getTime() <= detailNowTime)
+  ) {
     notFound();
   }
 

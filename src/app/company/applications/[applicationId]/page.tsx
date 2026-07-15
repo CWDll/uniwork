@@ -317,7 +317,7 @@ export default async function CompanyApplicationDetailPage({
                   href={`/company/applications/${application.id}/print`}
                 >
                   <Printer className="size-4" />
-                  PDF 저장
+                  지원자 이력서 보기
                 </Link>
               </div>
             </div>
@@ -497,7 +497,7 @@ export default async function CompanyApplicationDetailPage({
             className={cn(buttonVariants({ className: "mt-2 w-full", variant: "outline" }))}
             href={`/company/applications/${application.id}/print`}
           >
-            지원자 PDF 저장
+            지원자 이력서 보기
           </Link>
         </aside>
       </section>

@@ -109,3 +109,113 @@ export async function createCompanyAction(
 
   return { message: "회사/지점 정보가 추가되었습니다." };
 }
+
+export async function updateCompanyAction(
+  _prevState: CompanyState,
+  formData: FormData,
+): Promise<CompanyState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return { error: "로그인이 필요합니다." };
+  }
+
+  const companyId = String(formData.get("company_id") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const businessNumber = String(formData.get("business_number") ?? "").trim();
+  const businessRegistrationDocument = getCompanyDocumentFile(formData);
+  const notificationEmail = normalizeNotificationEmail(
+    String(formData.get("notification_email") ?? ""),
+  );
+
+  if (!companyId) {
+    return { error: "수정할 회사/지점을 찾을 수 없습니다." };
+  }
+
+  if (!name || !businessNumber) {
+    return { error: "기업명과 사업자등록번호는 필수입니다." };
+  }
+
+  if (notificationEmail === null) {
+    return { error: "알림 이메일 형식을 확인해주세요." };
+  }
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("id, business_registration_path, verification_status")
+    .eq("id", companyId)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (!company) {
+    return { error: "수정할 회사/지점을 찾을 수 없습니다." };
+  }
+
+  let documentPath = company.business_registration_path;
+
+  if (businessRegistrationDocument) {
+    if (
+      !allowedCompanyRegistrationDocumentTypes.includes(
+        businessRegistrationDocument.type,
+      )
+    ) {
+      return {
+        error: "사업자등록증은 PDF, JPG, JPEG, PNG 파일만 업로드할 수 있습니다.",
+      };
+    }
+
+    if (businessRegistrationDocument.size > maxCompanyRegistrationDocumentSize) {
+      return { error: "사업자등록증은 5MB 이하로 업로드해주세요." };
+    }
+
+    documentPath = `${user.id}/${crypto.randomUUID()}/business-registration.${getCompanyRegistrationDocumentExtension(businessRegistrationDocument)}`;
+    const { error: uploadError } = await supabase.storage
+      .from(companyRegistrationDocumentsBucket)
+      .upload(documentPath, businessRegistrationDocument, {
+        contentType: businessRegistrationDocument.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      return { error: uploadError.message };
+    }
+  }
+
+  if (!documentPath) {
+    return { error: "사업자등록증은 필수입니다." };
+  }
+
+  const { error } = await supabase
+    .from("companies")
+    .update({
+      address: String(formData.get("address") ?? "").trim(),
+      business_number: businessNumber,
+      business_registration_path: documentPath,
+      email_notifications_enabled:
+        formData.get("email_notifications_enabled") === "on",
+      industry: String(formData.get("industry") ?? "").trim(),
+      manager_name: String(formData.get("manager_name") ?? "").trim(),
+      manager_phone: String(formData.get("manager_phone") ?? "").trim(),
+      name,
+      notification_email: notificationEmail || user.email,
+      verification_note: null,
+      verification_status:
+        company.verification_status === "verified" ? "verified" : "pending",
+    })
+    .eq("id", company.id)
+    .eq("owner_id", user.id);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/company");
+  revalidatePath("/company/settings");
+  revalidatePath("/company/jobs");
+
+  return { message: "회사/지점 정보가 수정되었습니다." };
+}

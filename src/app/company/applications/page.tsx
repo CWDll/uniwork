@@ -49,26 +49,26 @@ const sortOptions = [
   { value: "newest", label: "최신 지원순" },
   { value: "oldest", label: "오래된 지원순" },
   { value: "needs_review", label: "미검토 우선" },
-  { value: "action_needed", label: "조치 필요 우선" },
-  { value: "incomplete", label: "정보 미완성 우선" },
+  { value: "action_needed", label: "확인 필요 우선" },
+  { value: "incomplete", label: "지원정보 부족 우선" },
 ];
 
 const attentionFilterOptions = [
-  { value: "", label: "전체 조치" },
-  { value: "needed", label: "조치 필요" },
+  { value: "", label: "전체 알림" },
+  { value: "needed", label: "확인 필요" },
   { value: "overdue", label: "24시간 미검토" },
 ];
 
 const dataFilterOptions = [
   { value: "", label: "전체 제출 기준" },
   { value: "snapshot", label: "제출본 고정" },
-  { value: "fallback", label: "현재 정보 fallback" },
+  { value: "fallback", label: "제출본 없음" },
 ];
 
 const completenessFilterOptions = [
   { value: "", label: "전체 완성도" },
   { value: "complete", label: "정보 완성" },
-  { value: "incomplete", label: "정보 미완성" },
+  { value: "incomplete", label: "지원정보 부족" },
 ];
 
 function compactValue(value?: string) {
@@ -116,12 +116,6 @@ type SortableApplication = {
   completion: {
     isComplete: boolean;
   };
-};
-
-type ReviewWorkflow = {
-  detail: string;
-  label: string;
-  tone: "amber" | "blue" | "green" | "red" | "slate";
 };
 
 function compareApplications(
@@ -378,12 +372,10 @@ export default async function CompanyApplicationsPage({
   const fallbackCount = enrichedApplications.filter(
     (item) => !item.snapshotMeta.hasCompleteSnapshot,
   ).length;
-  const attentionNeededCount = enrichedApplications.filter(
-    (item) => item.attention.score >= 40,
-  ).length;
   const memoedCount = enrichedApplications.filter((item) =>
     item.application.company_note?.trim(),
   ).length;
+  const missingMemoCount = enrichedApplications.length - memoedCount;
   const overdueReviewCount = enrichedApplications.filter(
     (item) => item.attention.flags.isOverdueReview,
   ).length;
@@ -451,7 +443,7 @@ export default async function CompanyApplicationsPage({
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         <SummaryCard
           href="/company/applications?status=submitted&sort=needs_review"
-          label="먼저 볼 지원자"
+          label="미검토 지원자"
           tone={unreviewedCount > 0 ? "blue" : "slate"}
           value={`${unreviewedCount}명`}
         />
@@ -462,19 +454,19 @@ export default async function CompanyApplicationsPage({
           value={`${overdueReviewCount}명`}
         />
         <SummaryCard
-          href="/company/applications?attention=needed&sort=action_needed"
-          label="오늘 처리 대상"
-          tone={attentionNeededCount > 0 ? "amber" : "slate"}
-          value={`${attentionNeededCount}명`}
+          href="/company/applications?sort=action_needed"
+          label="메모 없는 지원자"
+          tone={missingMemoCount > 0 ? "amber" : "slate"}
+          value={`${missingMemoCount}명`}
         />
       </div>
 
       <form
-        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_150px_150px_150px_150px_150px_minmax(0,1fr)_auto]"
+        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
         action="/company/applications"
       >
-        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Company
+        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
+          회사/지점
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeCompanyId}
@@ -488,8 +480,8 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Job
+        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
+          공고
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeJobId}
@@ -503,8 +495,8 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Status
+        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
+          상태
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeStatus}
@@ -517,8 +509,8 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Search
+        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
+          검색
           <input
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700 outline-none focus:border-blue-400"
             defaultValue={params.q ?? ""}
@@ -526,8 +518,8 @@ export default async function CompanyApplicationsPage({
             placeholder="이름, 이메일, 비자, 학교, 이력서"
           />
         </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Data
+        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
+          제출 데이터
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeDataFilter}
@@ -540,8 +532,8 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Completeness
+        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
+          지원 정보
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeCompletenessFilter}
@@ -554,8 +546,8 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Action
+        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
+          알림
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeAttentionFilter}
@@ -568,8 +560,8 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-          Sort
+        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
+          정렬
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
             defaultValue={activeSort}
@@ -582,7 +574,7 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <div className="flex items-end gap-2 md:col-span-2 xl:col-span-1">
+        <div className="flex items-end gap-2 md:col-span-2 xl:col-span-3 2xl:col-span-1">
           <button className="h-11 flex-1 rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700 xl:flex-none">
             필터 적용
           </button>
@@ -672,16 +664,6 @@ export default async function CompanyApplicationsPage({
           tone="red"
         />
         <QuickFilterCard
-          active={activeAttentionFilter === "needed"}
-          count={attentionNeededCount}
-          href={buildApplicationsHref(params, {
-            attention: activeAttentionFilter === "needed" ? "" : "needed",
-            sort: "action_needed",
-          })}
-          label="조치 필요"
-          tone="red"
-        />
-        <QuickFilterCard
           active={activeStatus === "submitted"}
           count={unreviewedCount}
           href={buildApplicationsHref(params, {
@@ -692,6 +674,19 @@ export default async function CompanyApplicationsPage({
           tone="blue"
         />
         <QuickFilterCard
+          active={activeStatus === "reviewing"}
+          count={
+            (applications ?? []).filter(
+              (application) => application.status === "reviewing",
+            ).length
+          }
+          href={buildApplicationsHref(params, {
+            status: activeStatus === "reviewing" ? "" : "reviewing",
+          })}
+          label="검토 중"
+          tone="blue"
+        />
+        <QuickFilterCard
           active={activeCompletenessFilter === "incomplete"}
           count={incompleteCount}
           href={buildApplicationsHref(params, {
@@ -699,7 +694,7 @@ export default async function CompanyApplicationsPage({
               activeCompletenessFilter === "incomplete" ? "" : "incomplete",
             sort: "incomplete",
           })}
-          label="정보 미완성"
+          label="지원정보 부족"
           tone="amber"
         />
         <QuickFilterCard
@@ -708,7 +703,7 @@ export default async function CompanyApplicationsPage({
           href={buildApplicationsHref(params, {
             data: activeDataFilter === "fallback" ? "" : "fallback",
           })}
-          label="현재 정보 fallback"
+          label="제출본 없음"
           tone="slate"
         />
       </div>
@@ -771,12 +766,6 @@ export default async function CompanyApplicationsPage({
                 profilePhotoById.get(application.seeker_id),
               );
               const status = getStatusMeta("application", application.status);
-              const workflow = getReviewWorkflow({
-                attention,
-                application,
-                completion,
-                hasCompleteSnapshot: snapshotMeta.hasCompleteSnapshot,
-              });
               const missingPreview = completion.missing.slice(0, 3);
 
               return (
@@ -888,10 +877,7 @@ export default async function CompanyApplicationsPage({
                         ) : null}
                         {attention.score >= 40 ? (
                           <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold leading-6 text-red-900">
-                            <span>조치 필요: {attention.summary}</span>
-                            <span className="rounded-md bg-white/80 px-2 py-1 text-xs font-black text-red-700">
-                              priority {attention.score}
-                            </span>
+                            <span>확인 필요: {attention.summary}</span>
                           </div>
                         ) : null}
                         {!snapshotMeta.hasCompleteSnapshot ? (
@@ -913,9 +899,8 @@ export default async function CompanyApplicationsPage({
                       </div>
                     </div>
                     <div className="grid gap-2 rounded-xl bg-slate-50 p-3 xl:w-[292px] xl:bg-transparent xl:p-0">
-                      <ReviewWorkflowCard workflow={workflow} />
                       <Info
-                        label="Last action"
+                        label="최근 수정일"
                         value={formatLastAction(application)}
                       />
                       <Link
@@ -992,111 +977,13 @@ function formatLastAction(application: {
   applied_at: string;
   status_updated_at?: string | null;
 }) {
-  if (application.status_updated_at) {
-    return `상태 변경 ${new Date(application.status_updated_at).toLocaleString("ko-KR")}`;
-  }
+  const date = application.status_updated_at ?? application.applied_at;
 
-  return `접수 ${new Date(application.applied_at).toLocaleString("ko-KR")}`;
-}
-
-function getReviewWorkflow({
-  attention,
-  application,
-  completion,
-  hasCompleteSnapshot,
-}: {
-  attention: ApplicationAttention;
-  application: {
-    company_note?: string | null;
-    status: string;
-  };
-  completion: {
-    isComplete: boolean;
-  };
-  hasCompleteSnapshot: boolean;
-}): ReviewWorkflow {
-  const hasCompanyNote = Boolean(application.company_note?.trim());
-
-  if (attention.flags.isOverdueReview) {
-    return {
-      detail: "검토 중으로 바꾸고 구직자에게 진행 상황을 안내하세요.",
-      label: "오늘 검토 시작",
-      tone: "red",
-    };
-  }
-
-  if (application.status === "submitted") {
-    return {
-      detail: "프로필과 이력서를 확인한 뒤 상태를 검토 중으로 바꾸세요.",
-      label: "신규 지원 검토",
-      tone: "blue",
-    };
-  }
-
-  if (application.status === "reviewing" && !hasCompanyNote) {
-    return {
-      detail: "대기 사유나 다음 안내를 메모로 남기면 구직자가 놓치지 않습니다.",
-      label: "안내 메모 필요",
-      tone: "amber",
-    };
-  }
-
-  if (application.status === "reviewing") {
-    return {
-      detail: "검토가 끝났다면 합격 또는 불합격으로 상태를 정리하세요.",
-      label: "결정 대기",
-      tone: "blue",
-    };
-  }
-
-  if (
-    (application.status === "accepted" || application.status === "rejected") &&
-    !hasCompanyNote
-  ) {
-    return {
-      detail: "최종 상태에 대한 안내 메모를 남기면 지원자 경험이 좋아집니다.",
-      label: "최종 안내 보완",
-      tone: "amber",
-    };
-  }
-
-  if (!completion.isComplete || !hasCompleteSnapshot) {
-    return {
-      detail: "지원 정보가 부족하거나 현재 정보 fallback입니다. 상세에서 확인하세요.",
-      label: "데이터 확인",
-      tone: "amber",
-    };
-  }
-
-  return {
-    detail: "현재 상태와 안내 메모가 정리되어 있습니다.",
-    label: "정리 완료",
-    tone: "green",
-  };
-}
-
-function ReviewWorkflowCard({ workflow }: { workflow: ReviewWorkflow }) {
-  return (
-    <div
-      className={cn(
-        "rounded-xl border p-3",
-        workflow.tone === "red" && "border-red-100 bg-red-50 text-red-950",
-        workflow.tone === "amber" && "border-amber-100 bg-amber-50 text-amber-950",
-        workflow.tone === "blue" && "border-blue-100 bg-blue-50 text-blue-950",
-        workflow.tone === "green" &&
-          "border-emerald-100 bg-emerald-50 text-emerald-950",
-        workflow.tone === "slate" && "border-slate-200 bg-white text-slate-800",
-      )}
-    >
-      <p className="text-xs font-black uppercase tracking-wide opacity-70">
-        Next action
-      </p>
-      <p className="mt-1 text-sm font-black">{workflow.label}</p>
-      <p className="mt-1 text-xs font-semibold leading-5 opacity-80">
-        {workflow.detail}
-      </p>
-    </div>
-  );
+  return new Date(date).toLocaleString("ko-KR", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Seoul",
+  });
 }
 
 function SummaryCard({

@@ -258,13 +258,6 @@ export default async function CompanyApplicationPrintPage({
         </section>
 
         <section className="mt-8">
-          <h2 className="text-lg font-black">기업 안내 메모</h2>
-          <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
-            {application.company_note || "기업 안내 메모가 없습니다."}
-          </p>
-        </section>
-
-        <section className="mt-8">
           <h2 className="text-lg font-black">이력과 자기소개</h2>
           {submittedResume ? (
             <div className="mt-3 grid gap-4">

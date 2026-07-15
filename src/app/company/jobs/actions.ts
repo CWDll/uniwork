@@ -114,9 +114,19 @@ export async function createCompanyJobAction(
 
   const rawWageAmount = String(formData.get("wage_amount") ?? "").trim();
   const wageAmount = rawWageAmount ? Number(rawWageAmount) : null;
+  const rawClosedAt = String(formData.get("closed_at") ?? "").trim();
+  const closedAt = rawClosedAt ? new Date(rawClosedAt) : null;
 
   if (wageAmount !== null && (!Number.isFinite(wageAmount) || wageAmount < 0)) {
     return { error: "급여 금액은 0 이상의 숫자로 입력해주세요." };
+  }
+
+  if (closedAt && Number.isNaN(closedAt.getTime())) {
+    return { error: "공고 마감일시를 확인해주세요." };
+  }
+
+  if (closedAt && closedAt.getTime() <= Date.now()) {
+    return { error: "공고 마감일시는 현재 이후로 입력해주세요." };
   }
 
   const { error } = await supabase.from("jobs").insert({
@@ -130,6 +140,7 @@ export async function createCompanyJobAction(
     wage_amount: wageAmount,
     visa_support_type: visaSupportType,
     korean_requirement: koreanRequirement,
+    closed_at: closedAt ? closedAt.toISOString() : null,
     published_at: new Date().toISOString(),
     status: "published",
   });
@@ -146,4 +157,50 @@ export async function createCompanyJobAction(
     message: "채용공고가 공개되었습니다.",
     successKey: new Date().toISOString(),
   };
+}
+
+export async function closeCompanyJobAction(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const jobId = String(formData.get("job_id") ?? "").trim();
+
+  if (!user || !jobId) {
+    return;
+  }
+
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("id, company_id")
+    .eq("id", jobId)
+    .maybeSingle();
+
+  if (!job) {
+    return;
+  }
+
+  const { data: company } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("id", job.company_id)
+    .eq("owner_id", user.id)
+    .maybeSingle();
+
+  if (!company) {
+    return;
+  }
+
+  await supabase
+    .from("jobs")
+    .update({
+      closed_at: new Date().toISOString(),
+      status: "closed",
+    })
+    .eq("id", job.id);
+
+  revalidatePath("/company");
+  revalidatePath("/company/jobs");
+  revalidatePath("/jobs");
+  revalidatePath(`/jobs/${job.id}`);
 }

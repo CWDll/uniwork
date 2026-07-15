@@ -77,7 +77,7 @@ export default async function Home({
   let featuredJobsQuery = supabase
     .from("jobs")
     .select(
-      "id, company_id, title, location, employment_type, category, wage_type, wage_amount, visa_support_type, published_at",
+      "id, company_id, title, location, employment_type, category, wage_type, wage_amount, visa_support_type, published_at, closed_at",
     )
     .eq("status", "published");
 
@@ -89,8 +89,13 @@ export default async function Home({
     .order("published_at", { ascending: false, nullsFirst: false })
     .limit(3);
 
+  const nowTime = new Date().getTime();
+  const activeDbJobs =
+    dbJobs?.filter(
+      (job) => !job.closed_at || new Date(job.closed_at).getTime() > nowTime,
+    ) ?? [];
   const companyIds = Array.from(
-    new Set(dbJobs?.map((job) => job.company_id) ?? []),
+    new Set(activeDbJobs.map((job) => job.company_id)),
   );
   const { data: companies } =
     companyIds.length > 0
@@ -100,7 +105,7 @@ export default async function Home({
     companies?.map((company) => [String(company.id), String(company.name)]) ?? [],
   );
   const featuredJobs =
-    dbJobs?.map((job) => {
+    activeDbJobs.map((job) => {
       const company = companyNameById.get(String(job.company_id)) ?? "Company";
       const logo = company
         .split(/\s+/)
