@@ -1,4 +1,11 @@
-import { BriefcaseBusiness, FileText, Send, ShieldCheck } from "lucide-react";
+import {
+  AlertCircle,
+  BriefcaseBusiness,
+  CheckCircle2,
+  FileText,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -435,13 +442,13 @@ export default async function MePage() {
 
         <div className="grid gap-5">
           <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-lg font-black">오늘 확인할 일</h2>
+            <h2 className="text-lg font-black">확인 사항</h2>
             <div className="mt-4 grid gap-2">
               {dashboardAlerts.length > 0 ? (
                 dashboardAlerts.map((alert) => (
                   <Link
                     className={cn(
-                      "rounded-xl border p-3 transition hover:bg-blue-50",
+                      "group rounded-xl border p-3 transition hover:bg-blue-50",
                       alert.tone === "amber" && "border-amber-100 bg-amber-50",
                       alert.tone === "green" && "border-emerald-100 bg-emerald-50",
                       alert.tone === "slate" && "border-slate-100 bg-slate-50",
@@ -449,11 +456,21 @@ export default async function MePage() {
                     href={alert.href}
                     key={alert.label}
                   >
-                    <p className="text-sm font-black text-slate-900">
-                      {alert.label}
-                    </p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-black text-slate-900">
+                        {alert.label}
+                      </p>
+                      {alert.tone === "green" ? (
+                        <CheckCircle2 className="size-4 shrink-0 text-emerald-700" />
+                      ) : (
+                        <AlertCircle className="size-4 shrink-0 text-amber-700" />
+                      )}
+                    </div>
                     <p className="mt-1 line-clamp-3 text-xs font-semibold leading-5 text-slate-600">
                       {alert.note || "상세 내용을 확인해주세요."}
+                    </p>
+                    <p className="mt-2 text-xs font-black text-blue-700 group-hover:text-blue-900">
+                      확인하기
                     </p>
                   </Link>
                 ))

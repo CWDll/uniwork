@@ -272,16 +272,21 @@ export default async function SeekerApplicationsPage({
                         {application.message}
                       </p>
                     ) : null}
-                    {application.company_note ? (
-                      <p className="mt-3 whitespace-pre-wrap rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
-                        기업 안내: {application.company_note}
+                    <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        기업 메모
                       </p>
-                    ) : application.status !== "submitted" ? (
-                      <p className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3 text-sm font-semibold leading-6 text-slate-600">
-                        아직 기업 안내 메모가 없습니다. 상태가 바뀌면 이 영역에
-                        담당자 안내가 표시됩니다.
-                      </p>
-                    ) : null}
+                      {application.company_note ? (
+                        <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-blue-900">
+                          {application.company_note}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                          아직 기업이 남긴 안내 메모가 없습니다. 면접 안내,
+                          추가 서류 요청, 결과 안내가 있으면 이 영역에 표시됩니다.
+                        </p>
+                      )}
+                    </div>
                     {statusEvents.length > 0 ? (
                       <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                         <p className="text-xs font-black uppercase tracking-wide text-slate-400">
@@ -296,14 +301,22 @@ export default async function SeekerApplicationsPage({
                     ) : null}
                   </div>
                   <div className="grid h-max gap-2 rounded-xl bg-slate-50 p-3">
-                    <span
-                      className={getStatusBadgeClassName(
-                        "application",
-                        application.status,
-                      )}
-                    >
-                      {status.label}
-                    </span>
+                    <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                        현재 상태
+                      </p>
+                      <span
+                        className={cn(
+                          getStatusBadgeClassName(
+                            "application",
+                            application.status,
+                          ),
+                          "mt-2 inline-flex min-h-10 w-full items-center justify-center text-sm",
+                        )}
+                      >
+                        {status.label}
+                      </span>
+                    </div>
                     <div
                       className={cn(
                         "rounded-xl border p-3",

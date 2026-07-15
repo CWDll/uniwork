@@ -70,9 +70,27 @@ export function SeekerProfileForm({
   profile: SeekerProfile | null;
 }) {
   const [state, formAction] = useActionState(saveSeekerProfileAction, {});
-  const [visaType, setVisaType] = useState(profile?.visa_type ?? "D-2");
-  const visaGuidance = getVisaGuidance(visaType);
-  const isStudentVisa = visaType === "D-2" || visaType === "D-4";
+  const [draft, setDraft] = useState({
+    alien_registration_status: profile?.alien_registration_status ?? "has_card",
+    email_notifications_enabled: emailNotificationsEnabled,
+    english_level: profile?.english_level ?? "Business",
+    korean_level: profile?.korean_level ?? "TOPIK 3",
+    major: profile?.major ?? "",
+    nationality: profile?.nationality ?? "Vietnam",
+    notification_email: notificationEmail || accountEmail,
+    preferred_job_types: profile?.preferred_job_types ?? [],
+    preferred_locations: profile?.preferred_locations ?? [],
+    school: profile?.school ?? "",
+    visa_type: profile?.visa_type ?? "D-2",
+    weekday_availability: profile?.available_times?.weekday ?? "",
+    weekend_availability: profile?.available_times?.weekend ?? "",
+  });
+  const visaGuidance = getVisaGuidance(draft.visa_type);
+  const isStudentVisa = draft.visa_type === "D-2" || draft.visa_type === "D-4";
+
+  function updateDraft(name: keyof typeof draft, value: string | boolean | string[]) {
+    setDraft((current) => ({ ...current, [name]: value }));
+  }
 
   return (
     <form
@@ -92,15 +110,19 @@ export function SeekerProfileForm({
               helper={`계정 이메일: ${accountEmail || "미확인"}`}
               label="Notification email"
               name="notification_email"
+              onChange={(value) => updateDraft("notification_email", value)}
               placeholder={accountEmail || "name@example.com"}
               type="email"
-              value={notificationEmail || accountEmail}
+              value={draft.notification_email}
             />
             <label className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-bold text-slate-700">
               <input
                 className="size-4"
-                defaultChecked={emailNotificationsEnabled}
+                checked={draft.email_notifications_enabled}
                 name="email_notifications_enabled"
+                onChange={(event) =>
+                  updateDraft("email_notifications_enabled", event.target.checked)
+                }
                 type="checkbox"
               />
               이메일 알림 받기
@@ -111,9 +133,10 @@ export function SeekerProfileForm({
           Nationality
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
-            defaultValue={profile?.nationality ?? "Vietnam"}
             name="nationality"
+            onChange={(event) => updateDraft("nationality", event.target.value)}
             required
+            value={draft.nationality}
           >
             {nationalityOptions.map((nationality) => (
               <option key={nationality} value={nationality}>
@@ -126,10 +149,10 @@ export function SeekerProfileForm({
           Visa type
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
-            defaultValue={profile?.visa_type ?? "D-2"}
             name="visa_type"
-            onChange={(event) => setVisaType(event.target.value)}
+            onChange={(event) => updateDraft("visa_type", event.target.value)}
             required
+            value={draft.visa_type}
           >
             <option value="D-2">D-2</option>
             <option value="D-4">D-4</option>
@@ -143,24 +166,40 @@ export function SeekerProfileForm({
           Alien registration
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
-            defaultValue={profile?.alien_registration_status ?? "has_card"}
             name="alien_registration_status"
+            onChange={(event) =>
+              updateDraft("alien_registration_status", event.target.value)
+            }
             required
+            value={draft.alien_registration_status}
           >
             <option value="has_card">Has registration card</option>
             <option value="pending">Pending</option>
             <option value="not_yet">Not yet</option>
           </select>
         </label>
-        <Field label="School" name="school" required value={profile?.school} />
-        <Field label="Major" name="major" required value={profile?.major} />
+        <Field
+          label="School"
+          name="school"
+          onChange={(value) => updateDraft("school", value)}
+          required
+          value={draft.school}
+        />
+        <Field
+          label="Major"
+          name="major"
+          onChange={(value) => updateDraft("major", value)}
+          required
+          value={draft.major}
+        />
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           Korean level
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
-            defaultValue={profile?.korean_level ?? "TOPIK 3"}
             name="korean_level"
+            onChange={(event) => updateDraft("korean_level", event.target.value)}
             required
+            value={draft.korean_level}
           >
             <option>Beginner</option>
             <option>TOPIK 2</option>
@@ -173,9 +212,10 @@ export function SeekerProfileForm({
           English level
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
-            defaultValue={profile?.english_level ?? "Business"}
             name="english_level"
+            onChange={(event) => updateDraft("english_level", event.target.value)}
             required
+            value={draft.english_level}
           >
             <option>Basic</option>
             <option>Business</option>
@@ -187,29 +227,33 @@ export function SeekerProfileForm({
           className="md:col-span-2"
           label="Preferred locations"
           name="preferred_locations"
+          onChange={(selected) => updateDraft("preferred_locations", selected)}
           options={locationOptions}
-          selected={profile?.preferred_locations ?? []}
+          selected={draft.preferred_locations}
         />
         <CheckboxGroup
           className="md:col-span-2"
           label="Preferred job types"
           name="preferred_job_types"
+          onChange={(selected) => updateDraft("preferred_job_types", selected)}
           options={jobTypeOptions}
-          selected={profile?.preferred_job_types ?? []}
+          selected={draft.preferred_job_types}
         />
         <Field
           helper={isStudentVisa ? "예: Mon-Fri 18:00-22:00, 최대 주 20시간" : undefined}
           label="Weekday availability"
           name="weekday_availability"
+          onChange={(value) => updateDraft("weekday_availability", value)}
           placeholder="Mon-Fri 18:00-22:00"
-          value={profile?.available_times?.weekday}
+          value={draft.weekday_availability}
         />
         <Field
           helper={isStudentVisa ? "예: Sat 10:00-18:00" : undefined}
           label="Weekend availability"
           name="weekend_availability"
+          onChange={(value) => updateDraft("weekend_availability", value)}
           placeholder="Sat 10:00-18:00"
-          value={profile?.available_times?.weekend}
+          value={draft.weekend_availability}
         />
       </div>
 
@@ -345,6 +389,7 @@ function Field({
   helper,
   label,
   name,
+  onChange,
   placeholder,
   required,
   type = "text",
@@ -353,6 +398,7 @@ function Field({
   helper?: string;
   label: string;
   name: string;
+  onChange?: (value: string) => void;
   placeholder?: string;
   required?: boolean;
   type?: string;
@@ -363,11 +409,12 @@ function Field({
       {label}
       <input
         className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
-        defaultValue={value ?? ""}
         name={name}
+        onChange={(event) => onChange?.(event.target.value)}
         placeholder={placeholder}
         required={required}
         type={type}
+        value={value ?? ""}
       />
       {helper ? (
         <span className="text-xs font-semibold text-slate-400">{helper}</span>
@@ -380,12 +427,14 @@ function CheckboxGroup({
   className,
   label,
   name,
+  onChange,
   options,
   selected,
 }: {
   className?: string;
   label: string;
   name: string;
+  onChange?: (selected: string[]) => void;
   options: string[];
   selected: string[];
 }) {
@@ -400,8 +449,15 @@ function CheckboxGroup({
           >
             <input
               className="size-4 accent-blue-600"
-              defaultChecked={selected.includes(option)}
+              checked={selected.includes(option)}
               name={name}
+              onChange={(event) => {
+                const nextSelected = event.target.checked
+                  ? [...selected, option]
+                  : selected.filter((item) => item !== option);
+
+                onChange?.(nextSelected);
+              }}
               type="checkbox"
               value={option}
             />

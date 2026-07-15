@@ -12,7 +12,6 @@ export function JobCategoryFilters({
   minWage,
   q,
   showAdvanced = false,
-  showProfileFit = false,
 }: {
   activeFilters: JobFilterValues;
   defaultOpen?: boolean;
@@ -21,7 +20,6 @@ export function JobCategoryFilters({
   minWage?: string;
   q?: string;
   showAdvanced?: boolean;
-  showProfileFit?: boolean;
 }) {
   const activeRegion = getActiveRegion(activeFilters.location);
   const activeCities = activeRegion
@@ -38,7 +36,17 @@ export function JobCategoryFilters({
           <SlidersHorizontal className="size-4 text-blue-700" />
           검색 및 필터
         </span>
-        <ChevronDown className="size-4 text-slate-400 transition group-open:rotate-180" />
+        <span className="ml-auto flex items-center gap-3">
+          {hasFilters ? (
+            <Link
+              className="text-xs font-black text-blue-700 hover:text-blue-900"
+              href="/jobs"
+            >
+              필터 초기화
+            </Link>
+          ) : null}
+          <ChevronDown className="size-4 text-slate-400 transition group-open:rotate-180" />
+        </span>
       </summary>
 
       <div className="mt-3 border-t border-slate-100 pt-3">
@@ -85,17 +93,6 @@ export function JobCategoryFilters({
 
             {showAdvanced ? (
               <>
-                {showProfileFit ? (
-                  <FilterGroup
-                    activeValue={activeFilters.profile_fit}
-                    allLabel="All fit"
-                    getHref={(value) =>
-                      getHref({ profile_fit: value === "All fit" ? "" : value })
-                    }
-                    label="내 조건"
-                    options={profileFitFilters}
-                  />
-                ) : null}
                 <FilterGroup
                   activeValue={activeFilters.location}
                   allLabel="All regions"
@@ -157,17 +154,6 @@ export function JobCategoryFilters({
               </>
             ) : null}
           </div>
-
-          {hasFilters ? (
-            <div className="border-t border-slate-100 pt-3">
-              <Link
-                className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-600 hover:bg-slate-50"
-                href="/jobs"
-              >
-                전체 필터 초기화
-              </Link>
-            </div>
-          ) : null}
         </div>
       </div>
     </details>
@@ -179,7 +165,6 @@ type JobFilterValues = {
   employment_type?: string;
   korean_requirement?: string;
   location?: string;
-  profile_fit?: string;
   visa_support_type?: string;
   wage_type?: string;
 };
@@ -189,7 +174,6 @@ const hiddenFilterFields: Array<keyof JobFilterValues> = [
   "employment_type",
   "korean_requirement",
   "location",
-  "profile_fit",
   "visa_support_type",
   "wage_type",
 ];
@@ -247,14 +231,6 @@ const categories = [
 ];
 
 const visaFilters = ["All visas", "D-2", "D-4", "F"];
-
-const profileFitFilters = [
-  "All fit",
-  "eligible",
-  "review_required",
-  "blocked",
-  "profile_required",
-];
 
 const locationGroups = [
   {

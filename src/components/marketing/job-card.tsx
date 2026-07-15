@@ -1,6 +1,7 @@
 import { Heart } from "lucide-react";
 import Link from "next/link";
 
+import { toggleSavedJobAction } from "@/app/jobs/saved-actions";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import type { JobEligibility } from "@/lib/jobs/eligibility";
@@ -21,9 +22,18 @@ type Job = {
   wage: string;
   featured: boolean;
   eligibility?: JobEligibility;
+  saved?: boolean;
 };
 
-export function JobCard({ job }: { job: Job }) {
+export function JobCard({
+  job,
+  returnTo = "/jobs",
+  viewerSignedIn = false,
+}: {
+  job: Job;
+  returnTo?: string;
+  viewerSignedIn?: boolean;
+}) {
   const href = job.id ? `/jobs/${job.id}` : "/jobs";
 
   return (
@@ -101,9 +111,40 @@ export function JobCard({ job }: { job: Job }) {
         ) : null}
       </div>
       <div className="col-span-2 flex items-center gap-2 sm:col-span-1 sm:flex-col sm:items-end">
-        <Button variant="outline" size="icon">
-          <Heart className="size-4" />
-        </Button>
+        {job.id ? (
+          viewerSignedIn ? (
+            <form action={toggleSavedJobAction}>
+              <input name="job_id" type="hidden" value={job.id} />
+              <input name="return_to" type="hidden" value={returnTo} />
+              <Button
+                aria-label={job.saved ? "즐겨찾기 해제" : "즐겨찾기 저장"}
+                size="icon"
+                title={job.saved ? "즐겨찾기 해제" : "즐겨찾기 저장"}
+                type="submit"
+                variant="outline"
+              >
+                <Heart
+                  className={cn(
+                    "size-4",
+                    job.saved && "fill-blue-600 text-blue-600",
+                  )}
+                />
+              </Button>
+            </form>
+          ) : (
+            <Link
+              aria-label="로그인하고 즐겨찾기 저장"
+              className={cn(
+                buttonVariants({ size: "icon", variant: "outline" }),
+                "shrink-0",
+              )}
+              href={`/login?next=${encodeURIComponent(returnTo)}`}
+              title="로그인하고 즐겨찾기 저장"
+            >
+              <Heart className="size-4" />
+            </Link>
+          )
+        ) : null}
         <Link className={cn(buttonVariants({ size: "sm" }), "min-w-20")} href={href}>
           {job.eligibility?.status === "blocked" ? "Details" : "Apply"}
         </Link>

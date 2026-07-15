@@ -56,7 +56,7 @@ export default async function SeekerAdminRequestsPage() {
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(420px,0.95fr)_minmax(0,1.05fr)]">
         <AdminRequestForm />
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -143,6 +143,90 @@ export default async function SeekerAdminRequestsPage() {
                         value={details.targetStartDate || "미입력"}
                       />
                     </div>
+                    <details className="mt-3 rounded-xl border border-slate-100 bg-white">
+                      <summary className="cursor-pointer list-none px-3 py-3 text-sm font-black text-slate-800 [&::-webkit-details-marker]:hidden">
+                        접수 내용 전체 보기
+                      </summary>
+                      <div className="grid gap-2 border-t border-slate-100 p-3 sm:grid-cols-2">
+                        <Info
+                          label="요청 유형"
+                          value={getAdminRequestTypeLabel(request.type)}
+                        />
+                        <Info
+                          label="상태"
+                          value={status.label}
+                        />
+                        <Info
+                          label="현재 체류자격"
+                          value={details.currentVisaType || "미입력"}
+                        />
+                        <Info
+                          label="외국인등록 상태"
+                          value={details.alienRegistrationStatus || "미입력"}
+                        />
+                        <Info
+                          label="학교/기관"
+                          value={details.school || "미입력"}
+                        />
+                        <Info
+                          label="전공/과정"
+                          value={details.major || "미입력"}
+                        />
+                        <Info
+                          label="희망 근무 시작일"
+                          value={details.targetStartDate || "미입력"}
+                        />
+                        <Info
+                          label="예정 근무 시간"
+                          value={details.plannedWorkHours || "미입력"}
+                        />
+                        <Info
+                          label="연락 이메일"
+                          value={contact.email || "미입력"}
+                        />
+                        <Info
+                          label="연락 전화번호"
+                          value={contact.phone || "전화 미입력"}
+                        />
+                        <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2 sm:col-span-2">
+                          <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                            준비된 서류
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {documents.ready.length > 0 ? (
+                              documents.ready.map((document) => (
+                                <span
+                                  className="rounded-md bg-white px-2 py-1 text-xs font-black text-slate-700"
+                                  key={document}
+                                >
+                                  {getDocumentLabel(document)}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-sm font-bold text-slate-500">
+                                선택한 서류 없음
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2 sm:col-span-2">
+                          <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                            부족하거나 확인이 필요한 서류
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm font-bold text-slate-700">
+                            {documents.missingNote || "입력 없음"}
+                          </p>
+                        </div>
+                        <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2 sm:col-span-2">
+                          <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                            요청 메모
+                          </p>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-sm font-bold text-slate-700">
+                            {request.memo || "입력 없음"}
+                          </p>
+                        </div>
+                      </div>
+                    </details>
                     {documents.missingNote ? (
                       <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
                         부족한 서류: {documents.missingNote}
@@ -267,7 +351,14 @@ function parseRequestDetails(value: unknown) {
   const data = parseRecord(value);
 
   return {
+    alienRegistrationStatus:
+      typeof data.alien_registration_status === "string"
+        ? data.alien_registration_status
+        : "",
     currentVisaType: typeof data.current_visa_type === "string" ? data.current_visa_type : "",
+    major: typeof data.major === "string" ? data.major : "",
+    plannedWorkHours:
+      typeof data.planned_work_hours === "string" ? data.planned_work_hours : "",
     school: typeof data.school === "string" ? data.school : "",
     targetStartDate:
       typeof data.target_start_date === "string" ? data.target_start_date : "",
@@ -290,4 +381,30 @@ function parseContactSnapshot(value: unknown) {
     email: typeof data.email === "string" ? data.email : "",
     phone: typeof data.phone === "string" ? data.phone : "",
   };
+}
+
+function getDocumentLabel(value: string) {
+  const labels: Record<string, string> = {
+    alien_registration_card: "외국인등록증",
+    attendance_or_transcript: "성적/출석 관련 서류",
+    certificate_of_enrollment: "재학증명서",
+    company_business_registration: "사업자등록증 사본",
+    employment_contract: "근로계약서/채용 예정 확인",
+    other: "기타 참고 서류",
+    passport: "여권",
+    school_approval: "학교 담당자 확인",
+  };
+
+  return labels[value] ?? value;
+}
+
+function getAdminRequestTypeLabel(value: string) {
+  const labels: Record<string, string> = {
+    document_review: "서류 사전 검토",
+    other: "기타 상담",
+    part_time_work_permission: "시간제 취업 허가 검토",
+    visa_eligibility_review: "비자 지원 가능성 검토",
+  };
+
+  return labels[value] ?? value;
 }

@@ -1,4 +1,10 @@
-import { ToggleLeft, ToggleRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Heart,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -18,6 +24,8 @@ type JobsSearchParams = {
   min_wage?: string;
   profile_fit?: string;
   q?: string;
+  saved?: string;
+  saved_page?: string;
   visa_support_type?: string;
   wage_type?: string;
 };
@@ -62,6 +70,16 @@ function buildJobsHref(params: JobsSearchParams, updates: JobsSearchParams) {
   return query ? `/jobs?${query}` : "/jobs";
 }
 
+function buildCurrentJobsHref(params: JobsSearchParams) {
+  return buildJobsHref(params, {});
+}
+
+function getValidPage(value: string | undefined) {
+  const page = Number(getParam(value));
+
+  return Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+}
+
 export default async function JobsPage({
   searchParams,
 }: {
@@ -77,6 +95,8 @@ export default async function JobsPage({
   const koreanRequirement = getParam(params.korean_requirement);
   const minWage = Number(getParam(params.min_wage));
   const profileFit = getParam(params.profile_fit);
+  const savedOnly = getParam(params.saved) === "1";
+  const savedPage = getValidPage(params.saved_page);
   const visaSupportType = getParam(params.visa_support_type);
   const wageType = getParam(params.wage_type);
   const supabase = await createClient();
@@ -98,6 +118,7 @@ export default async function JobsPage({
         .maybeSingle()
     : { data: null };
   const effectiveProfileFit = user ? profileFit : "";
+  const currentJobsHref = buildCurrentJobsHref(params);
 
   let companyIdsMatchingKeyword: string[] = [];
 
@@ -115,7 +136,7 @@ export default async function JobsPage({
   let jobsQuery = supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, location, employment_type, category, wage_type, wage_amount, visa_support_type, korean_requirement, status, created_at, published_at",
+      "id, company_id, title, description, location, employment_type, category, wage_type, wage_amount, visa_support_type, korean_requirement, status, created_at, published_at, closed_at",
     )
     .eq("status", "published");
 
@@ -193,6 +214,15 @@ export default async function JobsPage({
       company.verification_status === "verified",
     ]) ?? [],
   );
+  const { data: savedRows } =
+    user
+      ? await supabase
+          .from("saved_jobs")
+          .select("job_id, created_at")
+          .eq("seeker_id", user.id)
+          .order("created_at", { ascending: false })
+      : { data: [] };
+  const savedJobIds = new Set(savedRows?.map((row) => String(row.job_id)) ?? []);
 
   const jobsWithEligibility =
     dbJobs?.map((job) => {
@@ -224,6 +254,9 @@ export default async function JobsPage({
           job.wage_amount && job.wage_type
             ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
             : "Wage negotiable",
+        saved: savedJobIds.has(String(job.id)),
+        status: job.status,
+        closedAt: job.closed_at,
         eligibility: getJobEligibility({
           isSignedIn: Boolean(user),
           jobVisaSupportType: job.visa_support_type,
@@ -232,11 +265,18 @@ export default async function JobsPage({
         }),
       };
     }) ?? [];
-  const jobs = effectiveProfileFit
-    ? jobsWithEligibility.filter(
-        (job) => job.eligibility.status === effectiveProfileFit,
-      )
-    : jobsWithEligibility;
+  const jobs = jobsWithEligibility
+    .filter((job) => {
+      if (effectiveProfileFit !== "eligible") {
+        return true;
+      }
+
+      return (
+        job.eligibility.status === "eligible" ||
+        job.eligibility.status === "review_required"
+      );
+    })
+    .filter((job) => (savedOnly ? job.saved : true));
   const hasFilters = Boolean(
     q ||
       location ||
@@ -246,65 +286,75 @@ export default async function JobsPage({
       wageType ||
       koreanRequirement ||
       effectiveProfileFit ||
+      savedOnly ||
       (Number.isFinite(minWage) && minWage > 0),
   );
   const eligibleOnlyHref = buildJobsHref(params, {
     profile_fit: effectiveProfileFit === "eligible" ? "" : "eligible",
   });
   const eligibleOnlyEnabled = effectiveProfileFit === "eligible";
+  const savedJobs = jobsWithEligibility.filter((job) => job.saved);
+  const savedPageSize = 10;
+  const savedTotalPages = Math.max(1, Math.ceil(savedJobs.length / savedPageSize));
+  const clampedSavedPage = Math.min(savedPage, savedTotalPages);
+  const visibleSavedJobs = savedJobs.slice(
+    (clampedSavedPage - 1) * savedPageSize,
+    clampedSavedPage * savedPageSize,
+  );
 
   return (
     <PublicShell>
       <section className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
-        <div className="min-w-0">
-          <PageHeading
-            eyebrow="Jobs"
-            title="지원 가능성을 먼저 확인하는 채용공고"
-            description="D-2/D-4 유학생의 시간제 취업 조건과 기업 요구사항을 함께 확인할 수 있도록 공고 구조를 설계합니다."
-          />
+        <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="min-w-0">
+            <PageHeading
+              eyebrow="Jobs"
+              title="지원 가능성을 먼저 확인하는 채용공고"
+              description="D-2/D-4 유학생의 시간제 취업 조건과 기업 요구사항을 함께 확인할 수 있도록 공고 구조를 설계합니다."
+            />
 
-          {user ? (
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="min-w-0">
-                <p className="text-sm font-black text-slate-900">
-                  내가 지원 가능한 공고만 보기
-                </p>
-                <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                  {seekerProfile?.visa_type
-                    ? `${seekerProfile.visa_type} 프로필 기준으로 바로 지원 가능한 공고를 먼저 봅니다.`
-                    : "비자 프로필을 입력하면 지원 가능한 공고만 빠르게 볼 수 있습니다."}
-                </p>
+            {user ? (
+              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-black text-slate-900">
+                    내가 지원 가능한 공고만 보기
+                  </p>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                    {seekerProfile?.visa_type
+                      ? `${seekerProfile.visa_type} 프로필 기준으로 지원 가능하거나 확인이 필요한 공고를 봅니다.`
+                      : "비자 프로필을 입력하면 지원 가능한 공고만 빠르게 볼 수 있습니다."}
+                  </p>
+                </div>
+                <Link
+                  className={cn(
+                    "inline-flex h-10 shrink-0 items-center gap-2 rounded-md px-4 text-sm font-black transition",
+                    eligibleOnlyEnabled
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                  )}
+                  href={eligibleOnlyHref}
+                >
+                  {eligibleOnlyEnabled ? (
+                    <ToggleRight className="size-5" />
+                  ) : (
+                    <ToggleLeft className="size-5" />
+                  )}
+                  {eligibleOnlyEnabled ? "켜짐" : "꺼짐"}
+                </Link>
               </div>
-              <Link
-                className={cn(
-                  "inline-flex h-10 shrink-0 items-center gap-2 rounded-md px-4 text-sm font-black transition",
-                  eligibleOnlyEnabled
-                    ? "bg-blue-600 text-white hover:bg-blue-700"
-                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
-                )}
-                href={eligibleOnlyHref}
-              >
-                {eligibleOnlyEnabled ? (
-                  <ToggleRight className="size-5" />
-                ) : (
-                  <ToggleLeft className="size-5" />
-                )}
-                {eligibleOnlyEnabled ? "켜짐" : "꺼짐"}
-              </Link>
-            </div>
-          ) : (
-            <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-              <p className="text-sm font-black text-blue-900">
-                로그인하면 내 비자 기준 필터를 사용할 수 있습니다.
-              </p>
-              <Link
-                className="mt-2 inline-flex text-sm font-black text-blue-700 hover:text-blue-900"
-                href="/login?next=/jobs"
-              >
-                로그인하고 맞춤 공고 보기
-              </Link>
-            </div>
-          )}
+            ) : (
+              <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+                <p className="text-sm font-black text-blue-900">
+                  로그인하면 내 비자 기준 필터를 사용할 수 있습니다.
+                </p>
+                <Link
+                  className="mt-2 inline-flex text-sm font-black text-blue-700 hover:text-blue-900"
+                  href="/login?next=/jobs"
+                >
+                  로그인하고 맞춤 공고 보기
+                </Link>
+              </div>
+            )}
 
           <div className="mt-5">
             <JobCategoryFilters
@@ -313,7 +363,6 @@ export default async function JobsPage({
                 employment_type: employmentType,
                 korean_requirement: koreanRequirement,
                 location,
-                profile_fit: effectiveProfileFit,
                 visa_support_type: visaSupportType,
                 wage_type: wageType,
               }}
@@ -325,7 +374,6 @@ export default async function JobsPage({
               }
               q={q}
               showAdvanced
-              showProfileFit={Boolean(user)}
             />
           </div>
 
@@ -339,18 +387,17 @@ export default async function JobsPage({
                     : "최신 공개 공고를 지원 가능성 기준으로 확인하세요."}
                 </p>
               </div>
-              {hasFilters ? (
-                <Link
-                  className="text-sm font-black text-blue-700 hover:text-blue-900"
-                  href="/jobs"
-                >
-                  필터 초기화
-                </Link>
-              ) : null}
             </div>
             <div className="divide-y divide-slate-100">
               {jobs.length > 0 ? (
-                jobs.map((job) => <JobCard job={job} key={job.id} />)
+                jobs.map((job) => (
+                  <JobCard
+                    job={job}
+                    key={job.id}
+                    returnTo={currentJobsHref}
+                    viewerSignedIn={Boolean(user)}
+                  />
+                ))
               ) : (
                 <div className="px-5 py-10">
                   <p className="text-sm font-black text-slate-700">
@@ -380,8 +427,127 @@ export default async function JobsPage({
               )}
             </div>
           </div>
+          </div>
+
+          {user ? (
+            <aside className="hidden xl:block">
+              <div className="sticky top-20 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                <div className="border-b border-slate-200 px-4 py-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base font-black">즐겨찾기 한 공고</h2>
+                      <p className="mt-1 text-xs font-bold text-slate-500">
+                        저장한 공고 {savedJobs.length}개
+                      </p>
+                    </div>
+                    <Heart className="size-5 text-blue-700" />
+                  </div>
+                  <Link
+                    className={cn(
+                      "mt-3 inline-flex h-9 w-full items-center justify-center rounded-md text-sm font-black",
+                      savedOnly
+                        ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        : "bg-blue-600 text-white hover:bg-blue-700",
+                    )}
+                    href={buildJobsHref(params, {
+                      saved: savedOnly ? "" : "1",
+                      saved_page: "",
+                    })}
+                  >
+                    {savedOnly ? "전체 공고 보기" : "즐겨찾기만 보기"}
+                  </Link>
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {visibleSavedJobs.length > 0 ? (
+                    visibleSavedJobs.map((job) => (
+                      <Link
+                        className="block px-4 py-3 transition hover:bg-blue-50"
+                        href={`/jobs/${job.id}`}
+                        key={job.id}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="line-clamp-2 text-sm font-black text-slate-950">
+                            {job.title}
+                          </p>
+                          <span
+                            className={cn(
+                              "shrink-0 rounded-md px-2 py-1 text-[11px] font-black",
+                              isActiveJob(job)
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-slate-100 text-slate-500",
+                            )}
+                          >
+                            {isActiveJob(job) ? "진행 중" : "종료"}
+                          </span>
+                        </div>
+                        <p className="mt-1 line-clamp-1 text-xs font-bold text-slate-500">
+                          {job.company} · {job.location}
+                        </p>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="px-4 py-6">
+                      <p className="text-sm font-black text-slate-700">
+                        아직 저장한 공고가 없습니다.
+                      </p>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                        하트를 누르면 이 영역에서 다시 확인할 수 있습니다.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {savedJobs.length > savedPageSize ? (
+                  <div className="flex items-center justify-between gap-2 border-t border-slate-200 px-4 py-3">
+                    <Link
+                      aria-disabled={clampedSavedPage <= 1}
+                      className={cn(
+                        "inline-flex size-8 items-center justify-center rounded-md border border-slate-200",
+                        clampedSavedPage <= 1
+                          ? "pointer-events-none text-slate-300"
+                          : "text-slate-700 hover:bg-slate-50",
+                      )}
+                      href={buildJobsHref(params, {
+                        saved_page: String(clampedSavedPage - 1),
+                      })}
+                    >
+                      <ChevronLeft className="size-4" />
+                    </Link>
+                    <p className="text-xs font-black text-slate-500">
+                      {clampedSavedPage} / {savedTotalPages}
+                    </p>
+                    <Link
+                      aria-disabled={clampedSavedPage >= savedTotalPages}
+                      className={cn(
+                        "inline-flex size-8 items-center justify-center rounded-md border border-slate-200",
+                        clampedSavedPage >= savedTotalPages
+                          ? "pointer-events-none text-slate-300"
+                          : "text-slate-700 hover:bg-slate-50",
+                      )}
+                      href={buildJobsHref(params, {
+                        saved_page: String(clampedSavedPage + 1),
+                      })}
+                    >
+                      <ChevronRight className="size-4" />
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+            </aside>
+          ) : null}
         </div>
       </section>
     </PublicShell>
   );
+}
+
+function isActiveJob(job: { closedAt?: string | null; status?: string | null }) {
+  if (job.status !== "published") {
+    return false;
+  }
+
+  if (!job.closedAt) {
+    return true;
+  }
+
+  return new Date(job.closedAt).getTime() > Date.now();
 }

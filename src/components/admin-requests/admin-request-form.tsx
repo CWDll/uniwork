@@ -12,7 +12,7 @@ export function AdminRequestForm() {
   return (
     <form
       action={formAction}
-      className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
+      className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
       id="new-admin-request"
     >
       <h2 className="text-lg font-black">새 행정 요청</h2>
@@ -47,7 +47,7 @@ export function AdminRequestForm() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 gap-4 2xl:grid-cols-2">
           <Field
             label="현재 체류자격"
             name="current_visa_type"
@@ -83,7 +83,7 @@ export function AdminRequestForm() {
           />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-w-0 gap-4 2xl:grid-cols-2">
           <Field
             label="연락 가능한 이메일"
             name="contact_email"
@@ -102,7 +102,7 @@ export function AdminRequestForm() {
           <legend className="text-sm font-black text-slate-900">
             현재 준비된 서류
           </legend>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
             {documentOptions.map((document) => (
               <label
                 className="flex min-h-11 items-center gap-2 rounded-md bg-white px-3 text-sm font-bold text-slate-700"
@@ -123,7 +123,7 @@ export function AdminRequestForm() {
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           부족하거나 확인이 필요한 서류
           <textarea
-            className="min-h-20 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
+            className="min-h-20 w-full min-w-0 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
             name="missing_documents_note"
             placeholder="예: 학교 담당자 확인서가 아직 없습니다."
           />
@@ -132,7 +132,7 @@ export function AdminRequestForm() {
         <label className="grid gap-2 text-sm font-bold text-slate-700">
           요청 메모
           <textarea
-            className="min-h-28 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
+            className="min-h-28 w-full min-w-0 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
             name="memo"
             placeholder="상황 설명, 궁금한 점, 이미 상담받은 내용 등을 적어주세요."
           />
@@ -182,10 +182,10 @@ function Field({
   type?: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-bold text-slate-700">
+    <label className="grid min-w-0 gap-2 text-sm font-bold text-slate-700">
       {label}
       <input
-        className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
+        className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
         name={name}
         placeholder={placeholder}
         required={required}
