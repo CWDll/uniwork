@@ -29,6 +29,11 @@ export function JobCategoryFilters({
   const activeCities = activeRegion
     ? (locationGroups.find((group) => group.label === activeRegion)?.cities ?? [])
     : [];
+  const appliedTags = getAppliedTags({
+    activeFilters,
+    minWage: minWage ?? "",
+    q: q ?? "",
+  });
 
   function updateFilter(name: keyof JobFilterValues, value: string) {
     setDraftFilters((current) => ({
@@ -48,10 +53,20 @@ export function JobCategoryFilters({
       className="group rounded-2xl border border-slate-200 bg-white p-3"
       open={defaultOpen}
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-1 py-1 text-sm font-black text-slate-800 [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-2">
-          <SlidersHorizontal className="size-4 text-blue-700" />
-          검색 및 필터
+      <summary className="flex cursor-pointer list-none items-start justify-between gap-3 px-1 py-1 text-sm font-black text-slate-800 [&::-webkit-details-marker]:hidden">
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-2">
+            <SlidersHorizontal className="size-4 text-blue-700" />
+            검색 및 필터
+          </span>
+          {appliedTags.map((tag) => (
+            <span
+              className="rounded-md bg-blue-50 px-2 py-1 text-xs font-black text-blue-700"
+              key={tag}
+            >
+              {tag}
+            </span>
+          ))}
         </span>
         <span className="ml-auto flex items-center gap-3">
           {hasFilters ? (
@@ -97,6 +112,7 @@ export function JobCategoryFilters({
         <div className="grid min-w-0 gap-4">
           <div className="mt-4 grid gap-4 border-t border-slate-100 pt-4">
             <FilterGroup
+              appliedValue={activeFilters.category}
               activeValue={draftFilters.category}
               allLabel="All Jobs"
               label="직종"
@@ -109,6 +125,7 @@ export function JobCategoryFilters({
             {showAdvanced ? (
               <>
                 <FilterGroup
+                  appliedValue={activeFilters.location}
                   activeValue={draftFilters.location}
                   allLabel="All regions"
                   label="지역"
@@ -122,6 +139,7 @@ export function JobCategoryFilters({
                 />
                 {activeRegion && activeCities.length > 0 ? (
                   <FilterGroup
+                    appliedValue={activeFilters.location}
                     activeValue={draftFilters.location}
                     allLabel="All cities"
                     label={`${activeRegion} 세부 지역`}
@@ -135,6 +153,7 @@ export function JobCategoryFilters({
                   />
                 ) : null}
                 <FilterGroup
+                  appliedValue={activeFilters.employment_type}
                   activeValue={draftFilters.employment_type}
                   allLabel="All types"
                   label="고용 형태"
@@ -147,6 +166,7 @@ export function JobCategoryFilters({
                   options={employmentFilters}
                 />
                 <FilterGroup
+                  appliedValue={activeFilters.visa_support_type}
                   activeValue={draftFilters.visa_support_type}
                   allLabel="All visas"
                   label="비자"
@@ -159,6 +179,7 @@ export function JobCategoryFilters({
                   options={visaFilters}
                 />
                 <FilterGroup
+                  appliedValue={activeFilters.wage_type}
                   activeValue={draftFilters.wage_type}
                   allLabel="All wages"
                   label="급여"
@@ -168,6 +189,7 @@ export function JobCategoryFilters({
                   options={wageFilters}
                 />
                 <FilterGroup
+                  appliedValue={activeFilters.korean_requirement}
                   activeValue={draftFilters.korean_requirement}
                   allLabel="Any Korean"
                   label="한국어"
@@ -205,12 +227,14 @@ type JobFilterValues = {
 };
 
 function FilterGroup({
+  appliedValue,
   activeValue,
   allLabel,
   label,
   onSelect,
   options,
 }: {
+  appliedValue?: string;
   activeValue?: string;
   allLabel: string;
   label: string;
@@ -224,16 +248,21 @@ function FilterGroup({
       </p>
       <div className="flex flex-wrap gap-2">
         {options.map((option) => {
-          const selected =
-            (!activeValue && option === allLabel) || activeValue === option;
+          const applied =
+            (!appliedValue && option === allLabel) || appliedValue === option;
+          const pending =
+            !applied &&
+            Boolean(activeValue) &&
+            option !== allLabel &&
+            activeValue === option;
 
           return (
             <button
               className={cn(
                 "rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700",
-                selected
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "hover:border-blue-200 hover:text-blue-700",
+                applied && "border-blue-600 bg-blue-600 text-white",
+                pending && "border-blue-200 bg-blue-50 text-blue-700",
+                !applied && !pending && "hover:border-blue-200 hover:text-blue-700",
               )}
               key={option}
               onClick={() => onSelect(option)}
@@ -333,4 +362,58 @@ function getActiveRegion(location?: string) {
   return (
     locationGroups.find((group) => group.cities.includes(location))?.label ?? ""
   );
+}
+
+function getAppliedTags({
+  activeFilters,
+  minWage,
+  q,
+}: {
+  activeFilters: JobFilterValues;
+  minWage: string;
+  q: string;
+}) {
+  const tags: string[] = [];
+
+  if (q) {
+    tags.push(`검색: ${q}`);
+  }
+
+  if (minWage) {
+    tags.push(`최소 시급 ${Number(minWage).toLocaleString("ko-KR")}원`);
+  }
+
+  if (activeFilters.category) {
+    tags.push(getOptionLabel(activeFilters.category));
+  }
+
+  if (activeFilters.location) {
+    tags.push(getOptionLabel(activeFilters.location));
+  }
+
+  if (activeFilters.employment_type) {
+    tags.push(getOptionLabel(activeFilters.employment_type));
+  }
+
+  if (activeFilters.visa_support_type) {
+    tags.push(getOptionLabel(activeFilters.visa_support_type));
+  }
+
+  if (activeFilters.wage_type) {
+    tags.push(getOptionLabel(activeFilters.wage_type));
+  }
+
+  if (activeFilters.korean_requirement) {
+    tags.push(getOptionLabel(activeFilters.korean_requirement));
+  }
+
+  if (activeFilters.profile_fit === "eligible") {
+    tags.push("지원 가능 공고");
+  }
+
+  if (activeFilters.saved === "1") {
+    tags.push("즐겨찾기");
+  }
+
+  return tags;
 }
