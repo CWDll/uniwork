@@ -17,9 +17,7 @@ type CompanyJobsSearchParams = {
 
 const jobStatusFilters = [
   { value: "", label: "전체" },
-  { value: "draft", label: "초안" },
   { value: "published", label: "공개 중" },
-  { value: "rejected", label: "반려" },
   { value: "closed", label: "마감" },
 ];
 
@@ -218,7 +216,7 @@ export default async function CompanyJobsPage({
         disabled={verifiedCompanies.length === 0}
       />
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-4">
+      <div className="mt-5 grid gap-3 sm:grid-cols-2">
         {jobStatusFilters.slice(1).map((filter) => {
           const isActive = activeStatus === filter.value;
 

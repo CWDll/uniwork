@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { ApplicationStatusForm } from "@/components/company/application-status-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
   getApplicationAttention,
@@ -12,7 +11,6 @@ import {
   getResumeCompletion,
 } from "@/lib/applications/completeness";
 import {
-  formatSnapshotTime,
   getApplicationSnapshotMeta,
   getProfileForApplication,
   getResumeForApplication,
@@ -23,12 +21,10 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type CompanyApplicationsSearchParams = {
-  completeness?: string;
   attention?: string;
   alert?: string;
   application_updated?: string;
   company?: string;
-  data?: string;
   job?: string;
   q?: string;
   sort?: string;
@@ -50,25 +46,12 @@ const sortOptions = [
   { value: "oldest", label: "오래된 지원순" },
   { value: "needs_review", label: "미검토 우선" },
   { value: "action_needed", label: "확인 필요 우선" },
-  { value: "incomplete", label: "지원정보 부족 우선" },
 ];
 
 const attentionFilterOptions = [
   { value: "", label: "전체 알림" },
   { value: "needed", label: "확인 필요" },
   { value: "overdue", label: "24시간 미검토" },
-];
-
-const dataFilterOptions = [
-  { value: "", label: "전체 제출 기준" },
-  { value: "snapshot", label: "제출본 고정" },
-  { value: "fallback", label: "제출본 없음" },
-];
-
-const completenessFilterOptions = [
-  { value: "", label: "전체 완성도" },
-  { value: "complete", label: "정보 완성" },
-  { value: "incomplete", label: "지원정보 부족" },
 ];
 
 function compactValue(value?: string) {
@@ -167,8 +150,6 @@ export default async function CompanyApplicationsPage({
   const activeJobId = compactValue(params.job);
   const activeStatus = compactValue(params.status);
   const updatedStatus = compactValue(params.status_updated);
-  const activeDataFilter = compactValue(params.data);
-  const activeCompletenessFilter = compactValue(params.completeness);
   const activeAttentionFilter = compactValue(params.attention);
   const activeAlertFilter = compactValue(params.alert);
   const activeSort = compactValue(params.sort) || "newest";
@@ -366,25 +347,25 @@ export default async function CompanyApplicationsPage({
   const unreviewedCount = enrichedApplications.filter(
     (item) => item.application.status === "submitted",
   ).length;
-  const incompleteCount = enrichedApplications.filter(
-    (item) => !item.completion.isComplete,
-  ).length;
-  const fallbackCount = enrichedApplications.filter(
-    (item) => !item.snapshotMeta.hasCompleteSnapshot,
-  ).length;
   const memoedCount = enrichedApplications.filter((item) =>
     item.application.company_note?.trim(),
   ).length;
-  const missingMemoCount = enrichedApplications.length - memoedCount;
   const overdueReviewCount = enrichedApplications.filter(
     (item) => item.attention.flags.isOverdueReview,
+  ).length;
+  const reviewingCount = enrichedApplications.filter(
+    (item) => item.application.status === "reviewing",
+  ).length;
+  const acceptedCount = enrichedApplications.filter(
+    (item) => item.application.status === "accepted",
+  ).length;
+  const rejectedCount = enrichedApplications.filter(
+    (item) => item.application.status === "rejected",
   ).length;
   const hasActiveFilters = Boolean(
     activeCompanyId ||
       activeJobId ||
       activeStatus ||
-      activeDataFilter ||
-      activeCompletenessFilter ||
       activeAttentionFilter ||
       activeAlertFilter ||
       keyword ||
@@ -392,25 +373,6 @@ export default async function CompanyApplicationsPage({
   );
 
   function matchesSecondaryFilters(item: (typeof enrichedApplications)[number]) {
-    if (
-      activeDataFilter === "snapshot" &&
-      !item.snapshotMeta.hasCompleteSnapshot
-    ) {
-      return false;
-    }
-
-    if (activeDataFilter === "fallback" && item.snapshotMeta.hasCompleteSnapshot) {
-      return false;
-    }
-
-    if (activeCompletenessFilter === "complete" && !item.completion.isComplete) {
-      return false;
-    }
-
-    if (activeCompletenessFilter === "incomplete" && item.completion.isComplete) {
-      return false;
-    }
-
     if (activeAttentionFilter === "needed" && item.attention.score < 40) {
       return false;
     }
@@ -440,29 +402,46 @@ export default async function CompanyApplicationsPage({
         </p>
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        <SummaryCard
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <QuickFilterCard
+          active={activeStatus === "submitted"}
+          count={unreviewedCount}
           href="/company/applications?status=submitted&sort=needs_review"
           label="미검토 지원자"
           tone={unreviewedCount > 0 ? "blue" : "slate"}
-          value={`${unreviewedCount}명`}
         />
-        <SummaryCard
+        <QuickFilterCard
+          active={activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"}
+          count={overdueReviewCount}
           href="/company/applications?alert=overdue&attention=overdue&sort=action_needed"
-          label="24시간 미검토"
+          label="24시간 이상 미검토"
           tone={overdueReviewCount > 0 ? "red" : "slate"}
-          value={`${overdueReviewCount}명`}
         />
-        <SummaryCard
-          href="/company/applications?sort=action_needed"
-          label="메모 없는 지원자"
-          tone={missingMemoCount > 0 ? "amber" : "slate"}
-          value={`${missingMemoCount}명`}
+        <QuickFilterCard
+          active={activeStatus === "reviewing"}
+          count={reviewingCount}
+          href="/company/applications?status=reviewing"
+          label="검토 중"
+          tone={reviewingCount > 0 ? "blue" : "slate"}
+        />
+        <QuickFilterCard
+          active={activeStatus === "accepted"}
+          count={acceptedCount}
+          href="/company/applications?status=accepted"
+          label="합격"
+          tone={acceptedCount > 0 ? "blue" : "slate"}
+        />
+        <QuickFilterCard
+          active={activeStatus === "rejected"}
+          count={rejectedCount}
+          href="/company/applications?status=rejected"
+          label="불합격"
+          tone={rejectedCount > 0 ? "red" : "slate"}
         />
       </div>
 
       <form
-        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6"
+        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-4"
         action="/company/applications"
       >
         <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
@@ -519,34 +498,6 @@ export default async function CompanyApplicationsPage({
           />
         </label>
         <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
-          제출 데이터
-          <select
-            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
-            defaultValue={activeDataFilter}
-            name="data"
-          >
-            {dataFilterOptions.map((option) => (
-              <option key={option.value || "all"} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
-          지원 정보
-          <select
-            className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
-            defaultValue={activeCompletenessFilter}
-            name="completeness"
-          >
-            {completenessFilterOptions.map((option) => (
-              <option key={option.value || "all"} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid min-w-0 gap-2 text-xs font-black tracking-wide text-slate-400">
           알림
           <select
             className="h-11 w-full min-w-0 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
@@ -574,18 +525,18 @@ export default async function CompanyApplicationsPage({
             ))}
           </select>
         </label>
-        <div className="flex items-end gap-2 md:col-span-2 xl:col-span-3 2xl:col-span-1">
-          <button className="h-11 flex-1 rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700 xl:flex-none">
-            필터 적용
-          </button>
+        <div className="flex items-end justify-end gap-2 md:col-span-2 xl:col-span-4">
           {hasActiveFilters ? (
             <Link
-              className="inline-flex h-11 items-center rounded-md border border-slate-200 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+              className="inline-flex h-11 min-w-24 items-center justify-center whitespace-nowrap rounded-md border border-slate-200 px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
               href="/company/applications"
             >
               초기화
             </Link>
           ) : null}
+          <button className="h-11 min-w-28 rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700">
+            필터 적용
+          </button>
         </div>
       </form>
 
@@ -651,90 +602,6 @@ export default async function CompanyApplicationsPage({
         </div>
       ) : null}
 
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
-        <QuickFilterCard
-          active={activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"}
-          count={overdueReviewCount}
-          href={buildApplicationsHref(params, {
-            alert: activeAlertFilter === "overdue" ? "" : "overdue",
-            attention: activeAttentionFilter === "overdue" ? "" : "overdue",
-            sort: "action_needed",
-          })}
-          label="24시간 미검토"
-          tone="red"
-        />
-        <QuickFilterCard
-          active={activeStatus === "submitted"}
-          count={unreviewedCount}
-          href={buildApplicationsHref(params, {
-            sort: "needs_review",
-            status: activeStatus === "submitted" ? "" : "submitted",
-          })}
-          label="미검토 지원"
-          tone="blue"
-        />
-        <QuickFilterCard
-          active={activeStatus === "reviewing"}
-          count={
-            (applications ?? []).filter(
-              (application) => application.status === "reviewing",
-            ).length
-          }
-          href={buildApplicationsHref(params, {
-            status: activeStatus === "reviewing" ? "" : "reviewing",
-          })}
-          label="검토 중"
-          tone="blue"
-        />
-        <QuickFilterCard
-          active={activeCompletenessFilter === "incomplete"}
-          count={incompleteCount}
-          href={buildApplicationsHref(params, {
-            completeness:
-              activeCompletenessFilter === "incomplete" ? "" : "incomplete",
-            sort: "incomplete",
-          })}
-          label="지원정보 부족"
-          tone="amber"
-        />
-        <QuickFilterCard
-          active={activeDataFilter === "fallback"}
-          count={fallbackCount}
-          href={buildApplicationsHref(params, {
-            data: activeDataFilter === "fallback" ? "" : "fallback",
-          })}
-          label="제출본 없음"
-          tone="slate"
-        />
-      </div>
-
-      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {applicationStatusOptions.slice(1).map((option) => {
-          const count = (applications ?? []).filter(
-            (application) => application.status === option.value,
-          ).length;
-          const isActive = activeStatus === option.value;
-
-          return (
-            <Link
-              className={cn(
-                "rounded-2xl border p-4 transition",
-                isActive
-                  ? "border-blue-200 bg-blue-50"
-                  : "border-slate-200 bg-white hover:bg-slate-50",
-              )}
-              href={buildApplicationsHref(params, {
-                status: isActive ? "" : option.value,
-              })}
-              key={option.value}
-            >
-              <p className="text-sm font-black text-slate-500">{option.label}</p>
-              <p className="mt-1 text-2xl font-black">{count}</p>
-            </Link>
-          );
-        })}
-      </div>
-
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-black">
@@ -746,179 +613,131 @@ export default async function CompanyApplicationsPage({
               : `전체 회사/지점의 최신 지원자 · 메모 ${memoedCount}/${enrichedApplications.length}`}
           </p>
         </div>
-        <div className="divide-y divide-slate-100">
-          {visibleApplications.length > 0 ? (
-            visibleApplications.map((item) => {
-              const {
-                application,
-                company,
-                completion,
-                attention,
-                job,
-                profile,
-                resume,
-                resumeCompletion,
-                seekerProfile,
-                snapshotMeta,
-              } = item;
-              const avatarUrl = getProfilePhotoUrl(
-                supabase,
-                profilePhotoById.get(application.seeker_id),
-              );
-              const status = getStatusMeta("application", application.status);
-              const missingPreview = completion.missing.slice(0, 3);
+        {visibleApplications.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-[1120px] w-full text-left">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs font-black text-slate-500">
+                <tr>
+                  <th className="px-5 py-3">지원자</th>
+                  <th className="px-5 py-3">지원 공고</th>
+                  <th className="px-5 py-3">프로필 요약</th>
+                  <th className="px-5 py-3">지원일</th>
+                  <th className="px-5 py-3">상태</th>
+                  <th className="px-5 py-3">최근 수정일</th>
+                  <th className="px-5 py-3 text-right">관리</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {visibleApplications.map((item) => {
+                  const {
+                    application,
+                    company,
+                    completion,
+                    job,
+                    profile,
+                    resume,
+                    resumeCompletion,
+                    seekerProfile,
+                  } = item;
+                  const avatarUrl = getProfilePhotoUrl(
+                    supabase,
+                    profilePhotoById.get(application.seeker_id),
+                  );
+                  const status = getStatusMeta("application", application.status);
 
-              return (
-                <article className="grid gap-4 px-4 py-4 sm:px-5" key={application.id}>
-                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
-                    <div className="grid min-w-0 gap-3 sm:grid-cols-[56px_minmax(0,1fr)]">
-                      <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-sm font-black text-blue-700">
-                        {avatarUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            alt="Applicant profile photo"
-                            className="size-full object-cover"
-                            src={avatarUrl}
-                          />
-                        ) : (
-                          (profile?.name || profile?.email || "A").slice(0, 1)
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
+                  return (
+                    <tr className="align-top hover:bg-slate-50" key={application.id}>
+                      <td className="px-5 py-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-sm font-black text-blue-700">
+                            {avatarUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                alt="Applicant profile photo"
+                                className="size-full object-cover"
+                                src={avatarUrl}
+                              />
+                            ) : (
+                              (profile?.name || profile?.email || "A").slice(0, 1)
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <Link
+                              className="block max-w-48 truncate font-black text-slate-950 hover:text-blue-700"
+                              href={`/company/applications/${application.id}`}
+                            >
+                              {profile?.name || profile?.email || "Applicant"}
+                            </Link>
+                            <p className="mt-1 max-w-48 truncate text-xs font-bold text-slate-500">
+                              {profile?.email ?? "-"}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <p className="max-w-64 truncate text-sm font-black text-slate-900">
+                          {job?.title ?? "Job"}
+                        </p>
+                        <p className="mt-1 max-w-64 truncate text-xs font-bold text-slate-500">
+                          {company?.name ?? "Company"} · {job?.location ?? "-"} ·{" "}
+                          {job?.employment_type ?? "-"}
+                        </p>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="grid gap-1 text-xs font-bold leading-5 text-slate-600">
+                          <span>
+                            {seekerProfile?.visa_type || "비자 미입력"} ·{" "}
+                            {seekerProfile?.nationality || "국적 미입력"}
+                          </span>
+                          <span>
+                            한국어 {seekerProfile?.korean_level || "미입력"} · 영어{" "}
+                            {seekerProfile?.english_level || "미입력"}
+                          </span>
+                          <span className="max-w-72 truncate">
+                            {seekerProfile?.school || "학교 미입력"} ·{" "}
+                            {seekerProfile?.major || "전공 미입력"}
+                          </span>
+                          <span>
+                            정보 {completion.completedCount}/{completion.totalCount} ·{" "}
+                            이력서 {resume?.title || "없음"}{" "}
+                            {resume ? `${resumeCompletion.completedCount}/${resumeCompletion.totalCount}` : ""}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-sm font-bold text-slate-600">
+                        {new Date(application.applied_at).toLocaleString("ko-KR")}
+                      </td>
+                      <td className="px-5 py-4">
+                        <span
+                          className={getStatusBadgeClassName(
+                            "application",
+                            application.status,
+                          )}
+                        >
+                          {status.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-sm font-bold text-slate-600">
+                        {formatLastAction(application)}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex justify-end">
                           <Link
-                            className="break-words font-black text-slate-950 hover:text-blue-700"
+                            className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"
                             href={`/company/applications/${application.id}`}
                           >
-                            {profile?.name || profile?.email || "Applicant"}
+                            상세 보기
                           </Link>
-                          <span
-                            className={getStatusBadgeClassName(
-                              "application",
-                              application.status,
-                            )}
-                          >
-                            {status.label}
-                          </span>
-                          <CompletionBadge
-                            isComplete={completion.isComplete}
-                            label={`정보 ${completion.completedCount}/${completion.totalCount}`}
-                          />
-                          <CompletionBadge
-                            isComplete={snapshotMeta.hasCompleteSnapshot}
-                            label={snapshotMeta.label}
-                          />
-                          <CompletionBadge
-                            isComplete={Boolean(application.company_note?.trim())}
-                            label={
-                              application.company_note?.trim()
-                                ? "메모 있음"
-                                : "메모 없음"
-                            }
-                          />
                         </div>
-                        <p className="mt-1 break-words text-sm font-semibold text-slate-500">
-                          {job?.title ?? "Job"} · {company?.name ?? "Company"} ·{" "}
-                          {job?.location ?? "-"} · {job?.employment_type ?? "-"}
-                        </p>
-                        <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-2 2xl:grid-cols-4">
-                          <Info label="Email" value={profile?.email ?? "-"} />
-                          <Info
-                            label="Applied"
-                            value={new Date(application.applied_at).toLocaleString(
-                              "ko-KR",
-                            )}
-                          />
-                          <Info
-                            label="Visa"
-                            value={`${seekerProfile?.visa_type || "미입력"} · ${seekerProfile?.nationality || "국적 미입력"}`}
-                          />
-                          <Info
-                            label="School"
-                            value={`${seekerProfile?.school || "학교 미입력"} · ${seekerProfile?.major || "전공 미입력"}`}
-                          />
-                          <Info
-                            className="hidden sm:block"
-                            label="Korean"
-                            value={seekerProfile?.korean_level || "미입력"}
-                          />
-                          <Info
-                            className="hidden sm:block"
-                            label="English"
-                            value={seekerProfile?.english_level || "미입력"}
-                          />
-                          <Info
-                            className="hidden sm:block"
-                            label="Resume"
-                            value={`${resume?.title || "이력서 없음"} · ${resumeCompletion.completedCount}/${resumeCompletion.totalCount}`}
-                          />
-                          <Info
-                            className="hidden sm:block"
-                            label="Submission"
-                            value={formatSnapshotTime(snapshotMeta.capturedAt)}
-                          />
-                        </div>
-                        {!completion.isComplete ? (
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {missingPreview.map((missing) => (
-                              <span
-                                className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700"
-                                key={missing}
-                              >
-                                {missing}
-                              </span>
-                            ))}
-                            {completion.missing.length > missingPreview.length ? (
-                              <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
-                                +{completion.missing.length - missingPreview.length}
-                              </span>
-                            ) : null}
-                          </div>
-                        ) : null}
-                        {attention.score >= 40 ? (
-                          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-red-100 bg-red-50 p-3 text-sm font-bold leading-6 text-red-900">
-                            <span>확인 필요: {attention.summary}</span>
-                          </div>
-                        ) : null}
-                        {!snapshotMeta.hasCompleteSnapshot ? (
-                          <p className="mt-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold leading-6 text-amber-900">
-                            이 지원은 제출본 저장 이전 데이터입니다. 화면에는 현재
-                            접근 가능한 프로필/이력 정보가 표시됩니다.
-                          </p>
-                        ) : null}
-                        {application.message ? (
-                          <p className="mt-2 rounded-xl bg-slate-50 p-3 text-sm font-medium text-slate-700">
-                            {application.message}
-                          </p>
-                        ) : null}
-                        {application.company_note ? (
-                          <p className="mt-2 rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
-                            기업 메모: {application.company_note}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="grid gap-2 rounded-xl bg-slate-50 p-3 xl:w-[292px] xl:bg-transparent xl:p-0">
-                      <Info
-                        label="최근 수정일"
-                        value={formatLastAction(application)}
-                      />
-                      <Link
-                        className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"
-                        href={`/company/applications/${application.id}`}
-                      >
-                        상세 보기
-                      </Link>
-                      <ApplicationStatusForm
-                        applicationId={application.id}
-                        currentStatus={application.status}
-                      />
-                    </div>
-                  </div>
-                </article>
-              );
-            })
-          ) : (
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div>
             <div className="px-5 py-8">
               <p className="text-sm font-black text-slate-700">
                 {hasActiveFilters
@@ -947,29 +766,10 @@ export default async function CompanyApplicationsPage({
                 </Link>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </section>
     </DashboardShell>
-  );
-}
-
-function Info({
-  className,
-  label,
-  value,
-}: {
-  className?: string;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className={cn("min-w-0 rounded-xl bg-slate-50 px-3 py-2", className)}>
-      <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
-        {label}
-      </p>
-      <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
-    </div>
   );
 }
 
@@ -984,39 +784,6 @@ function formatLastAction(application: {
     timeStyle: "short",
     timeZone: "Asia/Seoul",
   });
-}
-
-function SummaryCard({
-  href,
-  label,
-  tone,
-  value,
-}: {
-  href: string;
-  label: string;
-  tone: "amber" | "blue" | "red" | "slate";
-  value: string;
-}) {
-  return (
-    <Link
-      className={cn(
-        "rounded-2xl border p-4 transition",
-        tone === "red" && "border-red-100 bg-red-50 hover:bg-red-100/60",
-        tone === "amber" && "border-amber-100 bg-amber-50 hover:bg-amber-100/60",
-        tone === "blue" && "border-blue-100 bg-blue-50 hover:bg-blue-100/60",
-        tone === "slate" && "border-slate-200 bg-white hover:bg-slate-50",
-      )}
-      href={href}
-    >
-      <p className="text-sm font-black text-slate-500">{label}</p>
-      <div className="mt-2 flex items-end justify-between gap-3">
-        <p className="text-2xl font-black text-slate-950">{value}</p>
-        <span className="rounded-md bg-white/75 px-2 py-1 text-xs font-black text-slate-600">
-          보기
-        </span>
-      </div>
-    </Link>
-  );
 }
 
 function QuickFilterCard({
@@ -1057,26 +824,5 @@ function QuickFilterCard({
         </span>
       </div>
     </Link>
-  );
-}
-
-function CompletionBadge({
-  isComplete,
-  label,
-}: {
-  isComplete: boolean;
-  label: string;
-}) {
-  return (
-    <span
-      className={cn(
-        "rounded-md px-2 py-1 text-xs font-black",
-        isComplete
-          ? "bg-emerald-50 text-emerald-700"
-          : "bg-amber-50 text-amber-700",
-      )}
-    >
-      {label}
-    </span>
   );
 }

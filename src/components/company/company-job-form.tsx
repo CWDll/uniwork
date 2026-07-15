@@ -91,7 +91,7 @@ export function CompanyJobForm({
       </div>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <label className="grid gap-2 text-sm font-bold text-slate-700 md:col-span-2">
+        <label className="grid content-start gap-2 text-sm font-bold text-slate-700 md:col-span-2">
           Company / branch
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
@@ -193,7 +193,7 @@ export function CompanyJobForm({
           type="datetime-local"
           value={values.closed_at}
         />
-        <label className="grid gap-2 text-sm font-bold text-slate-700 md:col-span-2">
+        <label className="grid content-start gap-2 text-sm font-bold text-slate-700 md:col-span-2">
           Description
           <textarea
             className="min-h-32 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
@@ -258,7 +258,7 @@ function Field({
   value: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-bold text-slate-700">
+    <label className="grid content-start gap-2 text-sm font-bold text-slate-700">
       {label}
       <input
         className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400 disabled:bg-slate-50"
@@ -294,7 +294,7 @@ function SelectField({
   value: string;
 }) {
   return (
-    <label className="grid gap-2 text-sm font-bold text-slate-700">
+    <label className="grid content-start gap-2 text-sm font-bold text-slate-700">
       {label}
       <select
         className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400 disabled:bg-slate-50"
