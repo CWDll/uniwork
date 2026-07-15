@@ -406,35 +406,57 @@ export default async function CompanyApplicationsPage({
         <QuickFilterCard
           active={activeStatus === "submitted"}
           count={unreviewedCount}
-          href="/company/applications?status=submitted&sort=needs_review"
+          href={buildApplicationsHref(params, {
+            sort: activeStatus === "submitted" ? "" : "needs_review",
+            status: activeStatus === "submitted" ? "" : "submitted",
+          })}
           label="미검토 지원자"
           tone={unreviewedCount > 0 ? "blue" : "slate"}
         />
         <QuickFilterCard
           active={activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"}
           count={overdueReviewCount}
-          href="/company/applications?alert=overdue&attention=overdue&sort=action_needed"
+          href={buildApplicationsHref(params, {
+            alert:
+              activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"
+                ? ""
+                : "overdue",
+            attention:
+              activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"
+                ? ""
+                : "overdue",
+            sort:
+              activeAttentionFilter === "overdue" || activeAlertFilter === "overdue"
+                ? ""
+                : "action_needed",
+          })}
           label="24시간 이상 미검토"
           tone={overdueReviewCount > 0 ? "red" : "slate"}
         />
         <QuickFilterCard
           active={activeStatus === "reviewing"}
           count={reviewingCount}
-          href="/company/applications?status=reviewing"
+          href={buildApplicationsHref(params, {
+            status: activeStatus === "reviewing" ? "" : "reviewing",
+          })}
           label="검토 중"
           tone={reviewingCount > 0 ? "blue" : "slate"}
         />
         <QuickFilterCard
           active={activeStatus === "accepted"}
           count={acceptedCount}
-          href="/company/applications?status=accepted"
+          href={buildApplicationsHref(params, {
+            status: activeStatus === "accepted" ? "" : "accepted",
+          })}
           label="합격"
           tone={acceptedCount > 0 ? "blue" : "slate"}
         />
         <QuickFilterCard
           active={activeStatus === "rejected"}
           count={rejectedCount}
-          href="/company/applications?status=rejected"
+          href={buildApplicationsHref(params, {
+            status: activeStatus === "rejected" ? "" : "rejected",
+          })}
           label="불합격"
           tone={rejectedCount > 0 ? "red" : "slate"}
         />
@@ -624,7 +646,7 @@ export default async function CompanyApplicationsPage({
                   <th className="px-5 py-3">지원일</th>
                   <th className="px-5 py-3">상태</th>
                   <th className="px-5 py-3">최근 수정일</th>
-                  <th className="px-5 py-3 text-right">관리</th>
+                  <th className="px-5 py-3">관리</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -709,9 +731,9 @@ export default async function CompanyApplicationsPage({
                       </td>
                       <td className="px-5 py-4">
                         <span
-                          className={getStatusBadgeClassName(
-                            "application",
-                            application.status,
+                          className={cn(
+                            getStatusBadgeClassName("application", application.status),
+                            "whitespace-nowrap",
                           )}
                         >
                           {status.label}
@@ -721,7 +743,7 @@ export default async function CompanyApplicationsPage({
                         {formatLastAction(application)}
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex justify-end">
+                        <div className="flex justify-start">
                           <Link
                             className="inline-flex h-9 items-center justify-center whitespace-nowrap rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"
                             href={`/company/applications/${application.id}`}
