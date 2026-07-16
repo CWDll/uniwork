@@ -15,8 +15,8 @@ type AdminCompaniesSearchParams = {
 
 const verificationFilters = [
   { value: "", label: "전체" },
-  { value: "pending", label: "검토 대기" },
   { value: "verified", label: "인증 완료" },
+  { value: "pending", label: "검토 대기" },
   { value: "rejected", label: "인증 반려" },
 ];
 
@@ -165,13 +165,13 @@ export default async function AdminCompaniesPage({
               });
 
               return (
-                <article
-                  className="grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_340px]"
+                <details
+                  className="group px-5 py-4 open:bg-slate-50/60"
                   key={company.id}
                 >
-                  <div className="min-w-0">
+                  <summary className="grid cursor-pointer list-none gap-3 rounded-xl p-1 transition hover:bg-slate-50 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_160px_120px] md:items-center">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="break-words font-black">{company.name}</h3>
+                      <h3 className="min-w-0 truncate font-black">{company.name}</h3>
                       <span
                         className={getStatusBadgeClassName(
                           "companyVerification",
@@ -181,29 +181,39 @@ export default async function AdminCompaniesPage({
                         {status.label}
                       </span>
                     </div>
-                    <p className="mt-1 break-words text-sm font-semibold text-slate-500">
+                    <p className="min-w-0 truncate text-sm font-semibold text-slate-500">
                       {company.industry || "-"} · {company.address || "-"} ·{" "}
                       {company.business_number || "사업자번호 미입력"}
                     </p>
+                    <p className="text-sm font-bold text-slate-600">
+                      준비 {readiness.completed}/{readiness.total}
+                    </p>
+                    <span className="text-sm font-black text-blue-700 group-open:text-slate-500">
+                      상세 보기
+                    </span>
+                  </summary>
+
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+                    <div className="min-w-0">
                     <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-2 xl:grid-cols-3">
                       <Info
-                        label="Owner"
+                        label="계정"
                         value={`${owner?.name || "담당자"} · ${owner?.email || "-"}`}
                       />
                       <Info
-                        label="Manager"
-                        value={`${company.manager_name || "-"} · ${company.manager_phone || "-"}`}
+                        label="담당자"
+                        value={`${company.manager_name || "-"}\n${company.manager_phone || "-"}`}
                       />
                       <Info
-                        label="Email alerts"
+                        label="알림 이메일"
                         value={`${company.notification_email || owner?.email || "-"} · ${company.email_notifications_enabled ? "ON" : "OFF"}`}
                       />
                       <Info
-                        label="Readiness"
+                        label="인증 준비도"
                         value={`${readiness.completed}/${readiness.total} 항목`}
                       />
                       <Info
-                        label="Business document"
+                        label="사업자등록증"
                         value={
                           company.business_registration_path
                             ? "제출 완료"
@@ -211,11 +221,11 @@ export default async function AdminCompaniesPage({
                         }
                       />
                       <Info
-                        label="Created"
+                        label="등록일"
                         value={new Date(company.created_at).toLocaleString("ko-KR")}
                       />
                       <Info
-                        label="Reviewed"
+                        label="검토일"
                         value={
                           company.verified_at
                             ? new Date(company.verified_at).toLocaleString("ko-KR")
@@ -275,14 +285,14 @@ export default async function AdminCompaniesPage({
                         운영자 메모: {company.verification_note}
                       </p>
                     ) : null}
-                  </div>
+                    </div>
                   <form
                     action={updateCompanyVerificationAction}
                     className="grid gap-2 rounded-xl bg-slate-50 p-3"
                   >
                     <input name="company_id" type="hidden" value={company.id} />
                     <label className="grid gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-                      Verification note
+                      운영자 메모
                       <textarea
                         className="min-h-24 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-slate-700 outline-none focus:border-blue-400"
                         defaultValue={company.verification_note ?? ""}
@@ -312,11 +322,12 @@ export default async function AdminCompaniesPage({
                         currentStatus={company.verification_status}
                         status="pending"
                       >
-                        대기
+                        검토 대기
                       </StatusButton>
                     </div>
                   </form>
-                </article>
+                  </div>
+                </details>
               );
             })
           ) : (
@@ -437,7 +448,9 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-black uppercase tracking-wide text-slate-400">
         {label}
       </p>
-      <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
+      <p className="mt-1 whitespace-pre-line break-words text-sm font-bold text-slate-700">
+        {value}
+      </p>
     </div>
   );
 }

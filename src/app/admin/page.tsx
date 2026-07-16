@@ -151,24 +151,28 @@ export default async function AdminPage() {
     {
       href: "/admin/companies?status=pending",
       label: "기업 인증 검토",
+      description: "가입한 기업/지점 중 운영자 확인이 필요한 건",
       tone: pendingCompanyCount ? "amber" : "slate",
       value: `${pendingCompanyCount ?? 0}건`,
     },
     {
       href: "/admin/admin-requests?status=partner_needed",
-      label: "행정사 전달 준비",
+      label: "행정사 전달 가능",
+      description: "기본 정보가 채워져 외부 전달을 검토할 수 있는 요청",
       tone: handoffReadyCount ? "blue" : "slate",
       value: `${handoffReadyCount}건`,
     },
     {
       href: "/admin/admin-requests",
-      label: "기본 정보 부족",
+      label: "요청 정보 보완 필요",
+      description: "구직자 요청 중 연락처/학교/서류 체크가 부족한 건",
       tone: handoffIncompleteCount ? "amber" : "slate",
       value: `${handoffIncompleteCount}건`,
     },
     {
       href: "/admin/admin-requests?attention=followup_waiting",
-      label: "보완 답변 대기",
+      label: "구직자 답변 대기",
+      description: "운영자가 보완을 요청했고 아직 새 제출이 없는 건",
       tone: unansweredFollowupCount ? "amber" : "slate",
       value: `${unansweredFollowupCount}건`,
     },
@@ -224,7 +228,7 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-lg font-black">오늘 처리할 일</h2>
+        <h2 className="text-lg font-black">확인하고 처리할 항목</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           {workItems.map((item) => (
             <Link
@@ -239,13 +243,20 @@ export default async function AdminPage() {
             >
               <p className="text-sm font-black text-slate-900">{item.label}</p>
               <p className="mt-2 text-2xl font-black">{item.value}</p>
+              <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
+                {item.description}
+              </p>
             </Link>
           ))}
         </div>
       </div>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-lg font-black">Admin request pipeline</h2>
+        <h2 className="text-lg font-black">행정 요청 상태별 현황</h2>
+        <p className="mt-1 text-sm font-semibold text-slate-500">
+          위 항목은 운영자가 바로 확인할 작업이고, 이 영역은 전체 행정 요청의
+          현재 진행 상태를 보여줍니다.
+        </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           {requestStatusLabels.map((status) => (
             <Link

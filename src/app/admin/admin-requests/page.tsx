@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 
 type AdminRequestsSearchParams = {
   attention?: string;
+  page?: string;
+  stage?: string;
   status?: string;
 };
 
@@ -32,36 +34,49 @@ type RequestTimelineEvent = {
   title: string;
 };
 
-const requestFilters = [
-  { value: "", label: "전체" },
-  { value: "received", label: "접수" },
-  { value: "reviewing", label: "운영자 검토" },
-  { value: "partner_needed", label: "행정사 전달 필요" },
-  { value: "assigned", label: "행정사 배정" },
-  { value: "completed", label: "완료" },
-  { value: "rejected", label: "반려" },
+const pageSize = 5;
+
+const requestStageFilters = [
+  { description: "접수/검토/전달 준비 단계의 요청", label: "행정사에게 전달 전", value: "before_handoff" },
+  { description: "행정사 또는 외부 담당자에게 전달한 뒤 대기 중인 요청", label: "전달 후 대기 중", value: "after_handoff" },
+  { description: "처리가 끝난 요청", label: "완료", value: "completed" },
+  { description: "진행하지 않기로 정리한 요청", label: "반려", value: "rejected" },
 ];
 
-const attentionFilters = [
-  {
-    description: "보완 요청 후 아직 제출 이력이 없는 요청",
-    label: "보완 답변 대기",
-    value: "followup_waiting",
-  },
-  {
-    description: "구직자가 제출했고 운영자가 아직 확인하지 않은 요청",
-    label: "새 보완 확인 필요",
-    value: "unchecked_supplement",
-  },
-  {
-    description: "기본 전달 패킷이 채워진 요청",
-    label: "전달 준비 완료",
-    value: "handoff_ready",
-  },
-];
+function getRequestStage(status: string) {
+  if (status === "completed") {
+    return "completed";
+  }
 
-function buildAdminRequestsHref(status?: string) {
-  return status ? `/admin/admin-requests?status=${status}` : "/admin/admin-requests";
+  if (status === "rejected") {
+    return "rejected";
+  }
+
+  if (status === "assigned") {
+    return "after_handoff";
+  }
+
+  return "before_handoff";
+}
+
+function buildAdminRequestsHref(
+  params: AdminRequestsSearchParams,
+  updates: AdminRequestsSearchParams,
+) {
+  const nextParams = new URLSearchParams();
+  const merged = { ...params, ...updates };
+
+  Object.entries(merged).forEach(([key, value]) => {
+    const trimmed = value?.trim();
+
+    if (trimmed) {
+      nextParams.set(key, trimmed);
+    }
+  });
+
+  const query = nextParams.toString();
+
+  return query ? `/admin/admin-requests?${query}` : "/admin/admin-requests";
 }
 
 export default async function AdminRequestsPage({
@@ -70,8 +85,8 @@ export default async function AdminRequestsPage({
   searchParams: Promise<AdminRequestsSearchParams>;
 }) {
   const params = await searchParams;
-  const activeStatus = params.status?.trim() ?? "";
-  const activeAttention = params.attention?.trim() ?? "";
+  const activeStage = params.stage?.trim() ?? "";
+  const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
   const supabase = await createClient();
   const {
     data: { user },
@@ -87,9 +102,10 @@ export default async function AdminRequestsPage({
       "id, seeker_id, assigned_partner_id, type, status, memo, seeker_followup_note, seeker_followup_requested_at, request_details, document_checklist, contact_snapshot, created_at, updated_at",
     )
     .order("created_at", { ascending: false });
-  const statusCounts = new Map<string, number>();
+  const stageCounts = new Map<string, number>();
   allRequests?.forEach((request) => {
-    statusCounts.set(request.status, (statusCounts.get(request.status) ?? 0) + 1);
+    const stage = getRequestStage(request.status);
+    stageCounts.set(stage, (stageCounts.get(stage) ?? 0) + 1);
   });
 
   const seekerIds = Array.from(
@@ -195,38 +211,8 @@ export default async function AdminRequestsPage({
       readiness,
     });
   });
-  const attentionCounts = {
-    followup_waiting: Array.from(operationsByRequestId.values()).filter(
-      (operation) => operation.isWaitingForFollowup,
-    ).length,
-    handoff_ready: Array.from(operationsByRequestId.values()).filter(
-      (operation) => operation.isHandoffReady,
-    ).length,
-    unchecked_supplement: Array.from(operationsByRequestId.values()).filter(
-      (operation) => operation.hasUncheckedSupplement,
-    ).length,
-  };
-  const requests = (activeStatus
-    ? allRequests?.filter((request) => request.status === activeStatus)
-    : allRequests
-  )
-    ?.filter((request) => {
-      const operation = operationsByRequestId.get(request.id);
-
-      if (activeAttention === "followup_waiting") {
-        return operation?.isWaitingForFollowup;
-      }
-
-      if (activeAttention === "unchecked_supplement") {
-        return operation?.hasUncheckedSupplement;
-      }
-
-      if (activeAttention === "handoff_ready") {
-        return operation?.isHandoffReady;
-      }
-
-      return true;
-    })
+  const requests = (allRequests ?? [])
+    .filter((request) => (activeStage ? getRequestStage(request.status) === activeStage : true))
     .sort((a, b) => {
       const operationA = operationsByRequestId.get(a.id);
       const operationB = operationsByRequestId.get(b.id);
@@ -240,6 +226,9 @@ export default async function AdminRequestsPage({
         new Date(operationA?.latestActivityAt ?? a.updated_at).getTime()
       );
     });
+  const totalPages = Math.max(1, Math.ceil(requests.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const pagedRequests = requests.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   return (
     <DashboardShell area="admin">
@@ -256,42 +245,9 @@ export default async function AdminRequestsPage({
         </p>
       </div>
 
-      <div className="mb-5 grid gap-3 md:grid-cols-3">
-        {attentionFilters.map((filter) => {
-          const isActive = activeAttention === filter.value;
-
-          return (
-            <Link
-              className={cn(
-                "rounded-2xl border p-4 transition",
-                isActive
-                  ? "border-amber-200 bg-amber-50"
-                  : "border-slate-200 bg-white hover:bg-amber-50",
-              )}
-              href={
-                isActive
-                  ? "/admin/admin-requests"
-                  : `/admin/admin-requests?attention=${filter.value}`
-              }
-              key={filter.value}
-            >
-              <p className="text-sm font-black text-slate-500">{filter.label}</p>
-              <p className="mt-1 text-2xl font-black">
-                {attentionCounts[
-                  filter.value as keyof typeof attentionCounts
-                ].toLocaleString("ko-KR")}
-              </p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
-                {filter.description}
-              </p>
-            </Link>
-          );
-        })}
-      </div>
-
-      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-        {requestFilters.slice(1).map((filter) => {
-          const isActive = activeStatus === filter.value;
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {requestStageFilters.map((filter) => {
+          const isActive = activeStage === filter.value;
 
           return (
             <Link
@@ -301,12 +257,18 @@ export default async function AdminRequestsPage({
                   ? "border-blue-200 bg-blue-50"
                   : "border-slate-200 bg-white hover:bg-slate-50",
               )}
-              href={buildAdminRequestsHref(isActive ? "" : filter.value)}
+              href={buildAdminRequestsHref(params, {
+                page: "",
+                stage: isActive ? "" : filter.value,
+              })}
               key={filter.value}
             >
               <p className="text-sm font-black text-slate-500">{filter.label}</p>
               <p className="mt-1 text-2xl font-black">
-                {(statusCounts.get(filter.value) ?? 0).toLocaleString("ko-KR")}
+                {(stageCounts.get(filter.value) ?? 0).toLocaleString("ko-KR")}
+              </p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-slate-600">
+                {filter.description}
               </p>
             </Link>
           );
@@ -318,21 +280,15 @@ export default async function AdminRequestsPage({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-black">
-                Request queue {requests?.length ?? 0}
+                Request queue {requests.length}
               </h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                {activeAttention === "followup_waiting"
-                  ? "보완 답변을 기다리는 행정 요청"
-                  : activeAttention === "unchecked_supplement"
-                  ? "구직자가 보완 내용을 제출했고 아직 확인하지 않은 요청"
-                  : activeAttention === "handoff_ready"
-                  ? "외부 전달 준비가 된 행정 요청"
-                  : activeStatus
-                  ? `${getStatusMeta("adminRequest", activeStatus).label} 요청`
+                {activeStage
+                  ? requestStageFilters.find((filter) => filter.value === activeStage)?.description
                   : "접수된 모든 행정 요청"}
               </p>
             </div>
-            {activeStatus || activeAttention ? (
+            {activeStage ? (
               <Link
                 className="text-sm font-black text-blue-700 hover:text-blue-900"
                 href="/admin/admin-requests"
@@ -343,8 +299,8 @@ export default async function AdminRequestsPage({
           </div>
         </div>
         <div className="divide-y divide-slate-100">
-          {requests && requests.length > 0 ? (
-            requests.map((request) => {
+          {pagedRequests.length > 0 ? (
+            pagedRequests.map((request) => {
               const profile = profileById.get(request.seeker_id);
               const seekerProfile = seekerProfileById.get(request.seeker_id);
               const assignedPartner = partners?.find(
@@ -375,8 +331,34 @@ export default async function AdminRequestsPage({
               }).slice(0, 4);
 
               return (
-                <article className="grid gap-4 px-4 py-4 sm:px-5" key={request.id}>
-                  <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <details className="group px-4 py-4 open:bg-slate-50/60 sm:px-5" key={request.id}>
+                  <summary className="grid cursor-pointer list-none gap-3 rounded-xl p-1 transition hover:bg-slate-50 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_140px_150px_90px] md:items-center">
+                    <div className="min-w-0">
+                      <p className="truncate font-black">{request.type}</p>
+                      <p className="mt-1 truncate text-sm font-semibold text-slate-500">
+                        {profile?.name || profile?.email || "구직자"}
+                      </p>
+                    </div>
+                    <p className="min-w-0 truncate text-sm font-semibold text-slate-500">
+                      {seekerProfile?.visa_type || "비자 미입력"} ·{" "}
+                      {seekerProfile?.school || "학교 미입력"}
+                    </p>
+                    <span
+                      className={cn(
+                        getStatusBadgeClassName("adminRequest", request.status),
+                        "w-fit whitespace-nowrap",
+                      )}
+                    >
+                      {getStatusMeta("adminRequest", request.status).label}
+                    </span>
+                    <p className="text-sm font-bold text-slate-600">
+                      준비 {currentReadiness.completed}/{currentReadiness.total}
+                    </p>
+                    <span className="text-sm font-black text-blue-700 group-open:text-slate-500">
+                      상세
+                    </span>
+                  </summary>
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="break-words font-black">{request.type}</h3>
@@ -420,35 +402,35 @@ export default async function AdminRequestsPage({
                       </p>
                       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                         <Info
-                          label="Contact"
+                          label="연락처"
                           value={`${contact.email || profile?.email || "-"} · ${contact.phone || "전화 미입력"}`}
                         />
                         <Info
-                          label="Visa packet"
+                          label="비자 정보"
                           value={`${details.currentVisaType || seekerProfile?.visa_type || "-"} · ${details.alienRegistrationStatus || seekerProfile?.alien_registration_status || "-"}`}
                         />
                         <Info
-                          label="School"
+                          label="학교/과정"
                           value={`${details.school || seekerProfile?.school || "-"} · ${details.major || seekerProfile?.major || "전공 미입력"}`}
                         />
                         <Info
-                          label="Target"
+                          label="희망 일정"
                           value={`${details.targetStartDate || "시작일 미입력"} · ${details.plannedWorkHours || "시간 미입력"}`}
                         />
                         <Info
-                          label="Documents"
+                          label="준비 서류"
                           value={`${documents.ready.length}개 준비 · ${documents.missingNote ? "누락 메모 있음" : "누락 메모 없음"}`}
                         />
                         <Info
-                          label="Consent"
+                          label="외부 전달 동의"
                           value={details.handoffConsent ? "외부 전달 동의" : "동의 확인 필요"}
                         />
                         <Info
-                          label="Handoff"
+                          label="행정사 전달 상태"
                           value={`${getHandoffStatusLabel(review?.handoff_status)} · ${review?.reviewed_at ? new Date(review.reviewed_at).toLocaleString("ko-KR") : "검토 이력 없음"}`}
                         />
                         <Info
-                          label="Follow-up"
+                          label="구직자 보완 제출"
                           value={`${requestSupplements.length.toLocaleString("ko-KR")}건 제출 · ${
                             operation?.latestSupplementAt
                               ? new Date(operation.latestSupplementAt).toLocaleString("ko-KR")
@@ -456,7 +438,7 @@ export default async function AdminRequestsPage({
                           }`}
                         />
                         <Info
-                          label="Checked"
+                          label="보완 확인 처리"
                           value={
                             review?.supplement_checked_at
                               ? new Date(review.supplement_checked_at).toLocaleString("ko-KR")
@@ -474,7 +456,7 @@ export default async function AdminRequestsPage({
                           )}
                         >
                           <p className="text-xs font-black uppercase tracking-wide text-amber-700">
-                            Seeker follow-up
+                            구직자 보완 요청
                           </p>
                           <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-amber-900">
                             {request.seeker_followup_note}
@@ -488,7 +470,7 @@ export default async function AdminRequestsPage({
                       ) : null}
                       <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                         <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                          Handoff checklist
+                          행정사 전달 전 확인 항목
                         </p>
                         {currentReadiness.missing.length > 0 ? (
                           <div className="mt-2 flex flex-wrap gap-2">
@@ -527,9 +509,9 @@ export default async function AdminRequestsPage({
                           내부 메모: {review.internal_note}
                         </p>
                       ) : null}
-                      <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
+                        <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
                         <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                          Operations timeline
+                          처리 이력
                         </p>
                         <div className="mt-3 grid gap-3">
                           {timeline.map((event) => (
@@ -560,7 +542,7 @@ export default async function AdminRequestsPage({
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
                               <p className="text-xs font-black uppercase tracking-wide text-emerald-700">
-                                Seeker supplements
+                                구직자 보완 제출 내역
                               </p>
                               {operation?.hasUncheckedSupplement ? (
                                 <p className="mt-1 text-xs font-bold text-red-700">
@@ -630,8 +612,8 @@ export default async function AdminRequestsPage({
                         </div>
                       ) : null}
                       <p className="mt-2 text-sm font-semibold text-blue-700">
-                        Assigned partner:{" "}
-                        {assignedPartner?.name || assignedPartner?.email || "unassigned"}
+                        배정된 행정사/외부 담당자:{" "}
+                        {assignedPartner?.name || assignedPartner?.email || "미배정"}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         <Link
@@ -647,7 +629,7 @@ export default async function AdminRequestsPage({
                         </p>
                       ) : null}
                       <p className="mt-3 text-xs font-bold text-slate-400">
-                        Created{" "}
+                        접수일{" "}
                         {new Date(request.created_at).toLocaleString("ko-KR")}
                       </p>
                     </div>
@@ -664,13 +646,13 @@ export default async function AdminRequestsPage({
                       status={request.status}
                     />
                   </div>
-                </article>
+                </details>
               );
             })
           ) : (
             <EmptyState
               actions={
-                activeStatus || activeAttention ? (
+                activeStage ? (
                   <Link
                     className={cn(
                       buttonVariants({ size: "sm", variant: "outline" }),
@@ -689,7 +671,7 @@ export default async function AdminRequestsPage({
                 )
               }
               description={
-                activeStatus || activeAttention
+                activeStage
                   ? "다른 운영 상태를 선택하거나 전체 요청 목록을 확인해보세요."
                   : "구직자가 행정 요청을 접수하면 보완 요청, 제출 확인, 전달 준비 상태가 이 화면에 표시됩니다."
               }
@@ -697,6 +679,31 @@ export default async function AdminRequestsPage({
             />
           )}
         </div>
+        {totalPages > 1 ? (
+          <div className="flex items-center justify-between border-t border-slate-200 px-5 py-4">
+            <Link
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                safePage <= 1 && "pointer-events-none opacity-40",
+              )}
+              href={buildAdminRequestsHref(params, { page: String(safePage - 1) })}
+            >
+              이전
+            </Link>
+            <p className="text-sm font-bold text-slate-500">
+              {safePage} / {totalPages}
+            </p>
+            <Link
+              className={cn(
+                buttonVariants({ size: "sm", variant: "outline" }),
+                safePage >= totalPages && "pointer-events-none opacity-40",
+              )}
+              href={buildAdminRequestsHref(params, { page: String(safePage + 1) })}
+            >
+              다음
+            </Link>
+          </div>
+        ) : null}
       </section>
     </DashboardShell>
   );

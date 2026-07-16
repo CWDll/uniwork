@@ -10,16 +10,32 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type AdminJobsSearchParams = {
+  company?: string;
   status?: string;
 };
 
 const reviewFilters = [
   { value: "", label: "전체" },
-  { value: "draft", label: "초안" },
   { value: "published", label: "공개 중" },
-  { value: "rejected", label: "반려" },
   { value: "closed", label: "마감" },
 ];
+
+function buildJobsHref(params: AdminJobsSearchParams, updates: AdminJobsSearchParams) {
+  const nextParams = new URLSearchParams();
+  const merged = { ...params, ...updates };
+
+  Object.entries(merged).forEach(([key, value]) => {
+    const trimmed = value?.trim();
+
+    if (trimmed) {
+      nextParams.set(key, trimmed);
+    }
+  });
+
+  const query = nextParams.toString();
+
+  return query ? `/admin/jobs?${query}` : "/admin/jobs";
+}
 
 export default async function AdminJobsPage({
   searchParams,
@@ -27,6 +43,7 @@ export default async function AdminJobsPage({
   searchParams: Promise<AdminJobsSearchParams>;
 }) {
   const params = await searchParams;
+  const activeCompanyId = params.company?.trim() ?? "";
   const activeStatus = params.status?.trim() ?? "";
   const supabase = await createClient();
   const {
@@ -43,10 +60,6 @@ export default async function AdminJobsPage({
       "id, company_id, title, description, location, employment_type, category, wage_type, wage_amount, visa_support_type, korean_requirement, status, review_note, reviewed_at, reviewed_by, created_at, published_at, closed_at",
     )
     .order("created_at", { ascending: false });
-  const jobs = activeStatus
-    ? allJobs?.filter((job) => job.status === activeStatus)
-    : allJobs;
-
   const companyIds = Array.from(new Set(allJobs?.map((job) => job.company_id) ?? []));
   const { data: companies } =
     companyIds.length > 0
@@ -59,6 +72,17 @@ export default async function AdminJobsPage({
   const companyById = new Map(
     companies?.map((company) => [company.id, company]) ?? [],
   );
+  const jobs = (allJobs ?? []).filter((job) => {
+    if (activeStatus && job.status !== activeStatus) {
+      return false;
+    }
+
+    if (activeCompanyId && job.company_id !== activeCompanyId) {
+      return false;
+    }
+
+    return true;
+  });
   const jobIds = allJobs?.map((job) => job.id) ?? [];
   const { data: applications } =
     jobIds.length > 0
@@ -89,12 +113,12 @@ export default async function AdminJobsPage({
           공개 공고를 관리하고 필요 시 조치합니다
         </h1>
         <p className="mt-3 max-w-3xl text-sm font-medium leading-6 text-slate-600">
-          인증된 회사/지점의 공고는 등록 즉시 공개됩니다. 운영자는 문제가 있는
-          공고를 반려하거나 마감 처리하고, 기업 담당자에게 메모를 남깁니다.
+          인증된 회사/지점의 공고는 등록 즉시 공개됩니다. 운영자는 회사/지점별
+          공개 현황을 확인하고 필요하면 공고를 마감 처리합니다.
         </p>
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-4">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
         {reviewFilters.slice(1).map((filter) => {
           const isActive = activeStatus === filter.value;
 
@@ -106,7 +130,9 @@ export default async function AdminJobsPage({
                   ? "border-blue-200 bg-blue-50"
                   : "border-slate-200 bg-white hover:bg-slate-50",
               )}
-              href={isActive ? "/admin/jobs" : `/admin/jobs?status=${filter.value}`}
+              href={buildJobsHref(params, {
+                status: isActive ? "" : filter.value,
+              })}
               key={filter.value}
             >
               <p className="text-sm font-black text-slate-500">{filter.label}</p>
@@ -117,6 +143,37 @@ export default async function AdminJobsPage({
           );
         })}
       </div>
+
+      <form
+        action="/admin/jobs"
+        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+      >
+        <label className="grid gap-2 text-xs font-black tracking-wide text-slate-400">
+          회사/지점
+          <select
+            className="h-11 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            defaultValue={activeCompanyId}
+            name="company"
+          >
+            <option value="">전체 회사/지점</option>
+            {companies?.map((company) => (
+              <option key={company.id} value={company.id}>
+                {company.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        {activeStatus ? <input name="status" type="hidden" value={activeStatus} /> : null}
+        <Link
+          className={cn(buttonVariants({ variant: "outline" }), "self-end")}
+          href="/admin/jobs"
+        >
+          초기화
+        </Link>
+        <Button className="self-end" type="submit">
+          필터 적용
+        </Button>
+      </form>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
@@ -140,7 +197,7 @@ export default async function AdminJobsPage({
           </div>
         </div>
         <div className="divide-y divide-slate-100">
-          {jobs && jobs.length > 0 ? (
+          {jobs.length > 0 ? (
             jobs.map((job) => {
               const company = companyById.get(job.company_id);
               const status = getStatusMeta("job", job.status);
@@ -162,6 +219,12 @@ export default async function AdminJobsPage({
                       <span className={getStatusBadgeClassName("job", job.status)}>
                         {status.label}
                       </span>
+                      <Link
+                        className="rounded-md bg-blue-50 px-2 py-1 text-xs font-black text-blue-700 hover:bg-blue-100"
+                        href={`/jobs/${job.id}`}
+                      >
+                        공고 보기
+                      </Link>
                     </div>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
                       {company?.name ?? "Company"} · {job.location || "-"} ·{" "}
@@ -169,26 +232,26 @@ export default async function AdminJobsPage({
                     </p>
                     <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-3">
                       <Info
-                        label="Company"
+                        label="회사/지점"
                         value={`${company?.name ?? "Company"} · ${getStatusMeta("companyVerification", company?.verification_status).label}`}
                       />
                       <Info
-                        label="Applicants"
+                        label="지원자"
                         value={`${applicationCount.toLocaleString("ko-KR")}명`}
                       />
                       <Info
-                        label="Created"
+                        label="등록일"
                         value={new Date(job.created_at).toLocaleString("ko-KR")}
                       />
                       <Info
-                        label="Readiness"
+                        label="공고 정보 완성도"
                         value={`${readiness.completed}/${readiness.total} 항목`}
                       />
-                      <Info label="Next step" value={guidance.title} />
+                      <Info label="운영 확인" value={guidance.title} />
                     </div>
                     <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                        Posting quality
+                        공고 정보 확인
                       </p>
                       {readiness.missing.length > 0 ? (
                         <div className="mt-2 flex flex-wrap gap-2">
@@ -222,17 +285,17 @@ export default async function AdminJobsPage({
                   >
                     <input name="job_id" type="hidden" value={job.id} />
                     <label className="grid gap-2 text-xs font-black uppercase tracking-wide text-slate-400">
-                      Review note
+                      운영자 메모
                       <textarea
                         className="min-h-20 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-semibold normal-case tracking-normal text-slate-700 outline-none focus:border-blue-400"
                         defaultValue={job.review_note ?? ""}
                         maxLength={700}
                         name="review_note"
-                        placeholder="반려/마감/승인 사유 또는 기업 안내 메모"
+                        placeholder="마감 사유 또는 기업 안내 메모"
                       />
                       <span className="text-[11px] font-bold normal-case tracking-normal text-slate-500">
-                        반려 처리 시에는 기업 담당자가 수정할 수 있도록 5자 이상
-                        보완 메모를 남겨주세요.
+                        공고를 마감하거나 운영자가 확인한 내용을 기업 담당자가
+                        이해할 수 있게 남겨주세요.
                       </span>
                     </label>
                     <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
@@ -241,12 +304,6 @@ export default async function AdminJobsPage({
                         status="published"
                       >
                         공개
-                      </StatusButton>
-                      <StatusButton
-                        currentStatus={job.status}
-                        status="rejected"
-                      >
-                        반려
                       </StatusButton>
                       <StatusButton
                         currentStatus={job.status}
@@ -372,13 +429,6 @@ function getJobReviewGuidance({
     };
   }
 
-  if (status === "rejected") {
-    return {
-      detail: "반려 상태입니다. 기업 담당자가 수정 방향을 이해할 수 있는 메모인지 확인하세요.",
-      title: "보완 대기",
-    };
-  }
-
   if (status === "closed") {
     return {
       detail: "마감된 공고입니다. 지원자 수와 마감 사유가 적절한지 확인하세요.",
@@ -389,9 +439,9 @@ function getJobReviewGuidance({
   return {
     detail:
       missingCount > 0
-        ? "초안에 부족한 항목이 있습니다. 공개 전 보완이 필요합니다."
-        : "필수 항목이 준비된 초안입니다. 공개 전 최종 검토가 가능합니다.",
-    title: "초안 검토",
+        ? "비공개 상태이며 부족한 항목이 있습니다. 기업 담당자에게 보완 안내가 필요합니다."
+        : "비공개 상태입니다. 필요한 경우 기업 담당자에게 상태를 확인하세요.",
+    title: "비공개 확인",
   };
 }
 
