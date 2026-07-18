@@ -577,26 +577,25 @@ export default async function AdminRequestsPage({
                                 </p>
                               ) : null}
                             </div>
-                            <form action={markAdminRequestSupplementsCheckedAction}>
-                              <input
-                                name="request_id"
-                                type="hidden"
-                                value={request.id}
-                              />
-                              <button
-                                className={cn(
-                                  buttonVariants({
-                                    size: "sm",
-                                    variant: operation?.hasUncheckedSupplement
-                                      ? "default"
-                                      : "outline",
-                                  }),
-                                )}
-                                type="submit"
-                              >
-                                보완 제출 확인
-                              </button>
-                            </form>
+                            {operation?.hasUncheckedSupplement ? (
+                              <form action={markAdminRequestSupplementsCheckedAction}>
+                                <input
+                                  name="request_id"
+                                  type="hidden"
+                                  value={request.id}
+                                />
+                                <button
+                                  className={cn(buttonVariants({ size: "sm" }))}
+                                  type="submit"
+                                >
+                                  보완 제출 확인
+                                </button>
+                              </form>
+                            ) : (
+                              <span className="rounded-md bg-white px-2 py-1 text-xs font-black text-emerald-700">
+                                확인 완료
+                              </span>
+                            )}
                           </div>
                           <div className="mt-2 grid gap-2">
                             {requestSupplements.slice(0, 3).map((supplement) => {

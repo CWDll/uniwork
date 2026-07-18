@@ -99,11 +99,52 @@ export default async function SeekerAdminRequestsPage() {
                 const requestFiles = (filesByRequestId.get(request.id) ?? []).filter(
                   (file) => file.source === "request",
                 );
+                const requestSupplements =
+                  supplementsByRequestId.get(request.id) ?? [];
 
                 return (
-                  <article className="px-5 py-4" id={`request-${request.id}`} key={request.id}>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-black">{request.type}</h3>
+                  <details
+                    className="group px-5 py-4 open:bg-slate-50/60"
+                    id={`request-${request.id}`}
+                    key={request.id}
+                  >
+                    <summary className="grid cursor-pointer list-none gap-3 rounded-xl p-1 transition hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center [&::-webkit-details-marker]:hidden">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="truncate font-black">
+                            {getAdminRequestTypeLabel(request.type)}
+                          </h3>
+                          <span
+                            className={getStatusBadgeClassName(
+                              "adminRequest",
+                              request.status,
+                            )}
+                          >
+                            {status.label}
+                          </span>
+                          {request.seeker_followup_note ? (
+                            <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-black text-amber-700">
+                              보완 요청
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 truncate text-sm font-semibold text-slate-500">
+                          {details.currentVisaType || "비자 미입력"} ·{" "}
+                          {details.school || "학교 미입력"} · 파일{" "}
+                          {requestFiles.length.toLocaleString("ko-KR")}개 · 보완{" "}
+                          {requestSupplements.length.toLocaleString("ko-KR")}건
+                        </p>
+                      </div>
+                      <span className="text-sm font-black text-blue-700 group-open:text-slate-500">
+                        상세 보기
+                      </span>
+                    </summary>
+
+                    <div className="mt-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-black">
+                          {getAdminRequestTypeLabel(request.type)}
+                        </h3>
                       <span
                         className={getStatusBadgeClassName(
                           "adminRequest",
@@ -112,7 +153,7 @@ export default async function SeekerAdminRequestsPage() {
                       >
                         {status.label}
                       </span>
-                    </div>
+                      </div>
                     {request.memo ? (
                       <p className="mt-2 whitespace-pre-wrap text-sm font-medium leading-6 text-slate-600">
                         {request.memo}
@@ -271,11 +312,7 @@ export default async function SeekerAdminRequestsPage() {
                         부족한 서류: {documents.missingNote}
                       </p>
                     ) : null}
-                    {(() => {
-                      const requestSupplements =
-                        supplementsByRequestId.get(request.id) ?? [];
-
-                      return requestSupplements.length > 0 ? (
+                    {requestSupplements.length > 0 ? (
                         <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                           <p className="text-xs font-black uppercase tracking-wide text-slate-400">
                             제출한 보완 이력
@@ -327,8 +364,7 @@ export default async function SeekerAdminRequestsPage() {
                             })}
                           </div>
                         </div>
-                      ) : null;
-                    })()}
+                      ) : null}
                     {request.seeker_followup_note &&
                     request.status !== "completed" &&
                     request.status !== "rejected" ? (
@@ -343,7 +379,8 @@ export default async function SeekerAdminRequestsPage() {
                     <p className="mt-3 text-xs font-bold text-slate-400">
                       Created {new Date(request.created_at).toLocaleString("ko-KR")}
                     </p>
-                  </article>
+                    </div>
+                  </details>
                 );
               })
             ) : (
