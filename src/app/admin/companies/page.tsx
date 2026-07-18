@@ -253,10 +253,7 @@ export default async function AdminCompaniesPage({
                               className={cn(
                                 buttonVariants({ size: "sm", variant: "outline" }),
                               )}
-                              download
-                              href={documentUrlByPath.get(
-                                company.business_registration_path,
-                              )}
+                              href={`/api/admin/company-registration-documents/${company.id}/download`}
                             >
                               사업자등록증 다운로드
                             </a>

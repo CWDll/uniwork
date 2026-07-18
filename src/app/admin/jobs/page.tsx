@@ -147,6 +147,7 @@ export default async function AdminJobsPage({
       <form
         action="/admin/jobs"
         className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
+        key={`admin-job-filters-${activeCompanyId || "all"}-${activeStatus || "all"}`}
       >
         <label className="grid gap-2 text-xs font-black tracking-wide text-slate-400">
           회사/지점
@@ -164,12 +165,12 @@ export default async function AdminJobsPage({
           </select>
         </label>
         {activeStatus ? <input name="status" type="hidden" value={activeStatus} /> : null}
-        <Link
+        <a
           className={cn(buttonVariants({ variant: "outline" }), "self-end")}
           href="/admin/jobs"
         >
           초기화
-        </Link>
+        </a>
         <Button className="self-end" type="submit">
           필터 적용
         </Button>

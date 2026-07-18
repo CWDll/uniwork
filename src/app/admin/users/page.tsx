@@ -83,11 +83,7 @@ export default async function AdminUsersPage({
   const companyOwnerIds = pagedProfiles
     .filter((profile) => profile.role === "company")
     .map((profile) => profile.id);
-  const [
-    { data: seekerProfiles },
-    { data: companies },
-    { data: seekerApplications },
-  ] = await Promise.all([
+  const [{ data: seekerProfiles }, { data: companies }] = await Promise.all([
     seekerIds.length > 0
       ? supabase
           .from("seeker_profiles")
@@ -100,13 +96,6 @@ export default async function AdminUsersPage({
           .select("id, owner_id, name, verification_status, business_number, manager_name, manager_phone, notification_email")
           .in("owner_id", companyOwnerIds)
       : Promise.resolve({ data: [] }),
-    seekerIds.length > 0
-      ? supabase
-          .from("job_applications")
-          .select("id, seeker_id, applied_at")
-          .in("seeker_id", seekerIds)
-          .order("applied_at", { ascending: false })
-      : Promise.resolve({ data: [] }),
   ]);
   const seekerProfileById = new Map(
     seekerProfiles?.map((profile) => [profile.user_id, profile]) ?? [],
@@ -115,12 +104,6 @@ export default async function AdminUsersPage({
   companies?.forEach((company) => {
     const existing = companiesByOwnerId.get(company.owner_id) ?? [];
     companiesByOwnerId.set(company.owner_id, [...existing, company]);
-  });
-  const latestApplicationBySeekerId = new Map<string, { id: string }>();
-  seekerApplications?.forEach((application) => {
-    if (!latestApplicationBySeekerId.has(application.seeker_id)) {
-      latestApplicationBySeekerId.set(application.seeker_id, application);
-    }
   });
   const roleCounts = userRoleFilters.slice(1).map((role) => ({
     ...role,
@@ -201,8 +184,6 @@ export default async function AdminUsersPage({
             pagedProfiles.map((profile) => {
               const seekerProfile = seekerProfileById.get(profile.id);
               const ownedCompanies = companiesByOwnerId.get(profile.id) ?? [];
-              const latestApplication = latestApplicationBySeekerId.get(profile.id);
-
               return (
                 <details className="group px-5 py-4 open:bg-slate-50/60" key={profile.id}>
                   <summary className="grid cursor-pointer list-none gap-3 rounded-xl p-1 transition hover:bg-slate-50 md:grid-cols-[minmax(0,1fr)_160px_160px_120px] md:items-center">
@@ -241,21 +222,17 @@ export default async function AdminUsersPage({
                         <Info label="학교/전공" value={`${seekerProfile?.school || "학교 미입력"} · ${seekerProfile?.major || "전공 미입력"}`} />
                         <Info label="언어 수준" value={`한국어 ${seekerProfile?.korean_level || "-"} · 영어 ${seekerProfile?.english_level || "-"}`} />
                         <Info label="희망 조건" value={`${formatArray(seekerProfile?.preferred_locations)} · ${formatArray(seekerProfile?.preferred_job_types)}`} />
-                        {latestApplication ? (
-                          <div className="rounded-xl bg-blue-50 px-3 py-2">
-                            <p className="text-[11px] font-black uppercase tracking-wide text-blue-700">
-                              이력서/지원서
-                            </p>
-                            <Link
-                              className="mt-2 inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"
-                              href={`/company/applications/${latestApplication.id}/print`}
-                            >
-                              최신 지원서 출력 보기
-                            </Link>
-                          </div>
-                        ) : (
-                          <Info label="이력서/지원서" value="아직 지원 이력이 없습니다." />
-                        )}
+                        <div className="rounded-xl bg-blue-50 px-3 py-2">
+                          <p className="text-[11px] font-black uppercase tracking-wide text-blue-700">
+                            관리자 확인
+                          </p>
+                          <Link
+                            className="mt-2 inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-3 text-sm font-black text-white hover:bg-blue-700"
+                            href={`/admin/users/${profile.id}/resume`}
+                          >
+                            관리자 이력서 보기
+                          </Link>
+                        </div>
                       </>
                     ) : (
                       ownedCompanies.map((company) => (
