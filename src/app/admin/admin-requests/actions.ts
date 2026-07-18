@@ -26,6 +26,12 @@ export async function updateAdminRequestAction(
   const handoffHoldReason = String(
     formData.get("handoff_hold_reason") ?? "",
   ).trim();
+  const handoffRecipientEmail = String(
+    formData.get("handoff_recipient_email") ?? "",
+  ).trim();
+  const handoffChannel = String(formData.get("handoff_channel") ?? "").trim();
+  const handoffNote = String(formData.get("handoff_note") ?? "").trim();
+  const shouldMarkHandoffSent = formData.get("mark_handoff_sent") === "on";
 
   const allowedStatuses = [
     "received",
@@ -36,6 +42,7 @@ export async function updateAdminRequestAction(
     "rejected",
   ];
   const allowedHandoffStatuses = ["not_ready", "ready", "handed_off", "paused"];
+  const allowedHandoffChannels = ["manual", "email", "phone", "kakao", "other"];
 
   if (!adminContext) {
     return { error: "관리자 권한이 필요합니다." };
@@ -49,14 +56,38 @@ export async function updateAdminRequestAction(
     return { error: "전달 상태를 확인해주세요." };
   }
 
+  if (!allowedHandoffChannels.includes(handoffChannel)) {
+    return { error: "전달 채널을 확인해주세요." };
+  }
+
+  if (handoffRecipientEmail && !handoffRecipientEmail.includes("@")) {
+    return { error: "행정사/외부 담당자 이메일 형식을 확인해주세요." };
+  }
+
   const { supabase, user } = adminContext;
-  const { data: currentRequest } = await supabase
-    .from("admin_requests")
-    .select("seeker_followup_note")
-    .eq("id", requestId)
-    .maybeSingle();
+  const [{ data: currentRequest }, { data: currentReview }] = await Promise.all([
+    supabase
+      .from("admin_requests")
+      .select("seeker_followup_note")
+      .eq("id", requestId)
+      .maybeSingle(),
+    supabase
+      .from("admin_request_reviews")
+      .select("*")
+      .eq("request_id", requestId)
+      .maybeSingle(),
+  ]);
   const followupNoteChanged =
     (currentRequest?.seeker_followup_note ?? "") !== seekerFollowupNote;
+  const now = new Date().toISOString();
+  const nextHandoffSentAt =
+    shouldMarkHandoffSent && !currentReview?.handoff_sent_at
+      ? now
+      : currentReview?.handoff_sent_at ?? null;
+  const nextHandoffSentBy =
+    shouldMarkHandoffSent && !currentReview?.handoff_sent_by
+      ? user.id
+      : currentReview?.handoff_sent_by ?? null;
 
   const requestUpdate: {
     assigned_partner_id: string | null;
@@ -70,7 +101,7 @@ export async function updateAdminRequestAction(
     memo,
     seeker_followup_note: seekerFollowupNote,
     status,
-    updated_at: new Date().toISOString(),
+    updated_at: now,
   };
 
   if (!seekerFollowupNote) {
@@ -92,12 +123,17 @@ export async function updateAdminRequestAction(
     .from("admin_request_reviews")
     .upsert({
       handoff_hold_reason: handoffHoldReason,
+      handoff_channel: handoffChannel,
+      handoff_note: handoffNote,
+      handoff_recipient_email: handoffRecipientEmail,
+      handoff_sent_at: nextHandoffSentAt,
+      handoff_sent_by: nextHandoffSentBy,
       handoff_status: handoffStatus,
       internal_note: internalNote,
       request_id: requestId,
-      reviewed_at: new Date().toISOString(),
+      reviewed_at: now,
       reviewed_by: user.id,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     });
 
   if (reviewError) {

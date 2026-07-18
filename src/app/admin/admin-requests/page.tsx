@@ -127,9 +127,7 @@ export default async function AdminRequestsPage({
       ? await Promise.all([
           supabase
             .from("admin_request_reviews")
-            .select(
-              "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at, supplement_checked_at",
-            )
+            .select("*")
             .in("request_id", requestIds),
           supabase
             .from("admin_request_supplements")
@@ -450,6 +448,14 @@ export default async function AdminRequestsPage({
                           value={`${getHandoffStatusLabel(review?.handoff_status)} · ${review?.reviewed_at ? new Date(review.reviewed_at).toLocaleString("ko-KR") : "검토 이력 없음"}`}
                         />
                         <Info
+                          label="수동 전달 기록"
+                          value={
+                            review?.handoff_sent_at
+                              ? `${getHandoffChannelLabel(review.handoff_channel)} · ${new Date(review.handoff_sent_at).toLocaleString("ko-KR")}`
+                              : "전달 기록 없음"
+                          }
+                        />
+                        <Info
                           label="구직자 보완 제출"
                           value={`${requestSupplements.length.toLocaleString("ko-KR")}건 제출 · ${
                             operation?.latestSupplementAt
@@ -536,7 +542,31 @@ export default async function AdminRequestsPage({
                           내부 메모: {review.internal_note}
                         </p>
                       ) : null}
-                        <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
+                      {review?.handoff_recipient_email ||
+                      review?.handoff_note ||
+                      review?.handoff_sent_at ? (
+                        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
+                          <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+                            수동 전달 기록
+                          </p>
+                          <p className="mt-2 text-sm font-semibold leading-6 text-blue-950">
+                            수신처: {review.handoff_recipient_email || "미입력"} · 채널:{" "}
+                            {getHandoffChannelLabel(review.handoff_channel)}
+                          </p>
+                          <p className="mt-1 text-sm font-semibold leading-6 text-blue-950">
+                            전달 시각:{" "}
+                            {review.handoff_sent_at
+                              ? new Date(review.handoff_sent_at).toLocaleString("ko-KR")
+                              : "아직 전달 완료로 기록하지 않음"}
+                          </p>
+                          {review.handoff_note ? (
+                            <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-blue-950">
+                              {review.handoff_note}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : null}
+                      <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
                         <p className="text-xs font-black uppercase tracking-wide text-slate-400">
                           처리 이력
                         </p>
@@ -671,10 +701,16 @@ export default async function AdminRequestsPage({
 
                     <AdminRequestUpdateForm
                       assignedPartnerId={request.assigned_partner_id}
+                      handoffChannel={review?.handoff_channel ?? "manual"}
                       handoffHoldReason={review?.handoff_hold_reason ?? ""}
+                      handoffNote={review?.handoff_note ?? ""}
+                      handoffRecipientEmail={
+                        review?.handoff_recipient_email ?? ""
+                      }
+                      handoffSentAt={review?.handoff_sent_at ?? null}
                       handoffStatus={review?.handoff_status ?? "not_ready"}
                       internalNote={review?.internal_note ?? ""}
-                      key={`${request.id}-${request.status}-${request.updated_at}-${review?.handoff_status ?? "not_ready"}-${review?.reviewed_at ?? "no-review"}`}
+                      key={`${request.id}-${request.status}-${request.updated_at}-${review?.handoff_status ?? "not_ready"}-${review?.reviewed_at ?? "no-review"}-${review?.handoff_sent_at ?? "no-handoff"}`}
                       memo={request.memo}
                       partners={partners ?? []}
                       requestId={request.id}
@@ -912,6 +948,18 @@ function getHandoffStatusLabel(value: string | null | undefined) {
   };
 
   return labels[value ?? "not_ready"] ?? "준비 중";
+}
+
+function getHandoffChannelLabel(value: string | null | undefined) {
+  const labels: Record<string, string> = {
+    email: "이메일",
+    kakao: "카카오/메신저",
+    manual: "수동 기록",
+    other: "기타",
+    phone: "전화",
+  };
+
+  return labels[value ?? "manual"] ?? "수동 기록";
 }
 
 function hasUnansweredFollowup({

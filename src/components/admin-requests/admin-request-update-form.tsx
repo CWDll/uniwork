@@ -15,7 +15,11 @@ type PartnerOption = {
 export function AdminRequestUpdateForm({
   assignedPartnerId,
   handoffHoldReason,
+  handoffNote,
+  handoffRecipientEmail,
+  handoffSentAt,
   handoffStatus,
+  handoffChannel,
   internalNote,
   memo,
   partners,
@@ -25,7 +29,11 @@ export function AdminRequestUpdateForm({
 }: {
   assignedPartnerId: string | null;
   handoffHoldReason: string;
+  handoffNote: string;
+  handoffRecipientEmail: string;
+  handoffSentAt: string | null;
   handoffStatus: string;
+  handoffChannel: string;
   internalNote: string;
   memo: string | null;
   partners: PartnerOption[];
@@ -111,6 +119,56 @@ export function AdminRequestUpdateForm({
           <option value="paused">보류</option>
         </select>
       </label>
+      <div className="grid gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
+        <p className="text-sm font-black text-blue-950">수동 전달 기록</p>
+        <label className="grid gap-2 text-sm font-bold text-slate-700">
+          행정사/외부 담당자 이메일
+          <input
+            className="h-11 rounded-md border border-slate-200 bg-white px-3"
+            defaultValue={handoffRecipientEmail}
+            name="handoff_recipient_email"
+            placeholder="partner@example.com"
+            type="email"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-bold text-slate-700">
+          전달 채널
+          <select
+            className="h-11 rounded-md border border-slate-200 bg-white px-3"
+            defaultValue={handoffChannel}
+            name="handoff_channel"
+          >
+            <option value="manual">수동 기록</option>
+            <option value="email">이메일</option>
+            <option value="phone">전화</option>
+            <option value="kakao">카카오/메신저</option>
+            <option value="other">기타</option>
+          </select>
+        </label>
+        <label className="grid gap-2 text-sm font-bold text-slate-700">
+          전달 메모
+          <textarea
+            className="min-h-20 rounded-md border border-slate-200 bg-white px-3 py-2"
+            defaultValue={handoffNote}
+            name="handoff_note"
+            placeholder="전달한 파일, 후속 확인 일정, 행정사 답변 대기 내용을 적어주세요."
+          />
+        </label>
+        <label className="flex items-start gap-2 rounded-lg bg-white p-3 text-sm font-semibold leading-6 text-slate-700">
+          <input
+            className="mt-1 size-4 shrink-0 accent-blue-600"
+            defaultChecked={Boolean(handoffSentAt)}
+            disabled={Boolean(handoffSentAt)}
+            name="mark_handoff_sent"
+            type="checkbox"
+          />
+          <span>
+            {handoffSentAt
+              ? `전달 완료 기록됨: ${new Date(handoffSentAt).toLocaleString("ko-KR")}`
+              : "이번 저장 시 외부 전달 완료로 기록"}
+          </span>
+        </label>
+      </div>
       <label className="grid gap-2 text-sm font-bold text-slate-700">
         전달 보류/확인 사유
         <textarea

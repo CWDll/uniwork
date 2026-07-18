@@ -57,9 +57,7 @@ export default async function AdminRequestHandoffDraftPage({
         : Promise.resolve({ data: null }),
       supabase
         .from("admin_request_reviews")
-        .select(
-          "request_id, internal_note, handoff_status, handoff_hold_reason, reviewed_at, supplement_checked_at",
-        )
+        .select("*")
         .eq("request_id", request.id)
         .maybeSingle(),
       supabase
@@ -184,6 +182,15 @@ export default async function AdminRequestHandoffDraftPage({
             tone={review?.handoff_status === "ready" || review?.handoff_status === "handed_off" ? "green" : review?.handoff_status === "paused" ? "amber" : "slate"}
             value={getHandoffStatusLabel(review?.handoff_status)}
           />
+          <Signal
+            label="수동 전달 기록"
+            tone={review?.handoff_sent_at ? "green" : "slate"}
+            value={
+              review?.handoff_sent_at
+                ? `${getHandoffChannelLabel(review.handoff_channel)} · ${new Date(review.handoff_sent_at).toLocaleString("ko-KR")}`
+                : "기록 없음"
+            }
+          />
         </div>
 
         {readiness.missing.length > 0 ? (
@@ -252,6 +259,37 @@ export default async function AdminRequestHandoffDraftPage({
             {review?.internal_note ? (
               <p className="mt-2 whitespace-pre-wrap rounded-xl bg-blue-50 p-4 text-sm font-semibold leading-7 text-blue-900">
                 내부 메모: {review.internal_note}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {review?.handoff_recipient_email ||
+        review?.handoff_note ||
+        review?.handoff_sent_at ? (
+          <section className="mt-6 border-t border-slate-100 pt-5">
+            <h2 className="text-lg font-black">수동 전달 기록</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <Info
+                label="수신처"
+                value={review.handoff_recipient_email || "미입력"}
+              />
+              <Info
+                label="전달 채널"
+                value={getHandoffChannelLabel(review.handoff_channel)}
+              />
+              <Info
+                label="전달 시각"
+                value={
+                  review.handoff_sent_at
+                    ? new Date(review.handoff_sent_at).toLocaleString("ko-KR")
+                    : "아직 전달 완료로 기록하지 않음"
+                }
+              />
+            </div>
+            {review.handoff_note ? (
+              <p className="mt-3 whitespace-pre-wrap rounded-xl bg-blue-50 p-4 text-sm font-semibold leading-7 text-blue-900">
+                {review.handoff_note}
               </p>
             ) : null}
           </section>
@@ -547,7 +585,11 @@ function buildDraftText({
   profile: { email: string | null; name: string | null; phone: string | null } | null;
   readiness: ReturnType<typeof getAdminRequestReadiness>;
   review: {
+    handoff_channel?: string | null;
     handoff_hold_reason: string;
+    handoff_note?: string | null;
+    handoff_recipient_email?: string | null;
+    handoff_sent_at?: string | null;
     handoff_status: string;
     internal_note: string;
     reviewed_at: string | null;
@@ -591,6 +633,16 @@ function buildDraftText({
     `전달 상태: ${getHandoffStatusLabel(review?.handoff_status)}`,
     `전달 준비도: ${readiness.completed}/${readiness.total}`,
     readiness.missing.length > 0 ? `전달 전 확인 필요: ${readiness.missing.join(", ")}` : "전달 전 확인 필요: 없음",
+    "",
+    "[수동 전달 기록]",
+    `수신처: ${review?.handoff_recipient_email || "미입력"}`,
+    `전달 채널: ${getHandoffChannelLabel(review?.handoff_channel)}`,
+    `전달 시각: ${
+      review?.handoff_sent_at
+        ? new Date(review.handoff_sent_at).toLocaleString("ko-KR")
+        : "아직 전달 완료로 기록하지 않음"
+    }`,
+    `전달 메모: ${review?.handoff_note || "없음"}`,
     "",
     "[구직자/연락처]",
     `이름: ${profile?.name || "미입력"}`,
@@ -785,4 +837,16 @@ function getHandoffStatusLabel(value: string | null | undefined) {
   };
 
   return labels[value ?? "not_ready"] ?? "준비 중";
+}
+
+function getHandoffChannelLabel(value: string | null | undefined) {
+  const labels: Record<string, string> = {
+    email: "이메일",
+    kakao: "카카오/메신저",
+    manual: "수동 기록",
+    other: "기타",
+    phone: "전화",
+  };
+
+  return labels[value ?? "manual"] ?? "수동 기록";
 }
