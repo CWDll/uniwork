@@ -39,6 +39,7 @@ export function AdminRequestUpdateForm({
     <form
       action={formAction}
       className="grid gap-3 rounded-xl bg-slate-50 p-3 lg:bg-transparent lg:p-0"
+      key={`${requestId}-${status}-${handoffStatus}-${assignedPartnerId ?? "none"}`}
     >
       <input name="request_id" type="hidden" value={requestId} />
       <label className="grid gap-2 text-sm font-bold text-slate-700">

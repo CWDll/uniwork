@@ -631,6 +631,7 @@ export default async function AdminRequestsPage({
                       handoffHoldReason={review?.handoff_hold_reason ?? ""}
                       handoffStatus={review?.handoff_status ?? "not_ready"}
                       internalNote={review?.internal_note ?? ""}
+                      key={`${request.id}-${request.status}-${request.updated_at}-${review?.handoff_status ?? "not_ready"}-${review?.reviewed_at ?? "no-review"}`}
                       memo={request.memo}
                       partners={partners ?? []}
                       requestId={request.id}
