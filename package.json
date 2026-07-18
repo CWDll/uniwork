@@ -11,6 +11,7 @@
     "start": "next start",
     "lint": "eslint",
     "check:deploy": "node scripts/check-deployment-readiness.mjs",
+    "seed:admin-request-files": "node scripts/seed-admin-request-file-qa-data.mjs",
     "seed:sample-jobs": "node scripts/seed-sample-jobs.mjs",
     "verify:production": "node scripts/verify-production-smoke.mjs",
     "verify:public-journey": "node scripts/verify-public-journey.mjs",
