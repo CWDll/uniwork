@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/admin-auth";
 
 const allowedRoles = ["seeker", "company", "partner", "admin"];
 
@@ -15,14 +15,19 @@ export async function updateUserRoleAction(
   _prevState: UserRoleState,
   formData: FormData,
 ): Promise<UserRoleState> {
-  const supabase = await createClient();
+  const adminContext = await getAdminContext();
   const userId = String(formData.get("user_id") ?? "").trim();
   const role = String(formData.get("role") ?? "").trim();
+
+  if (!adminContext) {
+    return { error: "관리자 권한이 필요합니다." };
+  }
 
   if (!userId || !allowedRoles.includes(role)) {
     return { error: "사용자와 역할을 확인해주세요." };
   }
 
+  const { supabase } = adminContext;
   const { error } = await supabase
     .from("profiles")
     .update({

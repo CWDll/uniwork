@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { updateCompanyVerificationAction } from "@/app/admin/companies/actions";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type AdminCompaniesSearchParams = {
@@ -33,14 +32,7 @@ export default async function AdminCompaniesPage({
   const activeStatus = ["pending", "rejected", "verified"].includes(requestedStatus)
     ? requestedStatus
     : "verified";
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/admin/companies");
-  }
+  const { supabase } = await requireAdmin("/admin/companies");
 
   const { data: allCompanies } = await supabase
     .from("companies")

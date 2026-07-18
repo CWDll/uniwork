@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { markAdminRequestSupplementsCheckedAction } from "@/app/admin/admin-requests/actions";
 import { AdminRequestUpdateForm } from "@/components/admin-requests/admin-request-update-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type AdminRequestsSearchParams = {
@@ -87,14 +86,7 @@ export default async function AdminRequestsPage({
   const params = await searchParams;
   const activeStage = params.stage?.trim() ?? "";
   const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/admin/admin-requests");
-  }
+  const { supabase } = await requireAdmin("/admin/admin-requests");
 
   const { data: allRequests } = await supabase
     .from("admin_requests")

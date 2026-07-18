@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/admin-auth";
 
 type JobStatus = "published" | "closed";
 
@@ -15,16 +15,14 @@ export async function updateJobStatusAction(formData: FormData) {
     return;
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const adminContext = await getAdminContext();
 
-  if (!user) {
+  if (!adminContext) {
     return;
   }
 
   const reviewedAt = new Date().toISOString();
+  const { supabase, user } = adminContext;
   const statusPayload =
     status === "published"
       ? { closed_at: null, published_at: reviewedAt }

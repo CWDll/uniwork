@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/admin-auth";
 
 type AdminRequestUpdateState = {
   error?: string;
@@ -13,10 +13,7 @@ export async function updateAdminRequestAction(
   _prevState: AdminRequestUpdateState,
   formData: FormData,
 ): Promise<AdminRequestUpdateState> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const adminContext = await getAdminContext();
   const requestId = String(formData.get("request_id") ?? "").trim();
   const status = String(formData.get("status") ?? "").trim();
   const memo = String(formData.get("memo") ?? "").trim();
@@ -40,8 +37,8 @@ export async function updateAdminRequestAction(
   ];
   const allowedHandoffStatuses = ["not_ready", "ready", "handed_off", "paused"];
 
-  if (!user) {
-    return { error: "로그인이 필요합니다." };
+  if (!adminContext) {
+    return { error: "관리자 권한이 필요합니다." };
   }
 
   if (!requestId || !allowedStatuses.includes(status)) {
@@ -52,6 +49,7 @@ export async function updateAdminRequestAction(
     return { error: "전달 상태를 확인해주세요." };
   }
 
+  const { supabase, user } = adminContext;
   const { data: currentRequest } = await supabase
     .from("admin_requests")
     .select("seeker_followup_note")
@@ -115,17 +113,15 @@ export async function updateAdminRequestAction(
 }
 
 export async function markAdminRequestSupplementsCheckedAction(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const adminContext = await getAdminContext();
   const requestId = String(formData.get("request_id") ?? "").trim();
 
-  if (!user || !requestId) {
+  if (!adminContext || !requestId) {
     return;
   }
 
   const now = new Date().toISOString();
+  const { supabase, user } = adminContext;
   const { error } = await supabase
     .from("admin_request_reviews")
     .upsert({

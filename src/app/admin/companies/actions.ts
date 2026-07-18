@@ -2,20 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 
-import { createClient } from "@/lib/supabase/server";
+import { getAdminContext } from "@/lib/admin-auth";
 
 const allowedStatuses = ["pending", "verified", "rejected"];
 
 export async function updateCompanyVerificationAction(formData: FormData) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const adminContext = await getAdminContext();
   const companyId = String(formData.get("company_id") ?? "").trim();
   const status = String(formData.get("verification_status") ?? "").trim();
   const note = String(formData.get("verification_note") ?? "").trim();
 
-  if (!user || !companyId || !allowedStatuses.includes(status)) {
+  if (!adminContext || !companyId || !allowedStatuses.includes(status)) {
     return;
   }
 
@@ -24,6 +21,7 @@ export async function updateCompanyVerificationAction(formData: FormData) {
   }
 
   const reviewedAt = new Date().toISOString();
+  const { supabase, user } = adminContext;
 
   await supabase
     .from("companies")

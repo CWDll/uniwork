@@ -1,33 +1,16 @@
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
+import { requireAdmin } from "@/lib/admin-auth";
 import { companyRegistrationDocumentsBucket } from "@/lib/company-documents";
-import { createClient } from "@/lib/supabase/server";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ companyId: string }> },
 ) {
   const { companyId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(
-      `/login?next=/api/admin/company-registration-documents/${companyId}/download`,
-    );
-  }
-
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (adminProfile?.role !== "admin") {
-    notFound();
-  }
+  const { supabase } = await requireAdmin(
+    `/api/admin/company-registration-documents/${companyId}/download`,
+  );
 
   const { data: company } = await supabase
     .from("companies")

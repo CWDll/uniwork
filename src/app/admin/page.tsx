@@ -1,11 +1,10 @@
 import { BriefcaseBusiness, FileText, ShieldAlert, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 const requestStatusLabels = [
@@ -18,14 +17,7 @@ const requestStatusLabels = [
 ];
 
 export default async function AdminPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/admin");
-  }
+  const { supabase } = await requireAdmin("/admin");
 
   const [
     { count: userCount },

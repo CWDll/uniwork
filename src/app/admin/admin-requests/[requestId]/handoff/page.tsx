@@ -1,10 +1,10 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { ApplicationPrintActions } from "@/components/company/application-print-actions";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
-import { createClient } from "@/lib/supabase/server";
 
 export default async function AdminRequestHandoffDraftPage({
   params,
@@ -12,14 +12,9 @@ export default async function AdminRequestHandoffDraftPage({
   params: Promise<{ requestId: string }>;
 }) {
   const { requestId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(`/login?next=/admin/admin-requests/${requestId}/handoff`);
-  }
+  const { supabase } = await requireAdmin(
+    `/admin/admin-requests/${requestId}/handoff`,
+  );
 
   const { data: request } = await supabase
     .from("admin_requests")

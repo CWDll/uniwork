@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { cn } from "@/lib/utils";
 
 type AdminUsersSearchParams = {
@@ -46,14 +45,7 @@ export default async function AdminUsersPage({
   const activeRole = params.role === "company" || params.role === "seeker" ? params.role : "";
   const query = params.q?.trim().toLowerCase() ?? "";
   const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/admin/users");
-  }
+  const { supabase } = await requireAdmin("/admin/users");
 
   const { data: profiles } = await supabase
     .from("profiles")

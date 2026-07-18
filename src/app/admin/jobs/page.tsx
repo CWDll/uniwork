@@ -1,12 +1,11 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { updateJobStatusAction } from "@/app/admin/jobs/actions";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
-import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 type AdminJobsSearchParams = {
@@ -45,14 +44,7 @@ export default async function AdminJobsPage({
   const params = await searchParams;
   const activeCompanyId = params.company?.trim() ?? "";
   const activeStatus = params.status?.trim() ?? "";
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login?next=/admin/jobs");
-  }
+  const { supabase } = await requireAdmin("/admin/jobs");
 
   const { data: allJobs } = await supabase
     .from("jobs")

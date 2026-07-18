@@ -1,10 +1,10 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { ApplicationPrintActions } from "@/components/company/application-print-actions";
+import { requireAdmin } from "@/lib/admin-auth";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
-import { createClient } from "@/lib/supabase/server";
 
 type TextArray = string[] | null;
 type EducationItem = {
@@ -29,24 +29,7 @@ export default async function AdminUserResumePage({
   params: Promise<{ userId: string }>;
 }) {
   const { userId } = await params;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(`/login?next=/admin/users/${userId}/resume`);
-  }
-
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (adminProfile?.role !== "admin") {
-    notFound();
-  }
+  const { supabase } = await requireAdmin(`/admin/users/${userId}/resume`);
 
   const [{ data: profile }, { data: seekerProfile }, { data: resume }] =
     await Promise.all([
