@@ -181,12 +181,12 @@ export default async function AdminJobsPage({
             <div>
               <h2 className="text-lg font-black">Job operations</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                {activeStatus
-                  ? `${getStatusMeta("job", activeStatus).label} 공고 ${jobs?.length ?? 0}개`
-                  : `전체 공고 ${allJobs?.length ?? 0}개`}
+                {activeStatus || activeCompanyId
+                  ? `현재 필터 결과 ${jobs.length.toLocaleString("ko-KR")}개`
+                  : `전체 공고 ${jobs.length.toLocaleString("ko-KR")}개`}
               </p>
             </div>
-            {activeStatus ? (
+            {activeStatus || activeCompanyId ? (
               <Link
                 className="text-sm font-black text-blue-700 hover:text-blue-900"
                 href="/admin/jobs"
@@ -309,7 +309,7 @@ export default async function AdminJobsPage({
                         currentStatus={job.status}
                         status="closed"
                       >
-                        마감
+                        공고 마감
                       </StatusButton>
                     </div>
                   </form>

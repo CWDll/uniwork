@@ -14,7 +14,6 @@ type AdminCompaniesSearchParams = {
 };
 
 const verificationFilters = [
-  { value: "", label: "전체" },
   { value: "verified", label: "인증 완료" },
   { value: "pending", label: "검토 대기" },
   { value: "rejected", label: "인증 반려" },
@@ -30,7 +29,10 @@ export default async function AdminCompaniesPage({
   searchParams: Promise<AdminCompaniesSearchParams>;
 }) {
   const params = await searchParams;
-  const activeStatus = params.status?.trim() ?? "";
+  const requestedStatus = params.status?.trim() ?? "";
+  const activeStatus = ["pending", "rejected", "verified"].includes(requestedStatus)
+    ? requestedStatus
+    : "verified";
   const supabase = await createClient();
   const {
     data: { user },
@@ -64,9 +66,9 @@ export default async function AdminCompaniesPage({
       documentUrlByPath.set(path, data.signedUrl);
     }
   }
-  const companies = activeStatus
-    ? allCompanies?.filter((company) => company.verification_status === activeStatus)
-    : allCompanies;
+  const companies = allCompanies?.filter(
+    (company) => company.verification_status === activeStatus,
+  );
   const ownerIds = Array.from(
     new Set(allCompanies?.map((company) => company.owner_id) ?? []),
   );
@@ -99,7 +101,7 @@ export default async function AdminCompaniesPage({
       </div>
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
-        {verificationFilters.slice(1).map((filter) => {
+        {verificationFilters.map((filter) => {
           const isActive = activeStatus === filter.value;
 
           return (
@@ -110,7 +112,7 @@ export default async function AdminCompaniesPage({
                   ? "border-blue-200 bg-blue-50"
                   : "border-slate-200 bg-white hover:bg-slate-50",
               )}
-              href={buildCompaniesHref(isActive ? "" : filter.value)}
+              href={buildCompaniesHref(filter.value === "verified" ? "" : filter.value)}
               key={filter.value}
             >
               <p className="text-sm font-black text-slate-500">{filter.label}</p>
@@ -128,17 +130,15 @@ export default async function AdminCompaniesPage({
             <div>
               <h2 className="text-lg font-black">Companies {companies?.length ?? 0}</h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                {activeStatus
-                  ? `${getStatusMeta("companyVerification", activeStatus).label} 기업`
-                  : "등록된 모든 기업/지점"}
+                {`${getStatusMeta("companyVerification", activeStatus).label} 기업`}
               </p>
             </div>
-            {activeStatus ? (
+            {activeStatus !== "verified" ? (
               <Link
                 className="text-sm font-black text-blue-700 hover:text-blue-900"
                 href="/admin/companies"
               >
-                전체 보기
+                인증 완료 보기
               </Link>
             ) : null}
           </div>
@@ -234,20 +234,33 @@ export default async function AdminCompaniesPage({
                       />
                     </div>
                     {company.business_registration_path ? (
-                      <div className="mt-3">
+                      <div className="mt-3 flex flex-wrap gap-2">
                         {documentUrlByPath.get(company.business_registration_path) ? (
-                          <a
-                            className={cn(
-                              buttonVariants({ size: "sm", variant: "outline" }),
-                            )}
-                            href={documentUrlByPath.get(
-                              company.business_registration_path,
-                            )}
-                            rel="noreferrer"
-                            target="_blank"
-                          >
-                            사업자등록증 보기
-                          </a>
+                          <>
+                            <a
+                              className={cn(
+                                buttonVariants({ size: "sm", variant: "outline" }),
+                              )}
+                              href={documentUrlByPath.get(
+                                company.business_registration_path,
+                              )}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              사업자등록증 확인
+                            </a>
+                            <a
+                              className={cn(
+                                buttonVariants({ size: "sm", variant: "outline" }),
+                              )}
+                              download
+                              href={documentUrlByPath.get(
+                                company.business_registration_path,
+                              )}
+                            >
+                              사업자등록증 다운로드
+                            </a>
+                          </>
                         ) : (
                           <p className="rounded-xl bg-slate-50 p-3 text-sm font-semibold text-slate-500">
                             사업자등록증이 제출되었지만 임시 확인 링크를 만들지
@@ -305,25 +318,78 @@ export default async function AdminCompaniesPage({
                         보완 메모를 남겨주세요.
                       </span>
                     </label>
-                    <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
-                      <StatusButton
-                        currentStatus={company.verification_status}
-                        status="verified"
-                      >
-                        인증
-                      </StatusButton>
-                      <StatusButton
-                        currentStatus={company.verification_status}
-                        status="rejected"
-                      >
-                        반려
-                      </StatusButton>
-                      <StatusButton
-                        currentStatus={company.verification_status}
-                        status="pending"
-                      >
-                        검토 대기
-                      </StatusButton>
+                    <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                      {company.verification_status === "verified" ? (
+                        <>
+                          <Button
+                            name="verification_status"
+                            type="submit"
+                            value="pending"
+                            variant="outline"
+                          >
+                            인증 해제
+                          </Button>
+                          <Button
+                            name="verification_status"
+                            type="submit"
+                            value="verified"
+                          >
+                            메모 저장
+                          </Button>
+                        </>
+                      ) : company.verification_status === "pending" ? (
+                        <>
+                          <Button
+                            name="verification_status"
+                            type="submit"
+                            value="verified"
+                          >
+                            인증 승인
+                          </Button>
+                          <Button
+                            name="verification_status"
+                            type="submit"
+                            value="rejected"
+                            variant="outline"
+                          >
+                            인증 반려
+                          </Button>
+                          <Button
+                            name="verification_status"
+                            type="submit"
+                            value="pending"
+                            variant="outline"
+                          >
+                            메모 저장
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            name="verification_status"
+                            type="submit"
+                            value="verified"
+                          >
+                            인증 승인
+                          </Button>
+                          <Button
+                            name="verification_status"
+                            type="submit"
+                            value="pending"
+                            variant="outline"
+                          >
+                            검토 대기
+                          </Button>
+                          <Button
+                            name="verification_status"
+                            type="submit"
+                            value="rejected"
+                            variant="outline"
+                          >
+                            메모 저장
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </form>
                   </div>
@@ -333,14 +399,14 @@ export default async function AdminCompaniesPage({
           ) : (
             <EmptyState
               actions={
-                activeStatus ? (
+                activeStatus !== "verified" ? (
                   <Link
                     className={cn(
                       buttonVariants({ size: "sm", variant: "outline" }),
                     )}
                     href="/admin/companies"
                   >
-                    전체 보기
+                    인증 완료 보기
                   </Link>
                 ) : (
                   <Link
@@ -417,29 +483,6 @@ function getReviewGuidance({
   }
 
   return "필수 항목이 준비되어 있습니다. 사업자 정보와 담당자 정보를 확인한 뒤 인증하세요.";
-}
-
-function StatusButton({
-  children,
-  currentStatus,
-  status,
-}: {
-  children: React.ReactNode;
-  currentStatus: string;
-  status: string;
-}) {
-  const isCurrent = currentStatus === status;
-
-  return (
-    <Button
-      name="verification_status"
-      type="submit"
-      value={status}
-      variant={status === "verified" ? "default" : "outline"}
-    >
-      {isCurrent ? "메모 저장" : children}
-    </Button>
-  );
 }
 
 function Info({ label, value }: { label: string; value: string }) {

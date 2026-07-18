@@ -31,8 +31,8 @@ export async function updateCompanyVerificationAction(formData: FormData) {
       updated_at: reviewedAt,
       verification_note: note || null,
       verification_status: status,
-      verified_at: reviewedAt,
-      verified_by: user.id,
+      verified_at: status === "verified" ? reviewedAt : null,
+      verified_by: status === "verified" ? user.id : null,
     })
     .eq("id", companyId);
 
