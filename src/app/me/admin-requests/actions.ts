@@ -2,6 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 
+import {
+  adminRequestFilesBucket,
+  getAdminRequestFileExtension,
+  getAdminRequestFiles,
+  getAdminRequestFileValidationError,
+} from "@/lib/admin-request-files";
 import { createClient } from "@/lib/supabase/server";
 
 type AdminRequestState = {
@@ -43,11 +49,17 @@ export async function createAdminRequestAction(
   const contactEmail = compact(formData.get("contact_email"));
   const contactPhone = compact(formData.get("contact_phone"));
   const documentsReady = toArray(formData.getAll("documents_ready"));
+  const requestFiles = getAdminRequestFiles(formData, "request_files");
   const missingDocumentsNote = compact(formData.get("missing_documents_note"));
   const handoffConsent = formData.get("handoff_consent") === "on";
+  const fileValidationError = getAdminRequestFileValidationError(requestFiles);
 
   if (!type) {
     return { error: "요청 유형을 선택해주세요." };
+  }
+
+  if (fileValidationError) {
+    return { error: fileValidationError };
   }
 
   if (!currentVisaType || !alienRegistrationStatus || !school || !contactEmail) {
@@ -96,33 +108,51 @@ export async function createAdminRequestAction(
     return { error: consentError.message };
   }
 
-  const { error } = await supabase.from("admin_requests").insert({
-    consent_id: consent.id,
-    contact_snapshot: {
-      email: contactEmail,
-      phone: contactPhone || null,
-    },
-    document_checklist: {
-      missing_note: missingDocumentsNote || null,
-      ready: documentsReady,
-    },
-    memo,
-    request_details: {
-      alien_registration_status: alienRegistrationStatus,
-      current_visa_type: currentVisaType,
-      handoff_consent: handoffConsent,
-      major: major || null,
-      planned_work_hours: plannedWorkHours || null,
-      school,
-      target_start_date: targetStartDate || null,
-    },
-    seeker_id: user.id,
-    status: "received",
-    type,
-  });
+  const { data: request, error } = await supabase
+    .from("admin_requests")
+    .insert({
+      consent_id: consent.id,
+      contact_snapshot: {
+        email: contactEmail,
+        phone: contactPhone || null,
+      },
+      document_checklist: {
+        missing_note: missingDocumentsNote || null,
+        ready: documentsReady,
+      },
+      memo,
+      request_details: {
+        alien_registration_status: alienRegistrationStatus,
+        current_visa_type: currentVisaType,
+        handoff_consent: handoffConsent,
+        major: major || null,
+        planned_work_hours: plannedWorkHours || null,
+        school,
+        target_start_date: targetStartDate || null,
+      },
+      seeker_id: user.id,
+      status: "received",
+      type,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (requestFiles.length > 0) {
+    const uploadError = await uploadAdminRequestFiles({
+      files: requestFiles,
+      requestId: request.id,
+      seekerId: user.id,
+      source: "request",
+      supabase,
+    });
+
+    if (uploadError) {
+      return { error: uploadError };
+    }
   }
 
   revalidatePath("/me/admin-requests");
@@ -149,16 +179,27 @@ export async function createAdminRequestSupplementAction(
   const contactEmail = compact(formData.get("supplement_contact_email"));
   const contactPhone = compact(formData.get("supplement_contact_phone"));
   const documentsReady = toArray(formData.getAll("supplement_documents_ready"));
+  const supplementFiles = getAdminRequestFiles(formData, "supplement_files");
   const missingDocumentsNote = compact(
     formData.get("supplement_missing_documents_note"),
   );
+  const fileValidationError = getAdminRequestFileValidationError(supplementFiles);
 
   if (!requestId) {
     return { error: "보완할 행정 요청을 확인해주세요." };
   }
 
-  if (!message && documentsReady.length === 0 && !missingDocumentsNote) {
-    return { error: "보완 내용이나 준비된 서류를 입력해주세요." };
+  if (fileValidationError) {
+    return { error: fileValidationError };
+  }
+
+  if (
+    !message &&
+    documentsReady.length === 0 &&
+    !missingDocumentsNote &&
+    supplementFiles.length === 0
+  ) {
+    return { error: "보완 내용, 준비된 서류, 첨부 파일 중 하나 이상을 입력해주세요." };
   }
 
   if (contactEmail && !contactEmail.includes("@")) {
@@ -183,22 +224,41 @@ export async function createAdminRequestSupplementAction(
     return { error: "완료 또는 반려된 요청은 보완 내용을 추가할 수 없습니다." };
   }
 
-  const { error } = await supabase.from("admin_request_supplements").insert({
-    contact_snapshot: {
-      email: contactEmail || null,
-      phone: contactPhone || null,
-    },
-    document_checklist: {
-      missing_note: missingDocumentsNote || null,
-      ready: documentsReady,
-    },
-    message,
-    request_id: requestId,
-    seeker_id: user.id,
-  });
+  const { data: supplement, error } = await supabase
+    .from("admin_request_supplements")
+    .insert({
+      contact_snapshot: {
+        email: contactEmail || null,
+        phone: contactPhone || null,
+      },
+      document_checklist: {
+        missing_note: missingDocumentsNote || null,
+        ready: documentsReady,
+      },
+      message,
+      request_id: requestId,
+      seeker_id: user.id,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return { error: error.message };
+  }
+
+  if (supplementFiles.length > 0) {
+    const uploadError = await uploadAdminRequestFiles({
+      files: supplementFiles,
+      requestId,
+      seekerId: user.id,
+      source: "supplement",
+      supplementId: supplement.id,
+      supabase,
+    });
+
+    if (uploadError) {
+      return { error: uploadError };
+    }
   }
 
   revalidatePath("/me/admin-requests");
@@ -207,4 +267,57 @@ export async function createAdminRequestSupplementAction(
   revalidatePath(`/admin/admin-requests/${requestId}/handoff`);
 
   return { message: "보완 내용이 제출되었습니다." };
+}
+
+async function uploadAdminRequestFiles({
+  files,
+  requestId,
+  seekerId,
+  source,
+  supplementId,
+  supabase,
+}: {
+  files: File[];
+  requestId: string;
+  seekerId: string;
+  source: "request" | "supplement";
+  supplementId?: string;
+  supabase: Awaited<ReturnType<typeof createClient>>;
+}) {
+  const rows = [];
+
+  for (const file of files) {
+    const storagePath =
+      source === "request"
+        ? `${seekerId}/${requestId}/request/${crypto.randomUUID()}.${getAdminRequestFileExtension(file)}`
+        : `${seekerId}/${requestId}/supplement/${supplementId}/${crypto.randomUUID()}.${getAdminRequestFileExtension(file)}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from(adminRequestFilesBucket)
+      .upload(storagePath, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      return uploadError.message;
+    }
+
+    rows.push({
+      mime_type: file.type,
+      original_name: file.name,
+      request_id: requestId,
+      seeker_id: seekerId,
+      size_bytes: file.size,
+      source,
+      storage_path: storagePath,
+      supplement_id: supplementId ?? null,
+    });
+  }
+
+  const { error: insertError } = await supabase
+    .from("admin_request_files")
+    .insert(rows);
+
+  return insertError?.message ?? null;
 }

@@ -35,10 +35,34 @@ export default async function SeekerAdminRequestsPage() {
           .in("request_id", requestIds)
           .order("created_at", { ascending: false })
       : { data: [] };
+  const { data: files } =
+    requestIds.length > 0
+      ? await supabase
+          .from("admin_request_files")
+          .select(
+            "id, request_id, supplement_id, original_name, mime_type, size_bytes, source, uploaded_at",
+          )
+          .in("request_id", requestIds)
+          .order("uploaded_at", { ascending: false })
+      : { data: [] };
   const supplementsByRequestId = new Map<string, NonNullable<typeof supplements>>();
   supplements?.forEach((supplement) => {
     const existing = supplementsByRequestId.get(supplement.request_id) ?? [];
     supplementsByRequestId.set(supplement.request_id, [...existing, supplement]);
+  });
+  const filesByRequestId = new Map<string, NonNullable<typeof files>>();
+  const filesBySupplementId = new Map<string, NonNullable<typeof files>>();
+  files?.forEach((file) => {
+    const existingByRequest = filesByRequestId.get(file.request_id) ?? [];
+    filesByRequestId.set(file.request_id, [...existingByRequest, file]);
+
+    if (file.supplement_id) {
+      const existingBySupplement = filesBySupplementId.get(file.supplement_id) ?? [];
+      filesBySupplementId.set(file.supplement_id, [
+        ...existingBySupplement,
+        file,
+      ]);
+    }
   });
 
   return (
@@ -72,6 +96,9 @@ export default async function SeekerAdminRequestsPage() {
                 const details = parseRequestDetails(request.request_details);
                 const documents = parseDocumentChecklist(request.document_checklist);
                 const contact = parseContactSnapshot(request.contact_snapshot);
+                const requestFiles = (filesByRequestId.get(request.id) ?? []).filter(
+                  (file) => file.source === "request",
+                );
 
                 return (
                   <article className="px-5 py-4" id={`request-${request.id}`} key={request.id}>
@@ -137,6 +164,10 @@ export default async function SeekerAdminRequestsPage() {
                       <Info
                         label="준비 서류"
                         value={`${documents.ready.length}개 선택`}
+                      />
+                      <Info
+                        label="첨부 파일"
+                        value={`${requestFiles.length.toLocaleString("ko-KR")}개`}
                       />
                       <Info
                         label="희망 시작일"
@@ -225,6 +256,14 @@ export default async function SeekerAdminRequestsPage() {
                             {request.memo || "입력 없음"}
                           </p>
                         </div>
+                        {requestFiles.length > 0 ? (
+                          <div className="sm:col-span-2">
+                            <FileList
+                              files={requestFiles}
+                              title="첨부 파일"
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </details>
                     {documents.missingNote ? (
@@ -249,6 +288,8 @@ export default async function SeekerAdminRequestsPage() {
                               const supplementDocuments = parseDocumentChecklist(
                                 supplement.document_checklist,
                               );
+                              const supplementFiles =
+                                filesBySupplementId.get(supplement.id) ?? [];
 
                               return (
                                 <div
@@ -274,6 +315,12 @@ export default async function SeekerAdminRequestsPage() {
                                     <p className="mt-1 text-xs font-bold leading-5 text-amber-700">
                                       추가 확인: {supplementDocuments.missingNote}
                                     </p>
+                                  ) : null}
+                                  {supplementFiles.length > 0 ? (
+                                    <FileList
+                                      files={supplementFiles}
+                                      title="보완 파일"
+                                    />
                                   ) : null}
                                 </div>
                               );
@@ -339,6 +386,48 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
     </div>
   );
+}
+
+function FileList({
+  files,
+  title,
+}: {
+  files: {
+    id: string;
+    original_name: string;
+    size_bytes: number;
+  }[];
+  title: string;
+}) {
+  return (
+    <div className="mt-2 rounded-xl border border-blue-100 bg-blue-50 p-3">
+      <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+        {title}
+      </p>
+      <div className="mt-2 grid gap-2">
+        {files.map((file) => (
+          <a
+            className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:text-blue-700"
+            href={`/api/me/admin-request-files/${file.id}/download`}
+            key={file.id}
+          >
+            <span className="min-w-0 truncate">{file.original_name}</span>
+            <span className="shrink-0 text-xs text-slate-400">
+              {formatFileSize(file.size_bytes)}
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString("ko-KR")}KB`;
 }
 
 function parseRecord(value: unknown) {

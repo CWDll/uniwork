@@ -84,6 +84,19 @@ export function AdminRequestSupplementForm({
           placeholder="예: 학교 담당자 확인은 이번 주 안에 받을 예정입니다."
         />
       </label>
+      <label className="grid gap-2 text-sm font-bold text-slate-700">
+        보완 파일
+        <input
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          className="w-full rounded-md border border-dashed border-blue-200 bg-blue-50 px-3 py-3 text-sm font-semibold text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-black file:text-white"
+          multiple
+          name="supplement_files"
+          type="file"
+        />
+        <span className="text-xs font-semibold leading-5 text-slate-500">
+          파일당 10MB 이하, 최대 5개까지 PDF, JPG, JPEG, PNG 파일을 첨부할 수 있습니다.
+        </span>
+      </label>
 
       {state.error ? (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">

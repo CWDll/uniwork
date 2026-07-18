@@ -138,6 +138,20 @@ export function AdminRequestForm() {
           />
         </label>
 
+        <label className="grid gap-2 text-sm font-bold text-slate-700">
+          참고 파일
+          <input
+            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+            className="w-full rounded-md border border-dashed border-blue-200 bg-blue-50 px-3 py-4 text-sm font-semibold text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-black file:text-white"
+            multiple
+            name="request_files"
+            type="file"
+          />
+          <span className="text-xs font-semibold leading-5 text-slate-500">
+            파일당 10MB 이하, 최대 5개까지 PDF, JPG, JPEG, PNG 파일을 첨부할 수 있습니다.
+          </span>
+        </label>
+
         <label className="flex items-start gap-3 rounded-2xl border border-slate-200 p-4 text-sm font-semibold leading-6 text-slate-700">
           <input
             className="mt-1 size-4 shrink-0 accent-blue-600"

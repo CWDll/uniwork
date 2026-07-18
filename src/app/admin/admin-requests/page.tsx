@@ -122,7 +122,7 @@ export default async function AdminRequestsPage({
     .eq("role", "partner")
     .order("created_at", { ascending: false });
   const requestIds = allRequests?.map((request) => request.id) ?? [];
-  const [{ data: reviews }, { data: supplements }] =
+  const [{ data: reviews }, { data: supplements }, { data: files }] =
     requestIds.length > 0
       ? await Promise.all([
           supabase
@@ -138,8 +138,15 @@ export default async function AdminRequestsPage({
             )
             .in("request_id", requestIds)
             .order("created_at", { ascending: false }),
+          supabase
+            .from("admin_request_files")
+            .select(
+              "id, request_id, supplement_id, original_name, mime_type, size_bytes, source, uploaded_at",
+            )
+            .in("request_id", requestIds)
+            .order("uploaded_at", { ascending: false }),
         ])
-      : [{ data: [] }, { data: [] }];
+      : [{ data: [] }, { data: [] }, { data: [] }];
 
   const profileById = new Map(profiles?.map((profile) => [profile.id, profile]) ?? []);
   const seekerProfileById = new Map(
@@ -152,6 +159,20 @@ export default async function AdminRequestsPage({
   supplements?.forEach((supplement) => {
     const existing = supplementsByRequestId.get(supplement.request_id) ?? [];
     supplementsByRequestId.set(supplement.request_id, [...existing, supplement]);
+  });
+  const filesByRequestId = new Map<string, NonNullable<typeof files>>();
+  const filesBySupplementId = new Map<string, NonNullable<typeof files>>();
+  files?.forEach((file) => {
+    const existingByRequest = filesByRequestId.get(file.request_id) ?? [];
+    filesByRequestId.set(file.request_id, [...existingByRequest, file]);
+
+    if (file.supplement_id) {
+      const existingBySupplement = filesBySupplementId.get(file.supplement_id) ?? [];
+      filesBySupplementId.set(file.supplement_id, [
+        ...existingBySupplement,
+        file,
+      ]);
+    }
   });
   const operationsByRequestId = new Map<string, RequestOperation>();
   allRequests?.forEach((request) => {
@@ -303,6 +324,9 @@ export default async function AdminRequestsPage({
               const contact = parseContactSnapshot(request.contact_snapshot);
               const review = reviewByRequestId.get(request.id);
               const requestSupplements = supplementsByRequestId.get(request.id) ?? [];
+              const requestFiles = (filesByRequestId.get(request.id) ?? []).filter(
+                (file) => file.source === "request",
+              );
               const operation = operationsByRequestId.get(request.id);
               const isWaitingForFollowup = operation?.isWaitingForFollowup ?? false;
               const readiness =
@@ -414,6 +438,10 @@ export default async function AdminRequestsPage({
                           value={`${documents.ready.length}개 준비 · ${documents.missingNote ? "누락 메모 있음" : "누락 메모 없음"}`}
                         />
                         <Info
+                          label="접수 파일"
+                          value={`${requestFiles.length.toLocaleString("ko-KR")}개 첨부`}
+                        />
+                        <Info
                           label="외부 전달 동의"
                           value={details.handoffConsent ? "외부 전달 동의" : "동의 확인 필요"}
                         />
@@ -496,6 +524,13 @@ export default async function AdminRequestsPage({
                           </p>
                         ) : null}
                       </div>
+                      {requestFiles.length > 0 ? (
+                        <FileList
+                          files={requestFiles}
+                          title="접수 파일"
+                          variant="admin"
+                        />
+                      ) : null}
                       {review?.internal_note ? (
                         <p className="mt-3 whitespace-pre-wrap rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
                           내부 메모: {review.internal_note}
@@ -571,6 +606,8 @@ export default async function AdminRequestsPage({
                               const supplementDocuments = parseDocumentChecklist(
                                 supplement.document_checklist,
                               );
+                              const supplementFiles =
+                                filesBySupplementId.get(supplement.id) ?? [];
 
                               return (
                                 <div
@@ -596,6 +633,13 @@ export default async function AdminRequestsPage({
                                     <p className="mt-1 text-xs font-bold leading-5 text-amber-700">
                                       추가 확인: {supplementDocuments.missingNote}
                                     </p>
+                                  ) : null}
+                                  {supplementFiles.length > 0 ? (
+                                    <FileList
+                                      files={supplementFiles}
+                                      title="보완 파일"
+                                      variant="admin"
+                                    />
                                   ) : null}
                                 </div>
                               );
@@ -711,6 +755,55 @@ function Info({ label, value }: { label: string; value: string }) {
       <p className="mt-1 break-words text-sm font-bold text-slate-700">{value}</p>
     </div>
   );
+}
+
+function FileList({
+  files,
+  title,
+  variant,
+}: {
+  files: {
+    id: string;
+    original_name: string;
+    size_bytes: number;
+  }[];
+  title: string;
+  variant: "admin" | "me";
+}) {
+  const baseHref =
+    variant === "admin"
+      ? "/api/admin/admin-request-files"
+      : "/api/me/admin-request-files";
+
+  return (
+    <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50 p-3">
+      <p className="text-xs font-black uppercase tracking-wide text-blue-700">
+        {title}
+      </p>
+      <div className="mt-2 grid gap-2">
+        {files.map((file) => (
+          <a
+            className="flex min-w-0 items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-sm font-bold text-slate-700 hover:text-blue-700"
+            href={`${baseHref}/${file.id}/download`}
+            key={file.id}
+          >
+            <span className="min-w-0 truncate">{file.original_name}</span>
+            <span className="shrink-0 text-xs text-slate-400">
+              {formatFileSize(file.size_bytes)}
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString("ko-KR")}KB`;
 }
 
 function parseRecord(value: unknown) {

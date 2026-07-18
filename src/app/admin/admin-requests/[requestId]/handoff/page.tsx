@@ -34,6 +34,7 @@ export default async function AdminRequestHandoffDraftPage({
     { data: partner },
     { data: review },
     { data: supplements },
+    { data: files },
   ] = await Promise.all([
       supabase
         .from("profiles")
@@ -66,6 +67,13 @@ export default async function AdminRequestHandoffDraftPage({
         .select("id, message, contact_snapshot, document_checklist, created_at")
         .eq("request_id", request.id)
         .order("created_at", { ascending: false }),
+      supabase
+        .from("admin_request_files")
+        .select(
+          "id, request_id, supplement_id, original_name, mime_type, size_bytes, source, uploaded_at",
+        )
+        .eq("request_id", request.id)
+        .order("uploaded_at", { ascending: false }),
     ]);
 
   const details = parseRequestDetails(request.request_details);
@@ -83,10 +91,21 @@ export default async function AdminRequestHandoffDraftPage({
     review,
     supplements: supplements ?? [],
   });
+  const requestFiles = (files ?? []).filter((file) => file.source === "request");
+  const filesBySupplementId = new Map<string, NonNullable<typeof files>>();
+  files?.forEach((file) => {
+    if (!file.supplement_id) {
+      return;
+    }
+
+    const existing = filesBySupplementId.get(file.supplement_id) ?? [];
+    filesBySupplementId.set(file.supplement_id, [...existing, file]);
+  });
   const draftText = buildDraftText({
     contact,
     details,
     documents,
+    files: files ?? [],
     partnerName: partner?.name || partner?.email || "미정",
     profile,
     readiness,
@@ -206,6 +225,10 @@ export default async function AdminRequestHandoffDraftPage({
           ) : null}
         </section>
 
+        {requestFiles.length > 0 ? (
+          <FileList files={requestFiles} title="접수 파일" />
+        ) : null}
+
         <section className="mt-6 border-t border-slate-100 pt-5">
           <h2 className="text-lg font-black">요청 메모</h2>
           <p className="mt-2 whitespace-pre-wrap rounded-xl bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
@@ -245,6 +268,8 @@ export default async function AdminRequestHandoffDraftPage({
                 const supplementDocuments = parseDocumentChecklist(
                   supplement.document_checklist,
                 );
+                const supplementFiles =
+                  filesBySupplementId.get(supplement.id) ?? [];
 
                 return (
                   <div
@@ -273,6 +298,9 @@ export default async function AdminRequestHandoffDraftPage({
                       <p className="mt-2 whitespace-pre-wrap rounded-lg bg-white p-3 text-sm font-semibold leading-6 text-amber-900">
                         추가 확인: {supplementDocuments.missingNote}
                       </p>
+                    ) : null}
+                    {supplementFiles.length > 0 ? (
+                      <FileList files={supplementFiles} title="보완 파일" />
                     ) : null}
                   </div>
                 );
@@ -352,6 +380,46 @@ function Signal({
       <p className="mt-1 break-words text-sm font-black">{value}</p>
     </div>
   );
+}
+
+function FileList({
+  files,
+  title,
+}: {
+  files: {
+    id: string;
+    original_name: string;
+    size_bytes: number;
+  }[];
+  title: string;
+}) {
+  return (
+    <section className="mt-6 border-t border-slate-100 pt-5">
+      <h2 className="text-lg font-black">{title}</h2>
+      <div className="mt-3 grid gap-2">
+        {files.map((file) => (
+          <a
+            className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-bold text-slate-700 hover:text-blue-700"
+            href={`/api/admin/admin-request-files/${file.id}/download`}
+            key={file.id}
+          >
+            <span className="min-w-0 truncate">{file.original_name}</span>
+            <span className="shrink-0 text-xs text-slate-400">
+              {formatFileSize(file.size_bytes)}
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024) {
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024)).toLocaleString("ko-KR")}KB`;
 }
 
 function parseRecord(value: unknown) {
@@ -456,6 +524,7 @@ function buildDraftText({
   contact,
   details,
   documents,
+  files,
   partnerName,
   profile,
   readiness,
@@ -468,6 +537,12 @@ function buildDraftText({
   contact: ReturnType<typeof parseContactSnapshot>;
   details: ReturnType<typeof parseRequestDetails>;
   documents: ReturnType<typeof parseDocumentChecklist>;
+  files: {
+    original_name: string;
+    size_bytes: number;
+    source: string;
+    supplement_id: string | null;
+  }[];
   partnerName: string;
   profile: { email: string | null; name: string | null; phone: string | null } | null;
   readiness: ReturnType<typeof getAdminRequestReadiness>;
@@ -540,6 +615,7 @@ function buildDraftText({
       ? documents.ready.map(getDocumentLabel).join(", ")
       : "선택된 준비 서류 없음",
     documents.missingNote ? `부족 서류/확인사항: ${documents.missingNote}` : "부족 서류/확인사항: 없음",
+    `첨부 파일: ${formatDraftFiles(files.filter((file) => file.source === "request"))}`,
     "",
     "[요청 메모]",
     request.memo || "요청 메모 없음",
@@ -575,6 +651,9 @@ function buildDraftText({
               supplementDocuments.missingNote
                 ? `추가 확인: ${supplementDocuments.missingNote}`
                 : "추가 확인: 없음",
+              `첨부 파일: ${formatDraftFiles(
+                files.filter((file) => file.supplement_id === supplement.id),
+              )}`,
             ].join("\n");
           })
           .join("\n\n")
@@ -590,6 +669,21 @@ function buildDraftText({
           .join("\n\n")
       : "처리 이력 없음",
   ].join("\n");
+}
+
+function formatDraftFiles(
+  files: {
+    original_name: string;
+    size_bytes: number;
+  }[],
+) {
+  if (files.length === 0) {
+    return "없음";
+  }
+
+  return files
+    .map((file) => `${file.original_name} (${formatFileSize(file.size_bytes)})`)
+    .join(", ");
 }
 
 type RequestTimelineEvent = {
