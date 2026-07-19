@@ -132,7 +132,17 @@ export default async function AdminRequestHandoffDraftPage({
           <ArrowLeft className="size-4" />
           행정 요청 목록으로 돌아가기
         </Link>
-        <ApplicationPrintActions />
+        <div className="flex flex-wrap items-center gap-2">
+          {(files?.length ?? 0) > 0 ? (
+            <a
+              className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+              href={`/api/admin/admin-requests/${request.id}/files`}
+            >
+              파일 묶음 다운로드
+            </a>
+          ) : null}
+          <ApplicationPrintActions />
+        </div>
       </div>
 
       <section className="print-sheet mx-auto max-w-4xl rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">

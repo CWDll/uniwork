@@ -687,6 +687,16 @@ export default async function AdminRequestsPage({
                         >
                           전달 초안 보기
                         </Link>
+                        {(filesByRequestId.get(request.id)?.length ?? 0) > 0 ? (
+                          <a
+                            className={cn(
+                              buttonVariants({ size: "sm", variant: "outline" }),
+                            )}
+                            href={`/api/admin/admin-requests/${request.id}/files`}
+                          >
+                            파일 묶음 다운로드
+                          </a>
+                        ) : null}
                       </div>
                       {request.memo ? (
                         <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-medium leading-6 text-slate-700">
