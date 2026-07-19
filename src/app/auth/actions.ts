@@ -9,6 +9,7 @@ import {
   getCompanyRegistrationDocumentExtension,
   maxCompanyRegistrationDocumentSize,
 } from "@/lib/company-documents";
+import { getLocalizedPath, getLocale } from "@/lib/i18n";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -44,9 +45,15 @@ export async function loginAction(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const next = getSafeNextPath(formData.get("next"));
+  const locale = getLocale(String(formData.get("locale") ?? ""));
 
   if (!email || !password) {
-    return { error: "이메일과 비밀번호를 모두 입력해주세요." };
+    return {
+      error:
+        locale === "en"
+          ? "Please enter both your email and password."
+          : "이메일과 비밀번호를 모두 입력해주세요.",
+    };
   }
 
   const supabase = await createClient();
@@ -59,7 +66,7 @@ export async function loginAction(
     return { error: error.message };
   }
 
-  redirect(next ?? "/");
+  redirect(next ?? getLocalizedPath("/", locale));
 }
 
 export async function signupAction(
@@ -67,6 +74,7 @@ export async function signupAction(
   formData: FormData,
 ): Promise<AuthState> {
   const role = String(formData.get("role") ?? "seeker");
+  const locale = getLocale(String(formData.get("locale") ?? ""));
   const name = String(formData.get("name") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
@@ -78,11 +86,21 @@ export async function signupAction(
   const businessRegistrationDocument = getCompanyDocumentFile(formData);
 
   if (!name || !email || !password) {
-    return { error: "이름, 이메일, 비밀번호를 모두 입력해주세요." };
+    return {
+      error:
+        locale === "en"
+          ? "Please enter your name, email, and password."
+          : "이름, 이메일, 비밀번호를 모두 입력해주세요.",
+    };
   }
 
   if (password.length < 8) {
-    return { error: "비밀번호는 최소 8자 이상으로 입력해주세요." };
+    return {
+      error:
+        locale === "en"
+          ? "Password must be at least 8 characters."
+          : "비밀번호는 최소 8자 이상으로 입력해주세요.",
+    };
   }
 
   if (
@@ -95,7 +113,9 @@ export async function signupAction(
   ) {
     return {
       error:
-        "기업 회원은 기업명, 담당자명, 담당자 휴대폰 번호, 사업자등록번호, 사업자등록증을 입력해주세요.",
+        locale === "en"
+          ? "Company accounts must provide company name, manager name, manager phone, business registration number, and business registration document."
+          : "기업 회원은 기업명, 담당자명, 담당자 휴대폰 번호, 사업자등록번호, 사업자등록증을 입력해주세요.",
     };
   }
 
@@ -106,12 +126,20 @@ export async function signupAction(
       )
     ) {
       return {
-        error: "사업자등록증은 PDF, JPG, JPEG, PNG 파일만 업로드할 수 있습니다.",
+        error:
+          locale === "en"
+            ? "Business registration documents must be PDF, JPG, JPEG, or PNG files."
+            : "사업자등록증은 PDF, JPG, JPEG, PNG 파일만 업로드할 수 있습니다.",
       };
     }
 
     if (businessRegistrationDocument.size > maxCompanyRegistrationDocumentSize) {
-      return { error: "사업자등록증은 5MB 이하로 업로드해주세요." };
+      return {
+        error:
+          locale === "en"
+            ? "Business registration documents must be 5MB or smaller."
+            : "사업자등록증은 5MB 이하로 업로드해주세요.",
+      };
     }
   }
 
@@ -126,7 +154,9 @@ export async function signupAction(
     if (data) {
       return {
         error:
-          "이미 가입된 이메일입니다. 로그인하거나 비밀번호 재설정 기능을 이용해주세요.",
+          locale === "en"
+            ? "This email is already registered. Please log in or reset your password."
+            : "이미 가입된 이메일입니다. 로그인하거나 비밀번호 재설정 기능을 이용해주세요.",
       };
     }
   }
@@ -141,7 +171,9 @@ export async function signupAction(
         name,
         role: safeRole,
       },
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent(
+        getLocalizedPath("/", locale),
+      )}`,
     },
   });
 
@@ -152,7 +184,9 @@ export async function signupAction(
   if (data.user && data.user.identities?.length === 0) {
     return {
       error:
-        "이미 가입된 이메일입니다. 로그인하거나 비밀번호 재설정 기능을 이용해주세요.",
+        locale === "en"
+          ? "This email is already registered. Please log in or reset your password."
+          : "이미 가입된 이메일입니다. 로그인하거나 비밀번호 재설정 기능을 이용해주세요.",
     };
   }
 
@@ -198,12 +232,16 @@ export async function signupAction(
     return {
       message:
         safeRole === "company"
-          ? "기업 회원가입이 접수되었습니다. 이메일 인증 후 운영자 승인 상태를 확인해주세요."
-          : "회원가입이 접수되었습니다. Supabase 이메일 인증이 켜져 있다면 메일함에서 인증 링크를 확인해주세요.",
+          ? locale === "en"
+            ? "Your company sign-up has been submitted. After email verification, check your approval status."
+            : "기업 회원가입이 접수되었습니다. 이메일 인증 후 운영자 승인 상태를 확인해주세요."
+          : locale === "en"
+            ? "Your sign-up has been submitted. If email verification is enabled, please check your inbox."
+            : "회원가입이 접수되었습니다. Supabase 이메일 인증이 켜져 있다면 메일함에서 인증 링크를 확인해주세요.",
     };
   }
 
-  redirect("/");
+  redirect(getLocalizedPath("/", locale));
 }
 
 export async function logoutAction() {
