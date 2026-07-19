@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw, Upload } from "lucide-react";
+import { ImagePlus, RotateCcw, Upload } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useState, type ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
@@ -11,6 +11,10 @@ import {
   allowedCompanyRegistrationDocumentTypes,
   maxCompanyRegistrationDocumentSize,
 } from "@/lib/company-documents";
+import {
+  allowedCompanyLogoTypes,
+  maxCompanyLogoSize,
+} from "@/lib/company-logos";
 import { getLocalizedPath, type Locale } from "@/lib/i18n";
 
 const copy = {
@@ -25,6 +29,8 @@ const copy = {
     company: "기업",
     companyName: "기업명",
     companyNamePlaceholder: "사업자등록증의 상호명",
+    companyType: "기업 유형",
+    companyTypePlaceholder: "기업 유형 선택",
     companyReviewBody:
       "가입 후 회사 정보는 운영자가 검토합니다. 승인 전에는 인증 기업 배지가 표시되지 않습니다.",
     companyReviewTitle: "기업 인증 검토 정보",
@@ -32,6 +38,14 @@ const copy = {
     email: "이메일",
     industry: "업종",
     industryPlaceholder: "예: 카페, 음식점, 교육",
+    employeeCount: "재직 인원",
+    employeeCountPlaceholder: "재직 인원 선택",
+    foreignEmployees: "외국인 재직 여부",
+    foreignEmployeesPlaceholder: "외국인 재직 여부 선택",
+    foreignNo: "아니요",
+    foreignYes: "예",
+    logo: "기업 로고",
+    logoHelp: "정사각형 로고 이미지를 권장합니다. JPG, PNG, WebP 파일만 가능해요.",
     managerName: "담당자명",
     managerNamePlaceholder: "채용 담당자명",
     managerPhone: "담당자 휴대폰 번호",
@@ -41,13 +55,15 @@ const copy = {
     passwordPlaceholder: "8자 이상",
     pending: "가입 처리 중...",
     reviewChecklist:
-      "운영자는 사업자등록번호, 사업자등록증, 담당자 연락처, 업종과 사업장 주소를 기준으로 기업 인증을 검토합니다.",
+      "운영자는 사업자등록번호, 사업자등록증, 담당자 연락처, 업종, 사업장 주소, 기업 규모 정보를 기준으로 기업 인증을 검토합니다.",
     reupload: "다시 업로드",
     role: "가입 유형",
     seeker: "구직자",
     submit: "가입하기",
     upload: "업로드하기",
     uploadHelp: "MB 이하의 PDF, JPG, JPEG, PNG 파일만 업로드 가능해요.",
+    website: "웹사이트 주소",
+    websitePlaceholder: "https://company.kr",
   },
   en: {
     accountManagerName: "Account manager name",
@@ -60,6 +76,8 @@ const copy = {
     company: "Company",
     companyName: "Company name",
     companyNamePlaceholder: "Legal business name",
+    companyType: "Company type",
+    companyTypePlaceholder: "Select company type",
     companyReviewBody:
       "After sign-up, Uniwork admins review the company information. The verified badge is not shown before approval.",
     companyReviewTitle: "Company verification information",
@@ -67,6 +85,14 @@ const copy = {
     email: "Email",
     industry: "Industry",
     industryPlaceholder: "e.g. cafe, restaurant, education",
+    employeeCount: "Employee count",
+    employeeCountPlaceholder: "Select employee count",
+    foreignEmployees: "Foreign employees",
+    foreignEmployeesPlaceholder: "Select foreign employee status",
+    foreignNo: "No",
+    foreignYes: "Yes",
+    logo: "Company logo",
+    logoHelp: "A square logo image is recommended. JPG, PNG, and WebP files only.",
     managerName: "Manager name",
     managerNamePlaceholder: "Recruiting manager name",
     managerPhone: "Manager phone number",
@@ -76,15 +102,33 @@ const copy = {
     passwordPlaceholder: "At least 8 characters",
     pending: "Submitting...",
     reviewChecklist:
-      "Uniwork admins review the business number, registration document, manager contact, industry, and workplace address before verification.",
+      "Uniwork admins review the business number, registration document, manager contact, industry, workplace address, and company scale before verification.",
     reupload: "Upload again",
     role: "Account type",
     seeker: "Job seeker",
     submit: "Sign up",
     upload: "Upload",
     uploadHelp: "MB or smaller. PDF, JPG, JPEG, and PNG files only.",
+    website: "Website URL",
+    websitePlaceholder: "https://company.kr",
   },
 } satisfies Record<Locale, Record<string, string>>;
+
+const companyTypeOptions = [
+  { en: "Corporation", ko: "법인사업자", value: "corporation" },
+  { en: "Sole proprietor", ko: "개인사업자", value: "sole_proprietor" },
+  { en: "School or institution", ko: "학교/기관", value: "school_institution" },
+  { en: "Startup", ko: "스타트업", value: "startup" },
+  { en: "Other", ko: "기타", value: "other" },
+];
+
+const employeeCountOptions = [
+  { label: "1-4", value: "1-4" },
+  { label: "5-9", value: "5-9" },
+  { label: "10-49", value: "10-49" },
+  { label: "50-99", value: "50-99" },
+  { label: "100+", value: "100+" },
+];
 
 export function SignupForm({
   initialRole = "seeker",
@@ -95,6 +139,7 @@ export function SignupForm({
 }) {
   const [role, setRole] = useState(initialRole);
   const [hideFeedback, setHideFeedback] = useState(false);
+  const [logoFileName, setLogoFileName] = useState("");
   const [registrationFileName, setRegistrationFileName] = useState("");
   const [state, formAction] = useActionState(signupAction, {});
   const isCompany = role === "company";
@@ -108,6 +153,10 @@ export function SignupForm({
 
   function handleRegistrationFileChange(event: ChangeEvent<HTMLInputElement>) {
     setRegistrationFileName(event.target.files?.[0]?.name ?? "");
+  }
+
+  function handleLogoFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setLogoFileName(event.target.files?.[0]?.name ?? "");
   }
 
   return (
@@ -139,6 +188,7 @@ export function SignupForm({
             placeholder={
               isCompany ? t.accountManagerPlaceholder : t.namePlaceholder
             }
+            required
           />
         </label>
         <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
@@ -148,6 +198,7 @@ export function SignupForm({
             className="h-11 rounded-md border border-slate-200 px-3"
             name="email"
             placeholder="you@example.com"
+            required
             type="email"
           />
         </label>
@@ -158,6 +209,7 @@ export function SignupForm({
             className="h-11 rounded-md border border-slate-200 px-3"
             name="password"
             placeholder={t.passwordPlaceholder}
+            required
             type="password"
           />
         </label>
@@ -177,6 +229,7 @@ export function SignupForm({
                 className="h-11 rounded-md border border-slate-200 px-3"
                 name="company_name"
                 placeholder={t.companyNamePlaceholder}
+                required
               />
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -185,6 +238,7 @@ export function SignupForm({
                 className="h-11 rounded-md border border-slate-200 px-3"
                 name="manager_name"
                 placeholder={t.managerNamePlaceholder}
+                required
               />
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700">
@@ -193,6 +247,7 @@ export function SignupForm({
                 className="h-11 rounded-md border border-slate-200 px-3"
                 name="manager_phone"
                 placeholder="010-0000-0000"
+                required
               />
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
@@ -201,6 +256,7 @@ export function SignupForm({
                 className="h-11 rounded-md border border-slate-200 px-3"
                 name="business_number"
                 placeholder={t.businessNumberPlaceholder}
+                required
               />
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
@@ -220,6 +276,7 @@ export function SignupForm({
                 className="sr-only"
                 name="business_registration_document"
                 onChange={handleRegistrationFileChange}
+                required
                 type="file"
               />
               <span className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-blue-600 bg-white px-4 text-sm font-black text-blue-700">
@@ -237,7 +294,50 @@ export function SignupForm({
                 className="h-11 rounded-md border border-slate-200 px-3"
                 name="industry"
                 placeholder={t.industryPlaceholder}
+                required
               />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              {t.companyType}
+              <select
+                className="h-11 rounded-md border border-slate-200 px-3"
+                name="company_type"
+                required
+              >
+                <option value="">{t.companyTypePlaceholder}</option>
+                {companyTypeOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option[locale]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              {t.employeeCount}
+              <select
+                className="h-11 rounded-md border border-slate-200 px-3"
+                name="employee_count_range"
+                required
+              >
+                <option value="">{t.employeeCountPlaceholder}</option>
+                {employeeCountOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700">
+              {t.foreignEmployees}
+              <select
+                className="h-11 rounded-md border border-slate-200 px-3"
+                name="has_foreign_employees"
+                required
+              >
+                <option value="">{t.foreignEmployeesPlaceholder}</option>
+                <option value="true">{t.foreignYes}</option>
+                <option value="false">{t.foreignNo}</option>
+              </select>
             </label>
             <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
               {t.address}
@@ -245,7 +345,44 @@ export function SignupForm({
                 className="h-11 rounded-md border border-slate-200 px-3"
                 name="address"
                 placeholder={t.addressPlaceholder}
+                required
               />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
+              {t.website}
+              <input
+                className="h-11 rounded-md border border-slate-200 px-3"
+                name="website_url"
+                placeholder={t.websitePlaceholder}
+                type="url"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-slate-700 sm:col-span-2">
+              {t.logo}
+              <span className="rounded-md bg-white/70 px-3 py-2 text-xs font-semibold leading-5 text-slate-500">
+                {Math.round(maxCompanyLogoSize / 1024 / 1024)}MB 이하 ·{" "}
+                {t.logoHelp}
+              </span>
+              {logoFileName ? (
+                <span className="flex h-11 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
+                  {logoFileName}
+                </span>
+              ) : null}
+              <input
+                accept={allowedCompanyLogoTypes.join(",")}
+                className="sr-only"
+                name="company_logo"
+                onChange={handleLogoFileChange}
+                type="file"
+              />
+              <span className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-blue-600 bg-white px-4 text-sm font-black text-blue-700">
+                {logoFileName ? (
+                  <RotateCcw className="size-4" />
+                ) : (
+                  <ImagePlus className="size-4" />
+                )}
+                {logoFileName ? t.reupload : t.upload}
+              </span>
             </label>
             <p className="text-xs font-semibold leading-5 text-slate-500 sm:col-span-2">
               {t.reviewChecklist}

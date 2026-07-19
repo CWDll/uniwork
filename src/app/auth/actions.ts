@@ -9,6 +9,12 @@ import {
   getCompanyRegistrationDocumentExtension,
   maxCompanyRegistrationDocumentSize,
 } from "@/lib/company-documents";
+import {
+  allowedCompanyLogoTypes,
+  companyLogosBucket,
+  getCompanyLogoExtension,
+  maxCompanyLogoSize,
+} from "@/lib/company-logos";
 import { getLocalizedPath, getLocale } from "@/lib/i18n";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -17,6 +23,22 @@ type AuthState = {
   error?: string;
   message?: string;
 };
+
+const allowedCompanyTypes = new Set([
+  "corporation",
+  "sole_proprietor",
+  "school_institution",
+  "startup",
+  "other",
+]);
+
+const allowedEmployeeCountRanges = new Set([
+  "1-4",
+  "5-9",
+  "10-49",
+  "50-99",
+  "100+",
+]);
 
 function getSafeNextPath(value: FormDataEntryValue | null) {
   const next = String(value ?? "").trim();
@@ -36,6 +58,32 @@ function getCompanyDocumentFile(formData: FormData) {
   }
 
   return value;
+}
+
+function getCompanyLogoFile(formData: FormData) {
+  const value = formData.get("company_logo");
+
+  if (!(value instanceof File) || value.size === 0) {
+    return null;
+  }
+
+  return value;
+}
+
+function getOptionalUrl(value: FormDataEntryValue | null) {
+  const url = String(value ?? "").trim();
+
+  if (!url) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(url);
+
+    return parsed.protocol === "http:" || parsed.protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function loginAction(
@@ -83,7 +131,18 @@ export async function signupAction(
   const managerName = String(formData.get("manager_name") ?? "").trim();
   const managerPhone = String(formData.get("manager_phone") ?? "").trim();
   const businessNumber = String(formData.get("business_number") ?? "").trim();
+  const industry = String(formData.get("industry") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
   const businessRegistrationDocument = getCompanyDocumentFile(formData);
+  const companyLogo = getCompanyLogoFile(formData);
+  const companyType = String(formData.get("company_type") ?? "").trim();
+  const employeeCountRange = String(
+    formData.get("employee_count_range") ?? "",
+  ).trim();
+  const foreignEmployeesValue = String(
+    formData.get("has_foreign_employees") ?? "",
+  ).trim();
+  const websiteUrl = getOptionalUrl(formData.get("website_url"));
 
   if (!name || !email || !password) {
     return {
@@ -109,13 +168,41 @@ export async function signupAction(
       !managerName ||
       !managerPhone ||
       !businessNumber ||
-      !businessRegistrationDocument)
+      !businessRegistrationDocument ||
+      !industry ||
+      !address ||
+      !companyType ||
+      !employeeCountRange ||
+      !foreignEmployeesValue)
   ) {
     return {
       error:
         locale === "en"
-          ? "Company accounts must provide company name, manager name, manager phone, business registration number, and business registration document."
-          : "기업 회원은 기업명, 담당자명, 담당자 휴대폰 번호, 사업자등록번호, 사업자등록증을 입력해주세요.",
+          ? "Company accounts must provide company, manager, business, industry, address, company type, employee count, and foreign employee status information."
+          : "기업 회원은 기업명, 담당자 정보, 사업자 정보, 업종, 주소, 기업 유형, 재직 인원, 외국인 재직 여부를 입력해주세요.",
+    };
+  }
+
+  if (websiteUrl === null) {
+    return {
+      error:
+        locale === "en"
+          ? "Please enter the website URL starting with http:// or https://."
+          : "웹사이트 주소는 http:// 또는 https://로 시작하는 주소로 입력해주세요.",
+    };
+  }
+
+  if (
+    safeRole === "company" &&
+    (!allowedCompanyTypes.has(companyType) ||
+      !allowedEmployeeCountRanges.has(employeeCountRange) ||
+      !["true", "false"].includes(foreignEmployeesValue))
+  ) {
+    return {
+      error:
+        locale === "en"
+          ? "Please select valid company type, employee count, and foreign employee status options."
+          : "기업 유형, 재직 인원, 외국인 재직 여부를 올바르게 선택해주세요.",
     };
   }
 
@@ -139,6 +226,26 @@ export async function signupAction(
           locale === "en"
             ? "Business registration documents must be 5MB or smaller."
             : "사업자등록증은 5MB 이하로 업로드해주세요.",
+      };
+    }
+  }
+
+  if (safeRole === "company" && companyLogo) {
+    if (!allowedCompanyLogoTypes.includes(companyLogo.type)) {
+      return {
+        error:
+          locale === "en"
+            ? "Company logos must be JPG, PNG, or WebP images."
+            : "기업 로고는 JPG, PNG, WebP 이미지만 업로드할 수 있습니다.",
+      };
+    }
+
+    if (companyLogo.size > maxCompanyLogoSize) {
+      return {
+        error:
+          locale === "en"
+            ? "Company logos must be 5MB or smaller."
+            : "기업 로고는 5MB 이하로 업로드해주세요.",
       };
     }
   }
@@ -193,6 +300,7 @@ export async function signupAction(
   if (safeRole === "company" && data.user && process.env.SUPABASE_SERVICE_ROLE_KEY) {
     const admin = createAdminClient();
     let businessRegistrationPath: string | null = null;
+    let logoPath: string | null = null;
 
     if (businessRegistrationDocument) {
       businessRegistrationPath = `${data.user.id}/business-registration.${getCompanyRegistrationDocumentExtension(businessRegistrationDocument)}`;
@@ -208,16 +316,35 @@ export async function signupAction(
       }
     }
 
+    if (companyLogo) {
+      logoPath = `${data.user.id}/logo.${getCompanyLogoExtension(companyLogo)}`;
+      const { error: logoUploadError } = await admin.storage
+        .from(companyLogosBucket)
+        .upload(logoPath, companyLogo, {
+          contentType: companyLogo.type,
+          upsert: true,
+        });
+
+      if (logoUploadError) {
+        return { error: logoUploadError.message };
+      }
+    }
+
     const { error: companyError } = await admin.from("companies").insert({
       owner_id: data.user.id,
       name: companyName,
       business_number: businessNumber,
       business_registration_path: businessRegistrationPath,
-      industry: String(formData.get("industry") ?? "").trim(),
-      address: String(formData.get("address") ?? "").trim(),
+      company_type: companyType,
+      employee_count_range: employeeCountRange,
+      has_foreign_employees: foreignEmployeesValue === "true",
+      industry,
+      address,
+      logo_path: logoPath,
       manager_name: managerName,
       manager_phone: managerPhone,
       notification_email: email,
+      website_url: websiteUrl || null,
       verification_status: "pending",
       verification_note:
         "기업 회원가입 단계에서 접수되었습니다. 사업자 정보와 담당자 정보를 검토해주세요.",

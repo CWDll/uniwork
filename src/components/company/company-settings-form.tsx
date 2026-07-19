@@ -1,6 +1,6 @@
 "use client";
 
-import { RotateCcw, Upload } from "lucide-react";
+import { ImagePlus, RotateCcw, Upload } from "lucide-react";
 import { useActionState, useState, type ChangeEvent } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -13,19 +13,38 @@ import {
   allowedCompanyRegistrationDocumentTypes,
   maxCompanyRegistrationDocumentSize,
 } from "@/lib/company-documents";
+import {
+  allowedCompanyLogoTypes,
+  maxCompanyLogoSize,
+} from "@/lib/company-logos";
 
 type CompanyFormValue = {
   address?: string | null;
   business_number?: string | null;
   business_registration_path?: string | null;
+  company_type?: string | null;
   email_notifications_enabled?: boolean | null;
+  employee_count_range?: string | null;
+  has_foreign_employees?: boolean | null;
   id: string;
   industry?: string | null;
+  logo_path?: string | null;
   manager_name?: string | null;
   manager_phone?: string | null;
   name?: string | null;
   notification_email?: string | null;
+  website_url?: string | null;
 };
+
+const companyTypeOptions = [
+  { label: "법인사업자", value: "corporation" },
+  { label: "개인사업자", value: "sole_proprietor" },
+  { label: "학교/기관", value: "school_institution" },
+  { label: "스타트업", value: "startup" },
+  { label: "기타", value: "other" },
+];
+
+const employeeCountOptions = ["1-4", "5-9", "10-49", "50-99", "100+"];
 
 export function CompanySettingsForm({
   company,
@@ -36,6 +55,7 @@ export function CompanySettingsForm({
 }) {
   const [createState, createFormAction] = useActionState(createCompanyAction, {});
   const [updateState, updateFormAction] = useActionState(updateCompanyAction, {});
+  const [logoFileName, setLogoFileName] = useState("");
   const [registrationFileName, setRegistrationFileName] = useState("");
   const state = mode === "edit" ? updateState : createState;
   const formAction = mode === "edit" ? updateFormAction : createFormAction;
@@ -43,6 +63,10 @@ export function CompanySettingsForm({
 
   function handleRegistrationFileChange(event: ChangeEvent<HTMLInputElement>) {
     setRegistrationFileName(event.target.files?.[0]?.name ?? "");
+  }
+
+  function handleLogoFileChange(event: ChangeEvent<HTMLInputElement>) {
+    setLogoFileName(event.target.files?.[0]?.name ?? "");
   }
 
   return (
@@ -58,11 +82,13 @@ export function CompanySettingsForm({
           defaultValue={company?.name ?? ""}
           label="회사/지점명"
           name="name"
+          required
         />
         <Field
           defaultValue={company?.business_number ?? ""}
           label="사업자등록번호"
           name="business_number"
+          required
         />
         <label className="grid gap-2 text-sm font-bold text-slate-700 md:col-span-2">
           사업자등록증
@@ -100,21 +126,97 @@ export function CompanySettingsForm({
           defaultValue={company?.industry ?? ""}
           label="업종"
           name="industry"
+          required
+        />
+        <SelectField
+          defaultValue={company?.company_type ?? ""}
+          label="기업 유형"
+          name="company_type"
+          options={companyTypeOptions}
+          placeholder="기업 유형 선택"
+          required
+        />
+        <SelectField
+          defaultValue={company?.employee_count_range ?? ""}
+          label="재직 인원"
+          name="employee_count_range"
+          options={employeeCountOptions.map((value) => ({ label: value, value }))}
+          placeholder="재직 인원 선택"
+          required
+        />
+        <SelectField
+          defaultValue={
+            company?.has_foreign_employees === null ||
+            company?.has_foreign_employees === undefined
+              ? ""
+              : String(company.has_foreign_employees)
+          }
+          label="외국인 재직 여부"
+          name="has_foreign_employees"
+          options={[
+            { label: "예", value: "true" },
+            { label: "아니요", value: "false" },
+          ]}
+          placeholder="외국인 재직 여부 선택"
+          required
         />
         <Field
           defaultValue={company?.address ?? ""}
           label="사업장 주소"
           name="address"
+          required
         />
+        <Field
+          defaultValue={company?.website_url ?? ""}
+          helper="회사 소개 페이지, 공식 웹사이트, SNS 등 공개 가능한 주소를 입력할 수 있습니다."
+          label="웹사이트 주소"
+          name="website_url"
+          placeholder="https://company.kr"
+          type="url"
+        />
+        <label className="grid gap-2 text-sm font-bold text-slate-700">
+          기업 로고
+          <span className="rounded-md bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-500">
+            {Math.round(maxCompanyLogoSize / 1024 / 1024)}MB 이하의 JPG, PNG,
+            WebP 파일만 업로드 가능해요.
+          </span>
+          {company?.logo_path && !logoFileName ? (
+            <span className="flex h-11 items-center rounded-md border border-emerald-100 bg-emerald-50 px-3 text-sm font-semibold text-emerald-800">
+              기존 로고 제출 완료
+            </span>
+          ) : null}
+          {logoFileName ? (
+            <span className="flex h-11 items-center rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700">
+              {logoFileName}
+            </span>
+          ) : null}
+          <input
+            accept={allowedCompanyLogoTypes.join(",")}
+            className="sr-only"
+            name="company_logo"
+            onChange={handleLogoFileChange}
+            type="file"
+          />
+          <span className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-md border border-blue-600 bg-white px-4 text-sm font-black text-blue-700">
+            {logoFileName ? (
+              <RotateCcw className="size-4" />
+            ) : (
+              <ImagePlus className="size-4" />
+            )}
+            {logoFileName ? "다시 업로드" : "업로드하기"}
+          </span>
+        </label>
         <Field
           defaultValue={company?.manager_name ?? ""}
           label="담당자명"
           name="manager_name"
+          required
         />
         <Field
           defaultValue={company?.manager_phone ?? ""}
           label="담당자 연락처"
           name="manager_phone"
+          required
         />
         <Field
           defaultValue={company?.notification_email ?? ""}
@@ -155,12 +257,16 @@ function Field({
   helper,
   label,
   name,
+  placeholder,
+  required = false,
   type = "text",
 }: {
   defaultValue?: string;
   helper?: string;
   label: string;
   name: string;
+  placeholder?: string;
+  required?: boolean;
   type?: string;
 }) {
   return (
@@ -170,6 +276,8 @@ function Field({
         className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
         defaultValue={defaultValue}
         name={name}
+        placeholder={placeholder}
+        required={required}
         type={type}
       />
       {helper ? (
@@ -177,6 +285,41 @@ function Field({
           {helper}
         </span>
       ) : null}
+    </label>
+  );
+}
+
+function SelectField({
+  defaultValue,
+  label,
+  name,
+  options,
+  placeholder,
+  required = false,
+}: {
+  defaultValue?: string;
+  label: string;
+  name: string;
+  options: Array<{ label: string; value: string }>;
+  placeholder: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="grid gap-2 text-sm font-bold text-slate-700">
+      {label}
+      <select
+        className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
+        defaultValue={defaultValue}
+        name={name}
+        required={required}
+      >
+        <option value="">{placeholder}</option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

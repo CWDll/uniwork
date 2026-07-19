@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdmin } from "@/lib/admin-auth";
+import { getCompanyLogoUrl } from "@/lib/company-logos";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +38,7 @@ export default async function AdminCompaniesPage({
   const { data: allCompanies } = await supabase
     .from("companies")
     .select(
-      "id, owner_id, name, business_number, business_registration_path, industry, address, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at, created_at",
+      "id, owner_id, name, business_number, business_registration_path, company_type, employee_count_range, has_foreign_employees, industry, address, website_url, logo_path, manager_name, manager_phone, notification_email, email_notifications_enabled, verification_status, verification_note, verified_at, created_at",
     )
     .order("created_at", { ascending: false });
   const documentPaths = Array.from(
@@ -147,6 +148,9 @@ export default async function AdminCompaniesPage({
                 address: company.address,
                 businessRegistrationPath: company.business_registration_path,
                 businessNumber: company.business_number,
+                companyType: company.company_type,
+                employeeCountRange: company.employee_count_range,
+                hasForeignEmployees: company.has_foreign_employees,
                 managerName: company.manager_name,
                 managerPhone: company.manager_phone,
                 notificationEmail: company.notification_email,
@@ -155,6 +159,7 @@ export default async function AdminCompaniesPage({
                 missingCount: readiness.missing.length,
                 status: company.verification_status,
               });
+              const logoUrl = getCompanyLogoUrl(supabase, company.logo_path);
 
               return (
                 <details
@@ -163,6 +168,14 @@ export default async function AdminCompaniesPage({
                 >
                   <summary className="grid cursor-pointer list-none gap-3 rounded-xl p-1 transition hover:bg-slate-50 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_160px_120px] md:items-center">
                     <div className="flex flex-wrap items-center gap-2">
+                      {logoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          alt=""
+                          className="size-9 rounded-lg border border-slate-200 object-cover"
+                          src={logoUrl}
+                        />
+                      ) : null}
                       <h3 className="min-w-0 truncate font-black">{company.name}</h3>
                       <span
                         className={getStatusBadgeClassName(
@@ -205,12 +218,39 @@ export default async function AdminCompaniesPage({
                         value={`${readiness.completed}/${readiness.total} 항목`}
                       />
                       <Info
+                        label="기업 유형"
+                        value={getCompanyTypeLabel(company.company_type)}
+                      />
+                      <Info
+                        label="재직 인원"
+                        value={company.employee_count_range || "미입력"}
+                      />
+                      <Info
+                        label="외국인 재직"
+                        value={
+                          company.has_foreign_employees === null ||
+                          company.has_foreign_employees === undefined
+                            ? "미입력"
+                            : company.has_foreign_employees
+                              ? "예"
+                              : "아니요"
+                        }
+                      />
+                      <Info
                         label="사업자등록증"
                         value={
                           company.business_registration_path
                             ? "제출 완료"
                             : "미제출"
                         }
+                      />
+                      <Info
+                        label="기업 로고"
+                        value={company.logo_path ? "제출 완료" : "미제출"}
+                      />
+                      <Info
+                        label="웹사이트"
+                        value={company.website_url || "미입력"}
                       />
                       <Info
                         label="등록일"
@@ -424,6 +464,9 @@ function getCompanyReadiness({
   address,
   businessRegistrationPath,
   businessNumber,
+  companyType,
+  employeeCountRange,
+  hasForeignEmployees,
   managerName,
   managerPhone,
   notificationEmail,
@@ -431,6 +474,9 @@ function getCompanyReadiness({
   address?: string | null;
   businessRegistrationPath?: string | null;
   businessNumber?: string | null;
+  companyType?: string | null;
+  employeeCountRange?: string | null;
+  hasForeignEmployees?: boolean | null;
   managerName?: string | null;
   managerPhone?: string | null;
   notificationEmail?: string | null;
@@ -438,6 +484,12 @@ function getCompanyReadiness({
   const checks = [
     { done: Boolean(businessNumber?.trim()), label: "사업자번호" },
     { done: Boolean(businessRegistrationPath?.trim()), label: "사업자등록증" },
+    { done: Boolean(companyType?.trim()), label: "기업 유형" },
+    { done: Boolean(employeeCountRange?.trim()), label: "재직 인원" },
+    {
+      done: hasForeignEmployees !== null && hasForeignEmployees !== undefined,
+      label: "외국인 재직 여부",
+    },
     { done: Boolean(address?.trim()), label: "주소" },
     { done: Boolean(managerName?.trim()), label: "담당자명" },
     { done: Boolean(managerPhone?.trim()), label: "담당자 연락처" },
@@ -472,6 +524,18 @@ function getReviewGuidance({
   }
 
   return "필수 항목이 준비되어 있습니다. 사업자 정보와 담당자 정보를 확인한 뒤 인증하세요.";
+}
+
+function getCompanyTypeLabel(value?: string | null) {
+  const labels: Record<string, string> = {
+    corporation: "법인사업자",
+    other: "기타",
+    school_institution: "학교/기관",
+    sole_proprietor: "개인사업자",
+    startup: "스타트업",
+  };
+
+  return value ? (labels[value] ?? value) : "미입력";
 }
 
 function Info({ label, value }: { label: string; value: string }) {
