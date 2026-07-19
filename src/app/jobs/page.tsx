@@ -64,7 +64,10 @@ function getParam(value: string | undefined) {
 }
 
 function getFilterText(value: string) {
-  return value.replace(/[%(),]/g, " ").replace(/\s+/g, " ").trim();
+  return value
+    .replace(/[%(),]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function buildJobsHref(
@@ -253,67 +256,69 @@ export default async function JobsPage({
       company.verification_status === "verified",
     ]) ?? [],
   );
-  const { data: savedRows } =
-    user
-      ? await supabase
-          .from("saved_jobs")
-          .select("job_id, created_at")
-          .eq("seeker_id", user.id)
-          .order("created_at", { ascending: false })
-      : { data: [] };
-  const savedJobIds = new Set(savedRows?.map((row) => String(row.job_id)) ?? []);
+  const { data: savedRows } = user
+    ? await supabase
+        .from("saved_jobs")
+        .select("job_id, created_at")
+        .eq("seeker_id", user.id)
+        .order("created_at", { ascending: false })
+    : { data: [] };
+  const savedJobIds = new Set(
+    savedRows?.map((row) => String(row.job_id)) ?? [],
+  );
 
-  const jobsWithEligibility =
-    activeDbJobs.map((job) => {
-      const translation = translationByJobId.get(String(job.id));
-      const company =
-        companyNameById.get(String(job.company_id)) ??
-        getJobFallbackLabel("company", locale);
-      const initials = company
-        .split(/\s+/)
-        .map((part: string) => part[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase();
+  const jobsWithEligibility = activeDbJobs.map((job) => {
+    const translation = translationByJobId.get(String(job.id));
+    const company =
+      companyNameById.get(String(job.company_id)) ??
+      getJobFallbackLabel("company", locale);
+    const initials = company
+      .split(/\s+/)
+      .map((part: string) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
 
-      return {
-        id: job.id,
-        company,
-        companyVerified: companyVerifiedById.get(String(job.company_id)) ?? false,
-        descriptionQuality:
-          (job.description?.trim().length ?? 0) >= 60
-            ? ("complete" as const)
-            : ("needs_detail" as const),
-        featured: false,
-        koreanRequirement:
-          localizedJobValue(
-            job.korean_requirement,
-            translation?.korean_requirement,
-            locale,
-          ) || getJobFallbackLabel("korean", locale),
-        location: localizedJobValue(job.location, translation?.location, locale) || "-",
-        logo: initials || "UW",
-        publishedAt: job.published_at,
-        title: localizedJobValue(job.title, translation?.title, locale) || job.title,
-        type: getEmploymentTypeLabel(job.employment_type, locale),
-        visa:
-          localizedJobValue(
-            job.visa_support_type,
-            translation?.visa_support_type,
-            locale,
-          ) || getJobFallbackLabel("visa", locale),
-        wage: formatWage(job.wage_amount, job.wage_type, locale),
-        saved: savedJobIds.has(String(job.id)),
-        status: job.status,
-        closedAt: job.closed_at,
-        eligibility: getJobEligibility({
-          isSignedIn: Boolean(user),
-          jobVisaSupportType: job.visa_support_type,
-          rule: visaRule,
-          visaType: seekerProfile?.visa_type,
-        }),
-      };
-    });
+    return {
+      id: job.id,
+      company,
+      companyVerified: companyVerifiedById.get(String(job.company_id)) ?? false,
+      descriptionQuality:
+        (job.description?.trim().length ?? 0) >= 60
+          ? ("complete" as const)
+          : ("needs_detail" as const),
+      featured: false,
+      koreanRequirement:
+        localizedJobValue(
+          job.korean_requirement,
+          translation?.korean_requirement,
+          locale,
+        ) || getJobFallbackLabel("korean", locale),
+      location:
+        localizedJobValue(job.location, translation?.location, locale) || "-",
+      logo: initials || "UW",
+      publishedAt: job.published_at,
+      title:
+        localizedJobValue(job.title, translation?.title, locale) || job.title,
+      type: getEmploymentTypeLabel(job.employment_type, locale),
+      visa:
+        localizedJobValue(
+          job.visa_support_type,
+          translation?.visa_support_type,
+          locale,
+        ) || getJobFallbackLabel("visa", locale),
+      wage: formatWage(job.wage_amount, job.wage_type, locale),
+      saved: savedJobIds.has(String(job.id)),
+      status: job.status,
+      closedAt: job.closed_at,
+      eligibility: getJobEligibility({
+        isSignedIn: Boolean(user),
+        jobVisaSupportType: job.visa_support_type,
+        rule: visaRule,
+        visaType: seekerProfile?.visa_type,
+      }),
+    };
+  });
   const jobs = jobsWithEligibility
     .filter((job) => {
       if (effectiveProfileFit !== "eligible") {
@@ -328,15 +333,15 @@ export default async function JobsPage({
     .filter((job) => (savedOnly ? job.saved : true));
   const hasFilters = Boolean(
     q ||
-      location ||
-      employmentType ||
-      category ||
-      visaSupportType ||
-      wageType ||
-      koreanRequirement ||
-      effectiveProfileFit ||
-      savedOnly ||
-      (Number.isFinite(minWage) && minWage > 0),
+    location ||
+    employmentType ||
+    category ||
+    visaSupportType ||
+    wageType ||
+    koreanRequirement ||
+    effectiveProfileFit ||
+    savedOnly ||
+    (Number.isFinite(minWage) && minWage > 0),
   );
   const eligibleOnlyHref = buildJobsHref(
     params,
@@ -348,7 +353,10 @@ export default async function JobsPage({
   const eligibleOnlyEnabled = effectiveProfileFit === "eligible";
   const savedJobs = jobsWithEligibility.filter((job) => job.saved);
   const savedPageSize = 10;
-  const savedTotalPages = Math.max(1, Math.ceil(savedJobs.length / savedPageSize));
+  const savedTotalPages = Math.max(
+    1,
+    Math.ceil(savedJobs.length / savedPageSize),
+  );
   const clampedSavedPage = Math.min(savedPage, savedTotalPages);
   const visibleSavedJobs = savedJobs.slice(
     (clampedSavedPage - 1) * savedPageSize,
@@ -421,84 +429,85 @@ export default async function JobsPage({
               </div>
             )}
 
-          <div className="mt-5">
-            <JobCategoryFilters
-              activeFilters={{
-                category,
-                employment_type: employmentType,
-                korean_requirement: koreanRequirement,
-                location,
-                profile_fit: effectiveProfileFit,
-                saved: savedOnly ? "1" : "",
-                visa_support_type: visaSupportType,
-                wage_type: wageType,
-              }}
-              defaultOpen
-              hasFilters={hasFilters}
-              key={filterStateKey}
-              minWage={
-                Number.isFinite(minWage) && minWage > 0 ? String(minWage) : ""
-              }
-              q={q}
-              showAdvanced
-              locale={locale}
-            />
-          </div>
+            <div className="mt-5">
+              <JobCategoryFilters
+                activeFilters={{
+                  category,
+                  employment_type: employmentType,
+                  korean_requirement: koreanRequirement,
+                  location,
+                  profile_fit: effectiveProfileFit,
+                  saved: savedOnly ? "1" : "",
+                  visa_support_type: visaSupportType,
+                  wage_type: wageType,
+                }}
+                // defaultOpen
+                hasFilters={hasFilters}
+                key={filterStateKey}
+                minWage={
+                  Number.isFinite(minWage) && minWage > 0 ? String(minWage) : ""
+                }
+                q={q}
+                showAdvanced
+                locale={locale}
+              />
+            </div>
 
-          <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
-              <div>
-                <h2 className="text-lg font-black">Jobs {jobs.length}</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500">
-                  {hasFilters
-                    ? copy.filteredSummary
-                    : copy.defaultSummary}
-                </p>
+            <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
+                <div>
+                  <h2 className="text-lg font-black">Jobs {jobs.length}</h2>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">
+                    {hasFilters ? copy.filteredSummary : copy.defaultSummary}
+                  </p>
+                </div>
+              </div>
+              <div className="divide-y divide-slate-100">
+                {jobs.length > 0 ? (
+                  jobs.map((job) => (
+                    <JobCard
+                      job={job}
+                      key={job.id}
+                      locale={locale}
+                      returnTo={currentJobsHref}
+                      viewerSignedIn={Boolean(user)}
+                    />
+                  ))
+                ) : (
+                  <div className="px-5 py-10">
+                    <p className="text-sm font-black text-slate-700">
+                      {copy.noJobsTitle}
+                    </p>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                      {copy.noJobsDescription}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {hasFilters ? (
+                        <Link
+                          className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
+                          href={getLocalizedPath("/jobs", locale)}
+                        >
+                          {copy.reset}
+                        </Link>
+                      ) : null}
+                      <Link
+                        className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
+                        href={
+                          user
+                            ? getLocalizedPath("/me/profile", locale)
+                            : getLocalizedPath(
+                                "/login?next=/me/profile",
+                                locale,
+                              )
+                        }
+                      >
+                        {copy.completeProfile}
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="divide-y divide-slate-100">
-              {jobs.length > 0 ? (
-                jobs.map((job) => (
-                  <JobCard
-                    job={job}
-                    key={job.id}
-                    locale={locale}
-                    returnTo={currentJobsHref}
-                    viewerSignedIn={Boolean(user)}
-                  />
-                ))
-              ) : (
-                <div className="px-5 py-10">
-                  <p className="text-sm font-black text-slate-700">
-                    {copy.noJobsTitle}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                    {copy.noJobsDescription}
-                  </p>
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {hasFilters ? (
-                      <Link
-                        className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
-                        href={getLocalizedPath("/jobs", locale)}
-                      >
-                        {copy.reset}
-                      </Link>
-                    ) : null}
-                    <Link
-                      className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
-                      href={
-                        user
-                          ? getLocalizedPath("/me/profile", locale)
-                          : getLocalizedPath("/login?next=/me/profile", locale)
-                      }
-                    >
-                      {copy.completeProfile}
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
           </div>
 
           {user ? (
@@ -507,7 +516,9 @@ export default async function JobsPage({
                 <div className="border-b border-slate-200 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <h2 className="text-base font-black">{copy.savedTitle}</h2>
+                      <h2 className="text-base font-black">
+                        {copy.savedTitle}
+                      </h2>
                       <p className="mt-1 text-xs font-bold text-slate-500">
                         {copy.savedCount(savedJobs.length)}
                       </p>
@@ -521,10 +532,14 @@ export default async function JobsPage({
                         ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                         : "bg-blue-600 text-white hover:bg-blue-700",
                     )}
-                    href={buildJobsHref(params, {
-                      saved: savedOnly ? "" : "1",
-                      saved_page: "",
-                    }, locale)}
+                    href={buildJobsHref(
+                      params,
+                      {
+                        saved: savedOnly ? "" : "1",
+                        saved_page: "",
+                      },
+                      locale,
+                    )}
                   >
                     {savedOnly ? copy.viewAllJobs : copy.viewSavedOnly}
                   </Link>
@@ -578,9 +593,13 @@ export default async function JobsPage({
                           ? "pointer-events-none text-slate-300"
                           : "text-slate-700 hover:bg-slate-50",
                       )}
-                      href={buildJobsHref(params, {
-                        saved_page: String(clampedSavedPage - 1),
-                      }, locale)}
+                      href={buildJobsHref(
+                        params,
+                        {
+                          saved_page: String(clampedSavedPage - 1),
+                        },
+                        locale,
+                      )}
                     >
                       <ChevronLeft className="size-4" />
                     </Link>
@@ -595,9 +614,13 @@ export default async function JobsPage({
                           ? "pointer-events-none text-slate-300"
                           : "text-slate-700 hover:bg-slate-50",
                       )}
-                      href={buildJobsHref(params, {
-                        saved_page: String(clampedSavedPage + 1),
-                      }, locale)}
+                      href={buildJobsHref(
+                        params,
+                        {
+                          saved_page: String(clampedSavedPage + 1),
+                        },
+                        locale,
+                      )}
                     >
                       <ChevronRight className="size-4" />
                     </Link>
@@ -612,7 +635,10 @@ export default async function JobsPage({
   );
 }
 
-function isActiveJob(job: { closedAt?: string | null; status?: string | null }) {
+function isActiveJob(job: {
+  closedAt?: string | null;
+  status?: string | null;
+}) {
   return job.status === "published";
 }
 
@@ -625,7 +651,8 @@ const jobsCopy = {
       "D-2/D-4 유학생의 시간제 취업 조건과 기업 요구사항을 함께 확인할 수 있도록 공고 구조를 설계합니다.",
     eligibleOnlyDescription: (visaType: string) =>
       `${visaType} 프로필 기준으로 지원 가능하거나 확인이 필요한 공고를 봅니다.`,
-    eligibleOnlyEmpty: "비자 프로필을 입력하면 지원 가능한 공고만 빠르게 볼 수 있습니다.",
+    eligibleOnlyEmpty:
+      "비자 프로필을 입력하면 지원 가능한 공고만 빠르게 볼 수 있습니다.",
     eligibleOnlyTitle: "내가 지원 가능한 공고만 보기",
     eyebrow: "Jobs",
     filteredSummary: "필터가 적용된 결과입니다.",
