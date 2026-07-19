@@ -380,6 +380,14 @@ export default async function CompanyJobsPage({
                       className={cn(
                         buttonVariants({ size: "sm", variant: "outline" }),
                       )}
+                      href={`/company/jobs/${job.id}/edit`}
+                    >
+                      수정
+                    </Link>
+                    <Link
+                      className={cn(
+                        buttonVariants({ size: "sm", variant: "outline" }),
+                      )}
                       href={`/company/applications?job=${job.id}`}
                     >
                       지원자 보기

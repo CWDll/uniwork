@@ -3,7 +3,10 @@
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
 
-import { createCompanyJobAction } from "@/app/company/jobs/actions";
+import {
+  createCompanyJobAction,
+  type JobState,
+} from "@/app/company/jobs/actions";
 import { Button } from "@/components/ui/button";
 
 type CompanyOption = {
@@ -51,34 +54,83 @@ const koreanRequirementOptions = [
   { label: "업무 한국어", value: "Business Korean" },
 ];
 
+type JobFormAction = (
+  prevState: JobState,
+  formData: FormData,
+) => Promise<JobState>;
+
+type JobFormValues = {
+  category: string;
+  closed_at: string;
+  description: string;
+  employment_type: string;
+  en_description: string;
+  en_korean_requirement: string;
+  en_location: string;
+  en_title: string;
+  en_visa_support_type: string;
+  korean_requirement: string;
+  location: string;
+  title: string;
+  visa_support_type: string;
+  wage_amount: string;
+  wage_type: string;
+};
+
+const defaultJobValues: JobFormValues = {
+  category: categoryOptions[0].value,
+  closed_at: "",
+  description: "",
+  employment_type: employmentTypeOptions[0].value,
+  en_description: "",
+  en_korean_requirement: "",
+  en_location: "",
+  en_title: "",
+  en_visa_support_type: "",
+  korean_requirement: koreanRequirementOptions[0].value,
+  location: "",
+  title: "",
+  visa_support_type: visaSupportOptions[0].value,
+  wage_amount: "",
+  wage_type: wageTypeOptions[0].value,
+};
+
 export function CompanyJobForm({
+  action = createCompanyJobAction,
   companies,
   disabled,
+  heading = "새 공고 작성",
+  initialCompanyId = "",
+  initialValues,
+  intro = "운영자 인증이 완료된 회사/지점은 공고를 저장하면 바로 공개됩니다.",
+  jobId,
+  lockCompanySelect = false,
+  pendingLabel = "공고 저장 중...",
+  submitLabel = "공고 등록",
 }: {
+  action?: JobFormAction;
   companies: CompanyOption[];
   disabled: boolean;
+  heading?: string;
+  initialCompanyId?: string;
+  initialValues?: Partial<JobFormValues>;
+  intro?: string;
+  jobId?: string;
+  lockCompanySelect?: boolean;
+  pendingLabel?: string;
+  submitLabel?: string;
 }) {
-  const [state, formAction] = useActionState(createCompanyJobAction, {});
-  const [values, setValues] = useState({
-    category: categoryOptions[0].value,
-    closed_at: "",
-    description: "",
-    employment_type: employmentTypeOptions[0].value,
-    en_description: "",
-    en_korean_requirement: "",
-    en_location: "",
-    en_title: "",
-    en_visa_support_type: "",
-    korean_requirement: koreanRequirementOptions[0].value,
-    location: "",
-    title: "",
-    visa_support_type: visaSupportOptions[0].value,
-    wage_amount: "",
-    wage_type: wageTypeOptions[0].value,
+  const [state, formAction] = useActionState(action, {});
+  const [values, setValues] = useState<JobFormValues>({
+    ...defaultJobValues,
+    ...initialValues,
   });
   function updateValue(name: keyof typeof values, value: string) {
     setValues((current) => ({ ...current, [name]: value }));
   }
+
+  const resolvedCompanyId = initialCompanyId || companies[0]?.id || "";
+  const companySelectDisabled = disabled || lockCompanySelect;
 
   return (
     <form
@@ -87,12 +139,16 @@ export function CompanyJobForm({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black">새 공고 작성</h2>
+          <h2 className="text-xl font-black">{heading}</h2>
           <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
-            운영자 인증이 완료된 회사/지점은 공고를 저장하면 바로 공개됩니다.
+            {intro}
           </p>
         </div>
       </div>
+      {jobId ? <input name="job_id" type="hidden" value={jobId} /> : null}
+      {lockCompanySelect ? (
+        <input name="company_id" type="hidden" value={resolvedCompanyId} />
+      ) : null}
 
       <div className="mt-4 grid gap-2 rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-950 sm:grid-cols-3">
         <span>1. 업무 내용을 구체적으로 작성</span>
@@ -105,7 +161,8 @@ export function CompanyJobForm({
           회사/지점
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
-            disabled={disabled}
+            defaultValue={resolvedCompanyId}
+            disabled={companySelectDisabled}
             name="company_id"
           >
             {companies.map((company) => (
@@ -309,7 +366,11 @@ Notes:
         </p>
       ) : null}
 
-      <SubmitButton disabled={disabled} />
+      <SubmitButton
+        disabled={disabled}
+        pendingLabel={pendingLabel}
+        submitLabel={submitLabel}
+      />
     </form>
   );
 }
@@ -393,12 +454,20 @@ function SelectField({
   );
 }
 
-function SubmitButton({ disabled }: { disabled: boolean }) {
+function SubmitButton({
+  disabled,
+  pendingLabel,
+  submitLabel,
+}: {
+  disabled: boolean;
+  pendingLabel: string;
+  submitLabel: string;
+}) {
   const { pending } = useFormStatus();
 
   return (
     <Button className="mt-6 h-11 w-full sm:w-auto" disabled={disabled || pending}>
-      {pending ? "공고 등록 중..." : "공고 등록"}
+      {pending ? pendingLabel : submitLabel}
     </Button>
   );
 }
