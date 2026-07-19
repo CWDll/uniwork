@@ -18,9 +18,11 @@ import { LoginForm } from "@/components/auth/login-form";
 import { JobCategoryFilters } from "@/components/jobs/job-category-filters";
 import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
+import { SeekerOnboardingOverlay } from "@/components/profile/seeker-onboarding-overlay";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import { applicationTips } from "@/data/seed";
+import { getApplicationCompletion } from "@/lib/applications/completeness";
 import {
   formatWage,
   getEmploymentTypeLabel,
@@ -78,10 +80,22 @@ export default async function Home({
   const { data: seekerProfile } = user
     ? await supabase
         .from("seeker_profiles")
-        .select("visa_type")
+        .select(
+          "nationality, visa_type, alien_registration_status, school, major, korean_level, english_level, preferred_locations, preferred_job_types, available_times",
+        )
         .eq("user_id", user.id)
         .maybeSingle()
     : { data: null };
+  const { data: seekerResume } =
+    user && profile?.role === "seeker"
+      ? await supabase
+          .from("resumes")
+          .select("id, title, intro, education, experience, languages")
+          .eq("seeker_id", user.id)
+          .order("created_at", { ascending: true })
+          .limit(1)
+          .maybeSingle()
+      : { data: null };
   const { data: visaRule } = seekerProfile?.visa_type
     ? await supabase
         .from("visa_eligibility_rules")
@@ -178,9 +192,24 @@ export default async function Home({
         : profile?.role === "partner"
           ? "/admin/admin-requests"
           : "/me";
+  const seekerReadiness = getApplicationCompletion({
+    locale,
+    profile: seekerProfile,
+    resume: seekerResume,
+  });
+  const shouldShowSeekerOnboarding =
+    Boolean(user) &&
+    profile?.role === "seeker" &&
+    !seekerReadiness.isComplete;
 
   return (
     <PublicShell locale={locale}>
+      {shouldShowSeekerOnboarding && user ? (
+        <SeekerOnboardingOverlay
+          profileHref={getLocalizedPath("/me/profile", locale)}
+          userId={user.id}
+        />
+      ) : null}
       <section className="overflow-hidden border-b border-slate-200 bg-white">
         <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:gap-6 sm:px-6 sm:py-6 md:py-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:px-8">
           <div className="min-w-0">
