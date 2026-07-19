@@ -331,8 +331,8 @@ export default async function MePage({
           {
             href: `/me/admin-requests#request-${latestFollowupRequest.id}`,
             label: locale === "en" ? "Admin request needs follow-up" : "행정 요청 보완 필요",
-            note: `${getAdminRequestTypeLabel(latestFollowupRequest.type)} · ${
-              latestFollowupRequest.seeker_followup_note
+            note: `${getAdminRequestTypeLabel(latestFollowupRequest.type, locale)} · ${
+              getAdminRequestFollowupNote(latestFollowupRequest.seeker_followup_note, locale)
             }`,
             tone: "amber",
           },
@@ -664,12 +664,28 @@ export default async function MePage({
   );
 }
 
-function getAdminRequestTypeLabel(value: string) {
+function getAdminRequestTypeLabel(value: string, locale: Locale) {
+  const labels: Record<string, Record<Locale, string>> = {
+    document_review: { en: "Document pre-check", ko: "서류 사전 검토" },
+    other: { en: "Other consultation", ko: "기타 상담" },
+    part_time_work_permission: {
+      en: "Part-time work permission review",
+      ko: "시간제 취업 허가 검토",
+    },
+    visa_eligibility_review: { en: "Visa eligibility review", ko: "비자 지원 가능성 검토" },
+  };
+
+  return labels[value]?.[locale] ?? value;
+}
+
+function getAdminRequestFollowupNote(value: string, locale: Locale) {
+  if (locale !== "en") {
+    return value;
+  }
+
   const labels: Record<string, string> = {
-    document_review: "서류 사전 검토",
-    other: "기타 상담",
-    part_time_work_permission: "시간제 취업 허가 검토",
-    visa_eligibility_review: "비자 지원 가능성 검토",
+    "학교 담당자 확인서와 근로 예정 확인서를 추가로 첨부해주세요.":
+      "Please attach the school approval/contact confirmation and hiring confirmation documents.",
   };
 
   return labels[value] ?? value;
