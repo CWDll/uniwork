@@ -166,7 +166,7 @@ export default async function AdminUsersPage({
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
-          <h2 className="text-lg font-black">Users {visibleProfiles.length}</h2>
+          <h2 className="text-lg font-black">회원 {visibleProfiles.length}</h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             {pageSize}명씩 표시 · {safePage}/{totalPages} 페이지
           </p>

@@ -14,7 +14,7 @@ export function LoginForm({ next }: { next?: string }) {
     <form action={formAction} className="mt-6 grid gap-4">
       {next ? <input name="next" type="hidden" value={next} /> : null}
       <label className="grid gap-2 text-sm font-bold text-slate-700">
-        Email
+        이메일
         <input
           autoComplete="email"
           className="h-11 rounded-md border border-slate-200 px-3 outline-none focus:border-blue-400"
@@ -25,7 +25,7 @@ export function LoginForm({ next }: { next?: string }) {
       </label>
       <label className="grid gap-2 text-sm font-bold text-slate-700">
         <span className="flex items-center justify-between gap-3">
-          Password
+          비밀번호
           <Link
             className="text-xs font-black text-blue-700 hover:text-blue-900"
             href="/forgot-password"
@@ -56,7 +56,7 @@ function SubmitButton() {
 
   return (
     <Button className="h-11" disabled={pending}>
-      {pending ? "Logging in..." : "Log in"}
+      {pending ? "로그인 중..." : "로그인"}
     </Button>
   );
 }

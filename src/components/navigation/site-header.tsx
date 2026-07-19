@@ -8,10 +8,10 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/jobs", label: "Jobs" },
-  { href: "/corp", label: "For Companies" },
-  { href: "/auth", label: "Auth" },
-  { href: "/admin", label: "Admin" },
+  { href: "/jobs", label: "채용공고" },
+  { href: "/corp", label: "기업 서비스" },
+  { href: "/auth", label: "로그인" },
+  { href: "/admin", label: "운영자" },
 ];
 
 const dashboardByRole = {
@@ -47,7 +47,7 @@ export async function SiteHeader() {
     profile?.role && profile.role in dashboardByRole
       ? dashboardByRole[profile.role as keyof typeof dashboardByRole]
       : "/me";
-  const displayName = profile?.name || user?.email || "My account";
+  const displayName = profile?.name || user?.email || "내 계정";
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -61,7 +61,7 @@ export async function SiteHeader() {
               Uniwork
             </p>
             <p className="hidden text-xs font-semibold text-slate-500 sm:block">
-              Jobs for foreign students in Korea
+              외국인 유학생 채용 플랫폼
             </p>
           </div>
         </Link>
@@ -95,7 +95,7 @@ export async function SiteHeader() {
             <form action={logoutAction}>
               <Button size="sm" type="submit" variant="ghost">
                 <LogOut className="size-4" />
-                Log out
+                로그아웃
               </Button>
             </form>
           </div>
@@ -106,10 +106,10 @@ export async function SiteHeader() {
               href="/login"
             >
               <UserRound className="size-4" />
-              Log in
+              로그인
             </Link>
             <Link className={cn(buttonVariants({ size: "sm" }))} href="/signup">
-              Sign up
+              회원가입
             </Link>
           </div>
         )}
@@ -118,7 +118,7 @@ export async function SiteHeader() {
           <Link
             className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
             href={dashboardHref}
-            aria-label="My dashboard"
+            aria-label="내 대시보드"
           >
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

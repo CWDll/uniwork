@@ -120,7 +120,7 @@ export default async function AdminCompaniesPage({
         <div className="border-b border-slate-200 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-black">Companies {companies?.length ?? 0}</h2>
+              <h2 className="text-lg font-black">회사/지점 {companies?.length ?? 0}</h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
                 {`${getStatusMeta("companyVerification", activeStatus).label} 기업`}
               </p>

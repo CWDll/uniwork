@@ -149,7 +149,7 @@ export default async function CompanyJobsPage({
     <DashboardShell area="company">
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-          Company job posts
+          공고 관리
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">
           채용공고를 작성하고 상태를 확인합니다

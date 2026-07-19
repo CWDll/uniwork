@@ -21,31 +21,31 @@ type NavItem = {
 
 const navByArea: Record<"me" | "company" | "admin", NavItem[]> = {
   me: [
-    { href: "/me", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/me/profile", label: "Profile", icon: ShieldCheck },
-    { href: "/me/resume", label: "Resume", icon: FileText },
-    { href: "/me/applications", label: "Applications", icon: ClipboardList },
-    { href: "/me/admin-requests", label: "Admin Requests", icon: FileText },
+    { href: "/me", label: "내 대시보드", icon: LayoutDashboard },
+    { href: "/me/profile", label: "프로필", icon: ShieldCheck },
+    { href: "/me/resume", label: "이력서", icon: FileText },
+    { href: "/me/applications", label: "지원 내역", icon: ClipboardList },
+    { href: "/me/admin-requests", label: "행정 요청", icon: FileText },
   ],
   company: [
-    { href: "/company", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/company/jobs", label: "Job Posts", icon: BriefcaseBusiness },
-    { href: "/company/applications", label: "Applicants", icon: UsersRound },
-    { href: "/company/settings", label: "Settings", icon: Settings },
+    { href: "/company", label: "기업 대시보드", icon: LayoutDashboard },
+    { href: "/company/jobs", label: "공고 관리", icon: BriefcaseBusiness },
+    { href: "/company/applications", label: "지원자 관리", icon: UsersRound },
+    { href: "/company/settings", label: "회사 설정", icon: Settings },
   ],
   admin: [
-    { href: "/admin", label: "Overview", icon: LayoutDashboard },
-    { href: "/admin/companies", label: "Companies", icon: ShieldCheck },
-    { href: "/admin/jobs", label: "Jobs", icon: BriefcaseBusiness },
-    { href: "/admin/users", label: "Users", icon: UsersRound },
-    { href: "/admin/admin-requests", label: "Admin Requests", icon: FileText },
+    { href: "/admin", label: "운영 현황", icon: LayoutDashboard },
+    { href: "/admin/companies", label: "기업 인증", icon: ShieldCheck },
+    { href: "/admin/jobs", label: "공고 운영", icon: BriefcaseBusiness },
+    { href: "/admin/users", label: "회원 관리", icon: UsersRound },
+    { href: "/admin/admin-requests", label: "행정 요청", icon: FileText },
   ],
 };
 
 const titleByArea = {
-  me: "Seeker workspace",
-  company: "Company workspace",
-  admin: "Operations console",
+  me: "구직자 공간",
+  company: "기업 공간",
+  admin: "운영자 콘솔",
 };
 
 export function DashboardShell({

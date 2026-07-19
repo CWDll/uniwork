@@ -12,38 +12,43 @@ type CompanyOption = {
 };
 
 const categoryOptions = [
-  "Cafe & Service",
-  "Office",
-  "Translation",
-  "Marketing",
-  "Education",
-  "Retail",
-  "Restaurant",
-  "Event",
-  "Other",
+  { label: "카페/서비스", value: "Cafe & Service" },
+  { label: "사무직", value: "Office" },
+  { label: "통번역", value: "Translation" },
+  { label: "마케팅", value: "Marketing" },
+  { label: "교육", value: "Education" },
+  { label: "리테일", value: "Retail" },
+  { label: "음식점", value: "Restaurant" },
+  { label: "이벤트", value: "Event" },
+  { label: "기타", value: "Other" },
 ];
 
-const employmentTypeOptions = ["Part-time", "Contract", "Internship", "Full-time"];
+const employmentTypeOptions = [
+  { label: "파트타임", value: "Part-time" },
+  { label: "계약직", value: "Contract" },
+  { label: "인턴십", value: "Internship" },
+  { label: "정규직", value: "Full-time" },
+];
 
 const wageTypeOptions = [
-  { label: "Hourly", value: "hourly" },
-  { label: "Monthly", value: "monthly" },
-  { label: "Project", value: "project" },
+  { label: "시급", value: "hourly" },
+  { label: "월급", value: "monthly" },
+  { label: "건별", value: "project" },
 ];
 
 const visaSupportOptions = [
-  "D-2/D-4",
-  "D-2/D-4/F review",
-  "F visa only",
-  "Visa review required",
+  { label: "D-2/D-4", value: "D-2/D-4" },
+  { label: "D-2/D-4/F 검토", value: "D-2/D-4/F review" },
+  { label: "F 비자만 가능", value: "F visa only" },
+  { label: "비자 검토 필요", value: "Visa review required" },
 ];
 
 const koreanRequirementOptions = [
-  "No Korean required",
-  "Basic conversation",
-  "TOPIK 2+",
-  "TOPIK 3+",
-  "Business Korean",
+  { label: "한국어 무관", value: "No Korean required" },
+  { label: "기초 회화", value: "Basic conversation" },
+  { label: "TOPIK 2 이상", value: "TOPIK 2+" },
+  { label: "TOPIK 3 이상", value: "TOPIK 3+" },
+  { label: "업무 한국어", value: "Business Korean" },
 ];
 
 export function CompanyJobForm({
@@ -55,14 +60,14 @@ export function CompanyJobForm({
 }) {
   const [state, formAction] = useActionState(createCompanyJobAction, {});
   const [values, setValues] = useState({
-    category: categoryOptions[0],
+    category: categoryOptions[0].value,
     closed_at: "",
     description: "",
-    employment_type: employmentTypeOptions[0],
-    korean_requirement: koreanRequirementOptions[0],
+    employment_type: employmentTypeOptions[0].value,
+    korean_requirement: koreanRequirementOptions[0].value,
     location: "",
     title: "",
-    visa_support_type: visaSupportOptions[0],
+    visa_support_type: visaSupportOptions[0].value,
     wage_amount: "",
     wage_type: wageTypeOptions[0].value,
   });
@@ -77,7 +82,7 @@ export function CompanyJobForm({
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-black">New job post</h2>
+          <h2 className="text-xl font-black">새 공고 작성</h2>
           <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
             운영자 인증이 완료된 회사/지점은 공고를 저장하면 바로 공개됩니다.
           </p>
@@ -92,7 +97,7 @@ export function CompanyJobForm({
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
         <label className="grid content-start gap-2 text-sm font-bold text-slate-700 md:col-span-2">
-          Company / branch
+          회사/지점
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
             disabled={disabled}
@@ -108,45 +113,42 @@ export function CompanyJobForm({
         <Field
           disabled={disabled}
           help="예: 홍대 주말 카페 스태프"
-          label="Title"
+          label="공고 제목"
           name="title"
           onChange={(value) => updateValue("title", value)}
-          placeholder="Hongdae weekend cafe staff"
+          placeholder="홍대 주말 카페 스태프"
           required
           value={values.title}
         />
         <Field
           disabled={disabled}
           help="구/동 또는 지점명을 포함하면 구직자가 판단하기 쉽습니다."
-          label="Location"
+          label="근무 지역"
           name="location"
           onChange={(value) => updateValue("location", value)}
-          placeholder="Seoul, Hongdae"
+          placeholder="서울 마포구 홍대입구"
           required
           value={values.location}
         />
         <SelectField
           disabled={disabled}
-          label="Employment type"
+          label="고용 형태"
           name="employment_type"
           onChange={(value) => updateValue("employment_type", value)}
-          options={employmentTypeOptions.map((option) => ({
-            label: option,
-            value: option,
-          }))}
+          options={employmentTypeOptions}
           value={values.employment_type}
         />
         <SelectField
           disabled={disabled}
-          label="Category"
+          label="직종"
           name="category"
           onChange={(value) => updateValue("category", value)}
-          options={categoryOptions.map((option) => ({ label: option, value: option }))}
+          options={categoryOptions}
           value={values.category}
         />
         <SelectField
           disabled={disabled}
-          label="Wage type"
+          label="급여 형태"
           name="wage_type"
           onChange={(value) => updateValue("wage_type", value)}
           options={wageTypeOptions}
@@ -156,7 +158,7 @@ export function CompanyJobForm({
           disabled={disabled}
           help="숫자만 입력하세요. 협의가 필요하면 비워둘 수 있습니다."
           inputMode="numeric"
-          label="Wage amount"
+          label="급여 금액"
           name="wage_amount"
           onChange={(value) => updateValue("wage_amount", value)}
           placeholder="12000"
@@ -164,50 +166,44 @@ export function CompanyJobForm({
         />
         <SelectField
           disabled={disabled}
-          label="Visa support"
+          label="비자 조건"
           name="visa_support_type"
           onChange={(value) => updateValue("visa_support_type", value)}
-          options={visaSupportOptions.map((option) => ({
-            label: option,
-            value: option,
-          }))}
+          options={visaSupportOptions}
           value={values.visa_support_type}
         />
         <SelectField
           disabled={disabled}
-          label="Korean requirement"
+          label="한국어 조건"
           name="korean_requirement"
           onChange={(value) => updateValue("korean_requirement", value)}
-          options={koreanRequirementOptions.map((option) => ({
-            label: option,
-            value: option,
-          }))}
+          options={koreanRequirementOptions}
           value={values.korean_requirement}
         />
         <Field
           disabled={disabled}
           help="비워두면 상시 채용처럼 운영됩니다. 입력하면 해당 시각 이후 자동으로 마감 처리됩니다."
-          label="Closing date/time"
+          label="마감일/시간"
           name="closed_at"
           onChange={(value) => updateValue("closed_at", value)}
           type="datetime-local"
           value={values.closed_at}
         />
         <label className="grid content-start gap-2 text-sm font-bold text-slate-700 md:col-span-2">
-          Description
+          공고 설명
           <textarea
             className="min-h-32 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
             disabled={disabled}
             name="description"
             onChange={(event) => updateValue("description", event.target.value)}
-            placeholder={`Responsibilities:
-- Customer service and simple store tasks
+            placeholder={`업무:
+- 고객 응대와 매장 보조
 
-Working hours:
-- Weekdays evening or weekend shifts
+근무 시간:
+- 평일 저녁 또는 주말 근무
 
-Notes:
-- D-2/D-4 students must confirm legal working-hour conditions before starting.`}
+유의사항:
+- D-2/D-4 유학생은 근무 시작 전 시간제 취업 가능 조건을 확인해야 합니다.`}
             required
             value={values.description}
           />
@@ -318,7 +314,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 
   return (
     <Button className="mt-6 h-11 w-full sm:w-auto" disabled={disabled || pending}>
-      {pending ? "초안 저장 중..." : "공고 초안 저장"}
+      {pending ? "공고 등록 중..." : "공고 등록"}
     </Button>
   );
 }

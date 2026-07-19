@@ -90,21 +90,21 @@ export default async function AdminPage() {
   );
 
   const metrics = [
-    { label: "Users", value: userCount ?? 0, icon: UsersRound },
+    { label: "전체 회원", value: userCount ?? 0, icon: UsersRound },
     {
-      label: "Pending companies",
+      label: "검토 대기 기업",
       value: pendingCompanyCount ?? 0,
       icon: ShieldAlert,
       href: "/admin/companies?status=pending",
     },
     {
-      label: "Published jobs",
+      label: "공개 공고",
       value: publishedJobCount ?? 0,
       icon: BriefcaseBusiness,
       href: "/admin/jobs?status=published",
     },
     {
-      label: "Admin requests",
+      label: "행정 요청",
       value: adminRequestCount ?? 0,
       icon: FileText,
       href: "/admin/admin-requests",

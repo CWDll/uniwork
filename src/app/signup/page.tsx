@@ -17,7 +17,7 @@ export default async function SignupPage({
       <section className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-8 sm:px-6 md:grid-cols-[0.9fr_1.1fr]">
         <aside className="rounded-2xl border border-slate-200 bg-white p-6">
           <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-            Sign up
+            회원가입
           </p>
           <h1 className="mt-4 text-3xl font-black leading-tight">
             역할별 가입 정보를 분리해서 받습니다

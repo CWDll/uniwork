@@ -11,9 +11,9 @@ const dashboardByRole = {
 } as const;
 
 const publicItems = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/jobs", label: "Jobs", icon: BriefcaseBusiness },
-  { href: "/corp", label: "Corp", icon: Building2 },
+  { href: "/", label: "홈", icon: Home },
+  { href: "/jobs", label: "공고", icon: BriefcaseBusiness },
+  { href: "/corp", label: "기업", icon: Building2 },
 ];
 
 export async function MobileBottomNav() {
@@ -32,12 +32,12 @@ export async function MobileBottomNav() {
     ...publicItems,
     {
       href: user ? "/me/applications" : "/auth",
-      label: user ? "Applied" : "Auth",
+      label: user ? "지원" : "로그인",
       icon: UserRound,
     },
     {
       href: user ? dashboardHref : "/login",
-      label: user ? "My" : "Login",
+      label: user ? "내 정보" : "로그인",
       icon: ShieldCheck,
     },
   ];

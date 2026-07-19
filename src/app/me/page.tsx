@@ -182,7 +182,7 @@ export default async function MePage() {
   ];
   const cards = [
     {
-      label: "Profile",
+      label: "프로필",
       value: `${profileCompletion}%`,
       note:
         profileCompletion === 100
@@ -191,13 +191,13 @@ export default async function MePage() {
       icon: ShieldCheck,
     },
     {
-      label: "Applications",
+      label: "지원 내역",
       value: String(applicationCount ?? 0),
       note: "내가 지원한 공고 수",
       icon: Send,
     },
     {
-      label: "Resume",
+      label: "이력서",
       value: `${applicationCompletion.resume.completedCount}/${applicationCompletion.resume.totalCount}`,
       note: applicationCompletion.resume.isComplete
         ? "기업에게 보여줄 이력 정보 입력 완료"
@@ -205,7 +205,7 @@ export default async function MePage() {
       icon: FileText,
     },
     {
-      label: "Admin requests",
+      label: "행정 요청",
       value: String(adminRequestCount ?? 0),
       note: "접수한 행정 요청 수",
       icon: FileText,

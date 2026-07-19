@@ -18,7 +18,7 @@ export default async function LoginPage({
     <PublicShell>
       <section className="mx-auto w-full max-w-md px-4 py-8 sm:px-6">
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
-          <h1 className="text-2xl font-black">Log in</h1>
+          <h1 className="text-2xl font-black">로그인</h1>
           <p className="mt-2 text-sm font-medium leading-6 text-slate-600">
             이메일과 비밀번호로 로그인하면 역할에 맞는 대시보드로 이동합니다.
           </p>
@@ -34,9 +34,9 @@ export default async function LoginPage({
           ) : null}
           <LoginForm next={next} />
           <p className="mt-5 text-center text-sm font-semibold text-slate-600">
-            No account?{" "}
+            아직 계정이 없나요?{" "}
             <Link className="text-blue-700" href="/signup">
-              Sign up
+              회원가입
             </Link>
           </p>
         </div>

@@ -24,38 +24,51 @@ type SeekerProfile = {
 };
 
 const nationalityOptions = [
-  "Vietnam",
-  "Mongolia",
-  "China",
-  "Uzbekistan",
-  "Indonesia",
-  "Japan",
-  "Thailand",
-  "Philippines",
-  "United States",
-  "Other",
+  { label: "베트남", value: "Vietnam" },
+  { label: "몽골", value: "Mongolia" },
+  { label: "중국", value: "China" },
+  { label: "우즈베키스탄", value: "Uzbekistan" },
+  { label: "인도네시아", value: "Indonesia" },
+  { label: "일본", value: "Japan" },
+  { label: "태국", value: "Thailand" },
+  { label: "필리핀", value: "Philippines" },
+  { label: "미국", value: "United States" },
+  { label: "기타", value: "Other" },
 ];
 
 const locationOptions = [
-  "Seoul",
-  "Gyeonggi",
-  "Incheon",
-  "Busan",
-  "Daegu",
-  "Daejeon",
-  "Gwangju",
-  "Other",
+  { label: "서울", value: "Seoul" },
+  { label: "경기", value: "Gyeonggi" },
+  { label: "인천", value: "Incheon" },
+  { label: "부산", value: "Busan" },
+  { label: "대구", value: "Daegu" },
+  { label: "대전", value: "Daejeon" },
+  { label: "광주", value: "Gwangju" },
+  { label: "기타", value: "Other" },
 ];
 
 const jobTypeOptions = [
-  "Cafe & Service",
-  "Restaurant",
-  "Retail",
-  "Office",
-  "Translation",
-  "Marketing",
-  "Education",
-  "Event",
+  { label: "카페/서비스", value: "Cafe & Service" },
+  { label: "음식점", value: "Restaurant" },
+  { label: "리테일", value: "Retail" },
+  { label: "사무직", value: "Office" },
+  { label: "통번역", value: "Translation" },
+  { label: "마케팅", value: "Marketing" },
+  { label: "교육", value: "Education" },
+  { label: "이벤트", value: "Event" },
+];
+
+const englishLevelOptions = [
+  { label: "기초", value: "Basic" },
+  { label: "업무 가능", value: "Business" },
+  { label: "유창함", value: "Fluent" },
+  { label: "원어민 수준", value: "Native" },
+];
+
+const alienRegistrationOptions = [
+  { label: "등록증 있음", value: "has_card" },
+  { label: "신청 중", value: "pending" },
+  { label: "아직 없음", value: "not_yet" },
 ];
 
 export function SeekerProfileForm({
@@ -126,14 +139,14 @@ export function SeekerProfileForm({
 
       <div className="grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 md:col-span-2">
-          <p className="text-sm font-black text-slate-900">Email notifications</p>
+          <p className="text-sm font-black text-slate-900">이메일 알림</p>
           <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
             지원 상태 변경과 기업 안내를 받을 이메일입니다. 비워두면 계정 이메일을 사용합니다.
           </p>
           <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
             <Field
               helper={`계정 이메일: ${accountEmail || "미확인"}`}
-              label="Notification email"
+              label="알림 받을 이메일"
               name="notification_email"
               onChange={(value) => updateDraft("notification_email", value)}
               placeholder={accountEmail || "name@example.com"}
@@ -155,7 +168,7 @@ export function SeekerProfileForm({
           </div>
         </div>
         <label className="grid gap-2 text-sm font-bold text-slate-700">
-          Nationality
+          국적
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
             name="nationality"
@@ -164,14 +177,14 @@ export function SeekerProfileForm({
             value={draft.nationality}
           >
             {nationalityOptions.map((nationality) => (
-              <option key={nationality} value={nationality}>
-                {nationality}
+              <option key={nationality.value} value={nationality.value}>
+                {nationality.label}
               </option>
             ))}
           </select>
         </label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">
-          Visa type
+          체류자격
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
             name="visa_type"
@@ -181,14 +194,14 @@ export function SeekerProfileForm({
           >
             <option value="D-2">D-2</option>
             <option value="D-4">D-4</option>
-            <option value="F-1">F-1 - blocked</option>
-            <option value="F-2">F-2 - needs review</option>
-            <option value="F-3">F-3 - blocked</option>
-            <option value="F-4">F-4 - blocked</option>
+            <option value="F-1">F-1 - 지원 제한</option>
+            <option value="F-2">F-2 - 운영자 검토</option>
+            <option value="F-3">F-3 - 지원 제한</option>
+            <option value="F-4">F-4 - 지원 제한</option>
           </select>
         </label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">
-          Alien registration
+          외국인등록 상태
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
             name="alien_registration_status"
@@ -198,27 +211,29 @@ export function SeekerProfileForm({
             required
             value={draft.alien_registration_status}
           >
-            <option value="has_card">Has registration card</option>
-            <option value="pending">Pending</option>
-            <option value="not_yet">Not yet</option>
+            {alienRegistrationOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
         <Field
-          label="School"
+          label="학교/기관"
           name="school"
           onChange={(value) => updateDraft("school", value)}
           required
           value={draft.school}
         />
         <Field
-          label="Major"
+          label="전공/과정"
           name="major"
           onChange={(value) => updateDraft("major", value)}
           required
           value={draft.major}
         />
         <label className="grid gap-2 text-sm font-bold text-slate-700">
-          Korean level
+          한국어 수준
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
             name="korean_level"
@@ -226,7 +241,7 @@ export function SeekerProfileForm({
             required
             value={draft.korean_level}
           >
-            <option>Beginner</option>
+            <option value="Beginner">초급</option>
             <option>TOPIK 2</option>
             <option>TOPIK 3</option>
             <option>TOPIK 4</option>
@@ -234,7 +249,7 @@ export function SeekerProfileForm({
           </select>
         </label>
         <label className="grid gap-2 text-sm font-bold text-slate-700">
-          English level
+          영어 수준
           <select
             className="h-11 rounded-md border border-slate-200 px-3"
             name="english_level"
@@ -242,15 +257,16 @@ export function SeekerProfileForm({
             required
             value={draft.english_level}
           >
-            <option>Basic</option>
-            <option>Business</option>
-            <option>Fluent</option>
-            <option>Native</option>
+            {englishLevelOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
           </select>
         </label>
         <CheckboxGroup
           className="md:col-span-2"
-          label="Preferred locations"
+          label="희망 근무 지역"
           name="preferred_locations"
           onChange={(selected) => updateDraft("preferred_locations", selected)}
           options={locationOptions}
@@ -258,7 +274,7 @@ export function SeekerProfileForm({
         />
         <CheckboxGroup
           className="md:col-span-2"
-          label="Preferred job types"
+          label="희망 직무"
           name="preferred_job_types"
           onChange={(selected) => updateDraft("preferred_job_types", selected)}
           options={jobTypeOptions}
@@ -266,18 +282,18 @@ export function SeekerProfileForm({
         />
         <Field
           helper={isStudentVisa ? "예: Mon-Fri 18:00-22:00, 최대 주 20시간" : undefined}
-          label="Weekday availability"
+          label="평일 근무 가능 시간"
           name="weekday_availability"
           onChange={(value) => updateDraft("weekday_availability", value)}
-          placeholder="Mon-Fri 18:00-22:00"
+          placeholder="월-금 18:00-22:00"
           value={draft.weekday_availability}
         />
         <Field
           helper={isStudentVisa ? "예: Sat 10:00-18:00" : undefined}
-          label="Weekend availability"
+          label="주말 근무 가능 시간"
           name="weekend_availability"
           onChange={(value) => updateDraft("weekend_availability", value)}
-          placeholder="Sat 10:00-18:00"
+          placeholder="토 10:00-18:00"
           value={draft.weekend_availability}
         />
       </div>
@@ -460,7 +476,7 @@ function CheckboxGroup({
   label: string;
   name: string;
   onChange?: (selected: string[]) => void;
-  options: string[];
+  options: { label: string; value: string }[];
   selected: string[];
 }) {
   return (
@@ -470,23 +486,23 @@ function CheckboxGroup({
         {options.map((option) => (
           <label
             className="flex min-h-11 items-center gap-2 rounded-md border border-slate-200 px-3 text-sm font-bold text-slate-700"
-            key={option}
+            key={option.value}
           >
             <input
               className="size-4 accent-blue-600"
-              checked={selected.includes(option)}
+              checked={selected.includes(option.value)}
               name={name}
               onChange={(event) => {
                 const nextSelected = event.target.checked
-                  ? [...selected, option]
-                  : selected.filter((item) => item !== option);
+                  ? [...selected, option.value]
+                  : selected.filter((item) => item !== option.value);
 
                 onChange?.(nextSelected);
               }}
               type="checkbox"
-              value={option}
+              value={option.value}
             />
-            {option}
+            {option.label}
           </label>
         ))}
       </div>

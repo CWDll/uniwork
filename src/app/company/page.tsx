@@ -204,11 +204,11 @@ export default async function CompanyPage() {
           : "현재 지원자 응대 흐름이 안정적으로 유지되고 있습니다.";
 
   const metrics = [
-    { label: "Verified branches", value: verifiedCompanies.length, icon: CheckCircle2 },
-    { label: "Published jobs", value: publishedJobs.length, icon: BriefcaseBusiness },
-    { label: "Applicants", value: applicantCount ?? 0, icon: UsersRound },
+    { label: "인증 회사/지점", value: verifiedCompanies.length, icon: CheckCircle2 },
+    { label: "공개 공고", value: publishedJobs.length, icon: BriefcaseBusiness },
+    { label: "전체 지원자", value: applicantCount ?? 0, icon: UsersRound },
     {
-      label: "24h unreviewed",
+      label: "24시간 미검토",
       value: overdueReviewApplications.length,
       icon: AlertTriangle,
     },
@@ -247,7 +247,7 @@ export default async function CompanyPage() {
     <DashboardShell area="company">
       <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-          Company dashboard
+          기업 대시보드
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">
           {companyIds.length > 0

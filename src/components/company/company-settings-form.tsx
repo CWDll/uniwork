@@ -56,16 +56,16 @@ export function CompanySettingsForm({
       <div className="grid gap-4 md:grid-cols-2">
         <Field
           defaultValue={company?.name ?? ""}
-          label="Company / branch name"
+          label="회사/지점명"
           name="name"
         />
         <Field
           defaultValue={company?.business_number ?? ""}
-          label="Business number"
+          label="사업자등록번호"
           name="business_number"
         />
         <label className="grid gap-2 text-sm font-bold text-slate-700 md:col-span-2">
-          Business registration document
+          사업자등록증
           <span className="rounded-md bg-slate-50 px-3 py-2 text-xs font-semibold leading-5 text-slate-500">
             {Math.round(maxCompanyRegistrationDocumentSize / 1024 / 1024)}MB
             이하의 PDF, JPG, JPEG, PNG 파일만 업로드 가능해요.
@@ -98,28 +98,28 @@ export function CompanySettingsForm({
         </label>
         <Field
           defaultValue={company?.industry ?? ""}
-          label="Industry"
+          label="업종"
           name="industry"
         />
         <Field
           defaultValue={company?.address ?? ""}
-          label="Address"
+          label="사업장 주소"
           name="address"
         />
         <Field
           defaultValue={company?.manager_name ?? ""}
-          label="Manager name"
+          label="담당자명"
           name="manager_name"
         />
         <Field
           defaultValue={company?.manager_phone ?? ""}
-          label="Manager phone"
+          label="담당자 연락처"
           name="manager_phone"
         />
         <Field
           defaultValue={company?.notification_email ?? ""}
           helper="새 지원자, 미검토 알림을 받을 이메일입니다. 비워두면 계정 이메일을 사용합니다."
-          label="Notification email"
+          label="알림 받을 이메일"
           name="notification_email"
           type="email"
         />

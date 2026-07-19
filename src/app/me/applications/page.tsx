@@ -138,7 +138,7 @@ export default async function SeekerApplicationsPage({
     <DashboardShell area="me">
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-          My applications
+          지원 내역
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">
           내가 지원한 공고를 확인합니다
@@ -200,7 +200,7 @@ export default async function SeekerApplicationsPage({
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-black">
-            Applications {visibleApplications.length}
+            지원 내역 {visibleApplications.length}
           </h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             {hasActiveFilters

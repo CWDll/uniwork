@@ -392,7 +392,7 @@ export default async function CompanyApplicationsPage({
     <DashboardShell area="company">
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-          Applicants
+          지원자 관리
         </p>
         <h1 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
           지원자 목록과 상태를 관리합니다

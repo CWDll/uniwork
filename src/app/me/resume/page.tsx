@@ -31,7 +31,7 @@ export default async function SeekerResumePage() {
     <DashboardShell area="me">
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-          Resume
+          이력서
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">
           기업에게 보여줄 이력과 강점을 입력합니다
