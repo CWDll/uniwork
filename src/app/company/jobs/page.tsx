@@ -398,8 +398,18 @@ export default async function CompanyJobsPage({
                           className={cn(buttonVariants({ size: "sm" }))}
                           href={`/jobs/${job.id}`}
                         >
-                          공개 페이지
+                          한글 페이지
                         </Link>
+                        {hasEnglish ? (
+                          <Link
+                            className={cn(
+                              buttonVariants({ size: "sm", variant: "outline" }),
+                            )}
+                            href={`/en/jobs/${job.id}`}
+                          >
+                            영문 페이지
+                          </Link>
+                        ) : null}
                         <form action={closeCompanyJobAction}>
                           <input name="job_id" type="hidden" value={job.id} />
                           <button

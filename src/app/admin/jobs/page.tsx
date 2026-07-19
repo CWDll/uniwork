@@ -16,12 +16,19 @@ import { cn } from "@/lib/utils";
 type AdminJobsSearchParams = {
   company?: string;
   status?: string;
+  translation?: string;
 };
 
 const reviewFilters = [
   { value: "", label: "전체" },
   { value: "published", label: "공개 중" },
   { value: "closed", label: "마감" },
+];
+
+const translationFilters = [
+  { value: "", label: "전체 영문 상태" },
+  { value: "with_en", label: "영문 있음" },
+  { value: "missing_en", label: "영문 없음" },
 ];
 
 function buildJobsHref(params: AdminJobsSearchParams, updates: AdminJobsSearchParams) {
@@ -49,6 +56,7 @@ export default async function AdminJobsPage({
   const params = await searchParams;
   const activeCompanyId = params.company?.trim() ?? "";
   const activeStatus = params.status?.trim() ?? "";
+  const activeTranslation = params.translation?.trim() ?? "";
   const { supabase } = await requireAdmin("/admin/jobs");
 
   const { data: allJobs } = await supabase
@@ -69,17 +77,6 @@ export default async function AdminJobsPage({
   const companyById = new Map(
     companies?.map((company) => [company.id, company]) ?? [],
   );
-  const jobs = (allJobs ?? []).filter((job) => {
-    if (activeStatus && job.status !== activeStatus) {
-      return false;
-    }
-
-    if (activeCompanyId && job.company_id !== activeCompanyId) {
-      return false;
-    }
-
-    return true;
-  });
   const jobIds = allJobs?.map((job) => job.id) ?? [];
   const { data: translations } =
     jobIds.length > 0
@@ -94,6 +91,27 @@ export default async function AdminJobsPage({
   const translationByJobId = getTranslationByJobId(
     translations as JobTranslation[] | null,
   );
+  const jobs = (allJobs ?? []).filter((job) => {
+    const hasEnglish = hasUsefulTranslation(translationByJobId.get(String(job.id)));
+
+    if (activeStatus && job.status !== activeStatus) {
+      return false;
+    }
+
+    if (activeCompanyId && job.company_id !== activeCompanyId) {
+      return false;
+    }
+
+    if (activeTranslation === "with_en" && !hasEnglish) {
+      return false;
+    }
+
+    if (activeTranslation === "missing_en" && hasEnglish) {
+      return false;
+    }
+
+    return true;
+  });
   const { data: applications } =
     jobIds.length > 0
       ? await supabase
@@ -109,8 +127,18 @@ export default async function AdminJobsPage({
     );
   });
   const statusCounts = new Map<string, number>();
+  const translationCounts = {
+    missing: 0,
+    withEnglish: 0,
+  };
   allJobs?.forEach((job) => {
     statusCounts.set(job.status, (statusCounts.get(job.status) ?? 0) + 1);
+
+    if (hasUsefulTranslation(translationByJobId.get(String(job.id)))) {
+      translationCounts.withEnglish += 1;
+    } else {
+      translationCounts.missing += 1;
+    }
   });
 
   return (
@@ -128,7 +156,7 @@ export default async function AdminJobsPage({
         </p>
       </div>
 
-      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+      <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {reviewFilters.slice(1).map((filter) => {
           const isActive = activeStatus === filter.value;
 
@@ -152,12 +180,44 @@ export default async function AdminJobsPage({
             </Link>
           );
         })}
+        <Link
+          className={cn(
+            "rounded-2xl border p-4 transition",
+            activeTranslation === "with_en"
+              ? "border-blue-200 bg-blue-50"
+              : "border-slate-200 bg-white hover:bg-slate-50",
+          )}
+          href={buildJobsHref(params, {
+            translation: activeTranslation === "with_en" ? "" : "with_en",
+          })}
+        >
+          <p className="text-sm font-black text-slate-500">영문 있음</p>
+          <p className="mt-1 text-2xl font-black">
+            {translationCounts.withEnglish.toLocaleString("ko-KR")}
+          </p>
+        </Link>
+        <Link
+          className={cn(
+            "rounded-2xl border p-4 transition",
+            activeTranslation === "missing_en"
+              ? "border-amber-200 bg-amber-50"
+              : "border-slate-200 bg-white hover:bg-slate-50",
+          )}
+          href={buildJobsHref(params, {
+            translation: activeTranslation === "missing_en" ? "" : "missing_en",
+          })}
+        >
+          <p className="text-sm font-black text-slate-500">영문 없음</p>
+          <p className="mt-1 text-2xl font-black">
+            {translationCounts.missing.toLocaleString("ko-KR")}
+          </p>
+        </Link>
       </div>
 
       <form
         action="/admin/jobs"
-        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto]"
-        key={`admin-job-filters-${activeCompanyId || "all"}-${activeStatus || "all"}`}
+        className="mb-5 grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_220px_auto_auto]"
+        key={`admin-job-filters-${activeCompanyId || "all"}-${activeStatus || "all"}-${activeTranslation || "all"}`}
       >
         <label className="grid gap-2 text-xs font-black tracking-wide text-slate-400">
           회사/지점
@@ -175,6 +235,20 @@ export default async function AdminJobsPage({
           </select>
         </label>
         {activeStatus ? <input name="status" type="hidden" value={activeStatus} /> : null}
+        <label className="grid gap-2 text-xs font-black tracking-wide text-slate-400">
+          영문 공고
+          <select
+            className="h-11 rounded-md border border-slate-200 px-3 text-sm font-bold normal-case tracking-normal text-slate-700"
+            defaultValue={activeTranslation}
+            name="translation"
+          >
+            {translationFilters.map((filter) => (
+              <option key={filter.value} value={filter.value}>
+                {filter.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <a
           className={cn(buttonVariants({ variant: "outline" }), "self-end")}
           href="/admin/jobs"
@@ -192,12 +266,12 @@ export default async function AdminJobsPage({
             <div>
               <h2 className="text-lg font-black">Job operations</h2>
               <p className="mt-1 text-sm font-medium text-slate-500">
-                {activeStatus || activeCompanyId
+                {activeStatus || activeCompanyId || activeTranslation
                   ? `현재 필터 결과 ${jobs.length.toLocaleString("ko-KR")}개`
                   : `전체 공고 ${jobs.length.toLocaleString("ko-KR")}개`}
               </p>
             </div>
-            {activeStatus || activeCompanyId ? (
+            {activeStatus || activeCompanyId || activeTranslation ? (
               <Link
                 className="text-sm font-black text-blue-700 hover:text-blue-900"
                 href="/admin/jobs"
@@ -237,8 +311,16 @@ export default async function AdminJobsPage({
                         className="rounded-md bg-blue-50 px-2 py-1 text-xs font-black text-blue-700 hover:bg-blue-100"
                         href={`/jobs/${job.id}`}
                       >
-                        공고 보기
+                        한글 보기
                       </Link>
+                      {hasEnglish ? (
+                        <Link
+                          className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700 hover:bg-emerald-100"
+                          href={`/en/jobs/${job.id}`}
+                        >
+                          영문 보기
+                        </Link>
+                      ) : null}
                     </div>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
                       {company?.name ?? "Company"} · {job.location || "-"} ·{" "}
