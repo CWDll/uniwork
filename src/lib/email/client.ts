@@ -1,4 +1,8 @@
 type SendEmailInput = {
+  attachments?: {
+    content: string;
+    filename: string;
+  }[];
   html: string;
   subject: string;
   text: string;
@@ -18,6 +22,7 @@ export function isEmailConfigured() {
 }
 
 export async function sendEmail({
+  attachments,
   html,
   subject,
   text,
@@ -34,6 +39,7 @@ export async function sendEmail({
 
   const response = await fetch("https://api.resend.com/emails", {
     body: JSON.stringify({
+      attachments,
       from,
       html,
       subject,

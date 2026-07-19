@@ -2,8 +2,10 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AdminRequestHandoffEmailForm } from "@/components/admin-requests/admin-request-handoff-email-form";
 import { ApplicationPrintActions } from "@/components/company/application-print-actions";
 import { requireAdmin } from "@/lib/admin-auth";
+import { isEmailConfigured } from "@/lib/email/client";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 
 export default async function AdminRequestHandoffDraftPage({
@@ -12,6 +14,7 @@ export default async function AdminRequestHandoffDraftPage({
   params: Promise<{ requestId: string }>;
 }) {
   const { requestId } = await params;
+  const canSendEmail = isEmailConfigured();
   const { supabase } = await requireAdmin(
     `/admin/admin-requests/${requestId}/handoff`,
   );
@@ -383,6 +386,18 @@ export default async function AdminRequestHandoffDraftPage({
 
         <section className="mt-6 border-t border-slate-100 pt-5">
           <h2 className="text-lg font-black">복사용 초안</h2>
+          <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-4">
+            <p className="text-sm font-black text-slate-900">
+              행정사 이메일 전달
+            </p>
+            <div className="mt-2">
+              <AdminRequestHandoffEmailForm
+                canSendEmail={canSendEmail}
+                hasRecipient={Boolean(review?.handoff_recipient_email?.trim())}
+                requestId={request.id}
+              />
+            </div>
+          </div>
           <pre className="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold leading-7 text-slate-700">
             {draftText}
           </pre>

@@ -1,11 +1,13 @@
 import Link from "next/link";
 
 import { markAdminRequestSupplementsCheckedAction } from "@/app/admin/admin-requests/actions";
+import { AdminRequestHandoffEmailForm } from "@/components/admin-requests/admin-request-handoff-email-form";
 import { AdminRequestUpdateForm } from "@/components/admin-requests/admin-request-update-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdmin } from "@/lib/admin-auth";
+import { isEmailConfigured } from "@/lib/email/client";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
 
@@ -86,6 +88,7 @@ export default async function AdminRequestsPage({
   const params = await searchParams;
   const activeStage = params.stage?.trim() ?? "";
   const currentPage = Math.max(1, Number(params.page ?? "1") || 1);
+  const canSendEmail = isEmailConfigured();
   const { supabase } = await requireAdmin("/admin/admin-requests");
 
   const { data: allRequests } = await supabase
@@ -697,6 +700,20 @@ export default async function AdminRequestsPage({
                             파일 묶음 다운로드
                           </a>
                         ) : null}
+                      </div>
+                      <div className="mt-3 rounded-xl border border-slate-100 bg-white p-3">
+                        <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                          행정사 이메일 전달
+                        </p>
+                        <div className="mt-2">
+                          <AdminRequestHandoffEmailForm
+                            canSendEmail={canSendEmail}
+                            hasRecipient={Boolean(
+                              review?.handoff_recipient_email?.trim(),
+                            )}
+                            requestId={request.id}
+                          />
+                        </div>
                       </div>
                       {request.memo ? (
                         <p className="mt-3 whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-sm font-medium leading-6 text-slate-700">

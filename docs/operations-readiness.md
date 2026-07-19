@@ -38,6 +38,7 @@ Current behavior is safe for launch without email:
 - If `RESEND_API_KEY` or `EMAIL_FROM` is missing, `sendEmail` logs and returns `{ skipped: true, reason: "missing_email_env" }`.
 - The overdue application digest cron still computes recipients, but email sends are skipped when email env is incomplete.
 - The cron route requires `Authorization: Bearer ${CRON_SECRET}`. If `CRON_SECRET` is missing or wrong, it returns 401.
+- Admin request handoff email buttons remain disabled until both `RESEND_API_KEY` and `EMAIL_FROM` are configured. Operators can still use the handoff draft and file bundle download flow.
 
 Recommended before enabling email:
 
