@@ -25,6 +25,7 @@ import {
   getJobFallbackLabel,
   getLocale,
   getLocalizedPath,
+  type Locale,
 } from "@/lib/i18n";
 import { getJobEligibility, type JobEligibility } from "@/lib/jobs/eligibility";
 import { localizedJobValue, type JobTranslation } from "@/lib/jobs/translations";
@@ -181,6 +182,7 @@ export default async function JobDetailPage({
   const eligibility = getJobEligibility({
     isSignedIn: Boolean(user),
     jobVisaSupportType: job.visa_support_type,
+    locale,
     rule: visaRule,
     visaType: seekerProfile?.visa_type,
   });
@@ -191,12 +193,14 @@ export default async function JobDetailPage({
     existingApplication?.status,
   );
   const completion = getApplicationCompletion({
+    locale,
     profile: seekerProfile,
     resume,
   });
   const postingQuality = getPostingQuality({
     description: job.description,
     koreanRequirement: job.korean_requirement,
+    locale,
     location: job.location,
     visaSupportType: job.visa_support_type,
     wageAmount: job.wage_amount,
@@ -362,17 +366,18 @@ export default async function JobDetailPage({
               <EligibilityPanel eligibility={eligibility} />
               <ApplicationSnapshotPanel
                 completionLabel={`${completion.completedCount}/${completion.totalCount}`}
+                locale={locale}
                 profile={seekerProfile}
                 resume={resume}
                 resumeTitle={resume?.title || "Uniwork Resume"}
               />
-              <JobApplicationForm jobId={job.id} />
+              <JobApplicationForm jobId={job.id} locale={locale} />
             </>
           ) : user ? (
             <>
               <EligibilityPanel eligibility={eligibility} />
               {eligibility.canApply ? (
-                <ApplicationReadinessPanel completion={completion} />
+                <ApplicationReadinessPanel completion={completion} locale={locale} />
               ) : (
                 <Link
                   className={cn(buttonVariants({ className: "mt-4 w-full" }))}
@@ -408,16 +413,19 @@ export default async function JobDetailPage({
 
 function ApplicationSnapshotPanel({
   completionLabel,
+  locale,
   profile,
   resume,
   resumeTitle,
 }: {
   completionLabel: string;
+  locale: Locale;
   profile: ApplicationPanelProfile;
   resume: ApplicationPanelResume;
   resumeTitle: string;
 }) {
-  const resumeIntro = resume?.intro?.trim() || "자기소개가 없습니다.";
+  const copy = applicationSnapshotCopy[locale];
+  const resumeIntro = resume?.intro?.trim() || copy.noIntro;
   const educationCount = countRows(resume?.education);
   const experienceCount = countRows(resume?.experience);
   const languageLabels = getLanguageLabels(resume?.languages);
@@ -427,9 +435,9 @@ function ApplicationSnapshotPanel({
       <div className="flex items-start gap-2">
         <FileText className="mt-0.5 size-5 shrink-0 text-blue-700" />
         <div className="min-w-0">
-          <p className="text-sm font-black text-blue-950">제출 전 확인</p>
+          <p className="text-sm font-black text-blue-950">{copy.title}</p>
           <p className="mt-1 text-sm font-semibold leading-6 text-blue-900">
-            지원하면 아래 정보가 기업에 전달되고 제출 시점 그대로 저장됩니다.
+            {copy.body}
           </p>
         </div>
       </div>
@@ -437,25 +445,33 @@ function ApplicationSnapshotPanel({
       <div className="mt-4 grid gap-2">
         <SnapshotRow
           icon={UserRound}
-          label="프로필"
-          value={`${profile?.nationality || "국적 미입력"} · ${profile?.visa_type || "비자 미입력"}`}
+          label={copy.profile}
+          missingLabel={copy.notEntered}
+          value={`${profile?.nationality || copy.noNationality} · ${profile?.visa_type || copy.noVisa}`}
         />
         <SnapshotRow
           icon={GraduationCap}
-          label="학교"
-          value={`${profile?.school || "학교 미입력"} · ${profile?.major || "전공 미입력"}`}
+          label={copy.school}
+          missingLabel={copy.notEntered}
+          value={`${profile?.school || copy.noSchool} · ${profile?.major || copy.noMajor}`}
         />
         <SnapshotRow
           icon={Languages}
-          label="언어"
+          label={copy.languages}
+          missingLabel={copy.notEntered}
           value={[
-            profile?.korean_level ? `한국어 ${profile.korean_level}` : "",
-            profile?.english_level ? `영어 ${profile.english_level}` : "",
+            profile?.korean_level ? `${copy.korean} ${profile.korean_level}` : "",
+            profile?.english_level ? `${copy.english} ${profile.english_level}` : "",
           ]
             .filter(Boolean)
             .join(" · ")}
         />
-        <SnapshotRow icon={FileText} label="이력서" value={resumeTitle} />
+        <SnapshotRow
+          icon={FileText}
+          label={copy.resume}
+          missingLabel={copy.notEntered}
+          value={resumeTitle}
+        />
       </div>
 
       <div className="mt-3 rounded-lg bg-white/70 p-3">
@@ -463,21 +479,19 @@ function ApplicationSnapshotPanel({
           {resumeIntro}
         </p>
         <p className="mt-2 text-xs font-black text-slate-500">
-          학력 {educationCount}개 · 경력 {experienceCount}개 · 언어{" "}
-          {languageLabels.length > 0 ? languageLabels.join(", ") : "미입력"}
+          {copy.education} {educationCount} · {copy.experience}{" "}
+          {experienceCount} · {copy.languages}{" "}
+          {languageLabels.length > 0 ? languageLabels.join(", ") : copy.notEntered}
         </p>
       </div>
 
       <div className="mt-3 flex items-start gap-2 rounded-lg bg-white/70 p-3 text-xs font-semibold leading-5 text-slate-600">
         <LockKeyhole className="mt-0.5 size-4 shrink-0 text-blue-700" />
-        <p>
-          외국인등록번호, 여권번호 원본은 제출하지 않습니다. 기업은 지원자
-          검토에 필요한 프로필, 이력서, 지원 메시지만 확인합니다.
-        </p>
+        <p>{copy.privacy}</p>
       </div>
 
       <p className="mt-3 text-xs font-black text-blue-700">
-        지원 정보 완성도 {completionLabel}
+        {copy.completion} {completionLabel}
       </p>
     </div>
   );
@@ -502,17 +516,21 @@ type ApplicationPanelResume = {
 function SnapshotRow({
   icon: Icon,
   label,
+  missingLabel,
   value,
 }: {
   icon: LucideIcon;
   label: string;
+  missingLabel: string;
   value: string;
 }) {
   return (
     <div className="grid grid-cols-[18px_64px_minmax(0,1fr)] items-start gap-2 rounded-lg bg-white/70 px-3 py-2 text-xs">
       <Icon className="mt-0.5 size-4 text-blue-700" />
       <span className="font-black text-slate-500">{label}</span>
-      <span className="break-words font-bold text-slate-800">{value || "미입력"}</span>
+      <span className="break-words font-bold text-slate-800">
+        {value || missingLabel}
+      </span>
     </div>
   );
 }
@@ -542,9 +560,12 @@ function getLanguageLabels(value: unknown) {
 
 function ApplicationReadinessPanel({
   completion,
+  locale,
 }: {
   completion: ReturnType<typeof getApplicationCompletion>;
+  locale: Locale;
 }) {
+  const copy = applicationReadinessCopy[locale];
   const profileMissing = completion.profile.missing;
   const resumeMissing = completion.resume.missing;
   const profileComplete = completion.profile.completedCount;
@@ -556,31 +577,33 @@ function ApplicationReadinessPanel({
         <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-700" />
         <div>
           <p className="text-sm font-black text-amber-950">
-            지원 전 보완이 필요합니다
+            {copy.title}
           </p>
           <p className="mt-1 text-sm font-semibold leading-6 text-amber-900">
-            기업에게 전달할 프로필/이력 정보가 아직 부족합니다.
+            {copy.body}
           </p>
         </div>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <ReadinessGroup
           completedCount={profileComplete}
-          href="/me/profile"
+          href={getLocalizedPath("/me/profile", locale)}
           missing={profileMissing}
-          title="프로필"
+          locale={locale}
+          title={copy.profile}
           totalCount={completion.profile.totalCount}
         />
         <ReadinessGroup
           completedCount={resumeComplete}
-          href="/me/resume"
+          href={getLocalizedPath("/me/resume", locale)}
           missing={resumeMissing}
-          title="이력서"
+          locale={locale}
+          title={copy.resume}
           totalCount={completion.resume.totalCount}
         />
       </div>
       <p className="mt-3 text-xs font-black text-amber-800">
-        전체 완성도 {completion.completedCount}/{completion.totalCount}
+        {copy.totalCompletion} {completion.completedCount}/{completion.totalCount}
       </p>
     </div>
   );
@@ -589,16 +612,19 @@ function ApplicationReadinessPanel({
 function ReadinessGroup({
   completedCount,
   href,
+  locale,
   missing,
   title,
   totalCount,
 }: {
   completedCount: number;
   href: string;
+  locale: Locale;
   missing: string[];
   title: string;
   totalCount: number;
 }) {
+  const copy = applicationReadinessCopy[locale];
   const isComplete = missing.length === 0;
 
   return (
@@ -619,7 +645,7 @@ function ReadinessGroup({
       {isComplete ? (
         <p className="mt-2 flex items-center gap-2 text-xs font-bold text-emerald-700">
           <CheckCircle2 className="size-4" />
-          제출 준비 완료
+          {copy.ready}
         </p>
       ) : (
         <>
@@ -633,14 +659,16 @@ function ReadinessGroup({
           </ul>
           {missing.length > 4 ? (
             <p className="mt-1 text-xs font-bold text-amber-800">
-              외 {missing.length - 4}개 항목
+              {locale === "en"
+                ? `+${missing.length - 4} more`
+                : `외 ${missing.length - 4}개 항목`}
             </p>
           ) : null}
           <Link
             className={cn(buttonVariants({ className: "mt-3 w-full", size: "sm" }))}
             href={href}
           >
-            {title} 보완
+            {locale === "en" ? `Complete ${title}` : `${title} 보완`}
           </Link>
         </>
       )}
@@ -730,6 +758,7 @@ function getEligibilityTone(
 function getPostingQuality({
   description,
   koreanRequirement,
+  locale,
   location,
   visaSupportType,
   wageAmount,
@@ -737,20 +766,22 @@ function getPostingQuality({
 }: {
   description?: string | null;
   koreanRequirement?: string | null;
+  locale: Locale;
   location?: string | null;
   visaSupportType?: string | null;
   wageAmount?: number | null;
   wageType?: string | null;
 }) {
+  const labels = postingQualityLabels[locale];
   const checks = [
-    { done: Boolean(location?.trim()), label: "근무지" },
+    { done: Boolean(location?.trim()), label: labels.location },
     {
       done: Boolean(wageType?.trim()) && wageAmount !== null && wageAmount !== undefined,
-      label: "급여",
+      label: labels.wage,
     },
-    { done: Boolean(visaSupportType?.trim()), label: "비자 조건" },
-    { done: Boolean(koreanRequirement?.trim()), label: "한국어 조건" },
-    { done: (description?.trim().length ?? 0) >= 60, label: "상세 설명" },
+    { done: Boolean(visaSupportType?.trim()), label: labels.visa },
+    { done: Boolean(koreanRequirement?.trim()), label: labels.korean },
+    { done: (description?.trim().length ?? 0) >= 60, label: labels.description },
   ];
   const missing = checks.filter((check) => !check.done).map((check) => check.label);
 
@@ -761,6 +792,23 @@ function getPostingQuality({
     total: checks.length,
   };
 }
+
+const postingQualityLabels = {
+  ko: {
+    description: "상세 설명",
+    korean: "한국어 조건",
+    location: "근무지",
+    visa: "비자 조건",
+    wage: "급여",
+  },
+  en: {
+    description: "Detailed description",
+    korean: "Korean requirement",
+    location: "Location",
+    visa: "Visa condition",
+    wage: "Wage",
+  },
+} satisfies Record<Locale, Record<string, string>>;
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
@@ -829,3 +877,67 @@ const jobDetailCopy = {
     wage: "Wage",
   },
 };
+
+const applicationSnapshotCopy = {
+  ko: {
+    body: "지원하면 아래 정보가 기업에 전달되고 제출 시점 그대로 저장됩니다.",
+    completion: "지원 정보 완성도",
+    education: "학력",
+    english: "영어",
+    experience: "경력",
+    korean: "한국어",
+    languages: "언어",
+    noIntro: "자기소개가 없습니다.",
+    noMajor: "전공 미입력",
+    noNationality: "국적 미입력",
+    noSchool: "학교 미입력",
+    noVisa: "비자 미입력",
+    notEntered: "미입력",
+    privacy:
+      "외국인등록번호, 여권번호 원본은 제출하지 않습니다. 기업은 지원자 검토에 필요한 프로필, 이력서, 지원 메시지만 확인합니다.",
+    profile: "프로필",
+    resume: "이력서",
+    school: "학교",
+    title: "제출 전 확인",
+  },
+  en: {
+    body: "When you apply, the information below is shared with the company and saved as a snapshot at submission time.",
+    completion: "Application information",
+    education: "Education",
+    english: "English",
+    experience: "Experience",
+    korean: "Korean",
+    languages: "Languages",
+    noIntro: "No introduction yet.",
+    noMajor: "Major not entered",
+    noNationality: "Nationality not entered",
+    noSchool: "School not entered",
+    noVisa: "Visa not entered",
+    notEntered: "Not entered",
+    privacy:
+      "Uniwork does not submit raw alien registration or passport numbers. Companies only see the profile, resume, and application message needed for review.",
+    profile: "Profile",
+    resume: "Resume",
+    school: "School",
+    title: "Before submission",
+  },
+} satisfies Record<Locale, Record<string, string>>;
+
+const applicationReadinessCopy = {
+  ko: {
+    body: "기업에게 전달할 프로필/이력 정보가 아직 부족합니다.",
+    profile: "프로필",
+    ready: "제출 준비 완료",
+    resume: "이력서",
+    title: "지원 전 보완이 필요합니다",
+    totalCompletion: "전체 완성도",
+  },
+  en: {
+    body: "Your profile or resume is missing information needed for company review.",
+    profile: "profile",
+    ready: "Ready to submit",
+    resume: "resume",
+    title: "Please complete your information before applying",
+    totalCompletion: "Total completion",
+  },
+} satisfies Record<Locale, Record<string, string>>;

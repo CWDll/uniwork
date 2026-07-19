@@ -237,6 +237,7 @@ export default async function MePage({
 
   const profileCompletion = getProfileCompletion(profile);
   const applicationCompletion = getApplicationCompletion({
+    locale,
     profile,
     resume,
   });

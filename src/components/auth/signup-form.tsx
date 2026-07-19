@@ -40,8 +40,8 @@ const copy = {
     password: "비밀번호",
     passwordPlaceholder: "8자 이상",
     pending: "가입 처리 중...",
-    plannedFields:
-      "기업 유형, 재직 인원, 외국인 재직 여부, 웹사이트, 로고 업로드는 다음 기업 온보딩 확장에서 추가할 예정입니다.",
+    reviewChecklist:
+      "운영자는 사업자등록번호, 사업자등록증, 담당자 연락처, 업종과 사업장 주소를 기준으로 기업 인증을 검토합니다.",
     reupload: "다시 업로드",
     role: "가입 유형",
     seeker: "구직자",
@@ -75,8 +75,8 @@ const copy = {
     password: "Password",
     passwordPlaceholder: "At least 8 characters",
     pending: "Submitting...",
-    plannedFields:
-      "Company type, employee count, foreign employee status, website, and logo upload will be added in the next company onboarding expansion.",
+    reviewChecklist:
+      "Uniwork admins review the business number, registration document, manager contact, industry, and workplace address before verification.",
     reupload: "Upload again",
     role: "Account type",
     seeker: "Job seeker",
@@ -248,7 +248,7 @@ export function SignupForm({
               />
             </label>
             <p className="text-xs font-semibold leading-5 text-slate-500 sm:col-span-2">
-              {t.plannedFields}
+              {t.reviewChecklist}
             </p>
           </div>
         ) : null}

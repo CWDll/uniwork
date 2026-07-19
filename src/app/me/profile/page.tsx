@@ -67,7 +67,7 @@ export default async function SeekerProfilePage({
     .eq("id", user.id)
     .maybeSingle();
   const avatarUrl = getProfilePhotoUrl(supabase, accountProfile?.avatar_path);
-  const completion = getProfileCompletion(profile);
+  const completion = getProfileCompletion(profile, locale);
 
   return (
     <DashboardShell area="me" locale={locale}>

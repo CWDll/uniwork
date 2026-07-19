@@ -314,6 +314,7 @@ export default async function JobsPage({
       eligibility: getJobEligibility({
         isSignedIn: Boolean(user),
         jobVisaSupportType: job.visa_support_type,
+        locale,
         rule: visaRule,
         visaType: seekerProfile?.visa_type,
       }),
