@@ -636,7 +636,116 @@ export default async function CompanyApplicationsPage({
           </p>
         </div>
         {visibleApplications.length > 0 ? (
-          <div className="overflow-x-auto">
+          <>
+          <div className="divide-y divide-slate-100 md:hidden">
+            {visibleApplications.map((item) => {
+              const {
+                application,
+                company,
+                completion,
+                job,
+                profile,
+                resume,
+                resumeCompletion,
+                seekerProfile,
+              } = item;
+              const avatarUrl = getProfilePhotoUrl(
+                supabase,
+                profilePhotoById.get(application.seeker_id),
+              );
+              const status = getStatusMeta("application", application.status);
+
+              return (
+                <article className="px-5 py-4" key={application.id}>
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-slate-100 text-sm font-black text-blue-700">
+                      {avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          alt="Applicant profile photo"
+                          className="size-full object-cover"
+                          src={avatarUrl}
+                        />
+                      ) : (
+                        (profile?.name || profile?.email || "A").slice(0, 1)
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <Link
+                          className="min-w-0 truncate text-lg font-black text-slate-950 hover:text-blue-700"
+                          href={`/company/applications/${application.id}`}
+                        >
+                          {profile?.name || profile?.email || "Applicant"}
+                        </Link>
+                        <span
+                          className={cn(
+                            getStatusBadgeClassName(
+                              "application",
+                              application.status,
+                            ),
+                            "whitespace-nowrap",
+                          )}
+                        >
+                          {status.label}
+                        </span>
+                      </div>
+                      <p className="mt-1 break-words text-sm font-bold text-slate-500">
+                        {profile?.email ?? "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-xl bg-slate-50 p-3">
+                    <p className="truncate text-sm font-black text-slate-900">
+                      {job?.title ?? "Job"}
+                    </p>
+                    <p className="mt-1 text-xs font-bold leading-5 text-slate-500">
+                      {company?.name ?? "Company"} · {job?.location ?? "-"} ·{" "}
+                      {job?.employment_type ?? "-"}
+                    </p>
+                  </div>
+
+                  <div className="mt-3 grid gap-2 text-xs font-bold leading-5 text-slate-600">
+                    <span>
+                      {seekerProfile?.visa_type || "비자 미입력"} ·{" "}
+                      {seekerProfile?.nationality || "국적 미입력"}
+                    </span>
+                    <span>
+                      한국어 {seekerProfile?.korean_level || "미입력"} · 영어{" "}
+                      {seekerProfile?.english_level || "미입력"}
+                    </span>
+                    <span>
+                      {seekerProfile?.school || "학교 미입력"} ·{" "}
+                      {seekerProfile?.major || "전공 미입력"}
+                    </span>
+                    <span>
+                      정보 {completion.completedCount}/{completion.totalCount} ·{" "}
+                      이력서 {resume?.title || "없음"}{" "}
+                      {resume
+                        ? `${resumeCompletion.completedCount}/${resumeCompletion.totalCount}`
+                        : ""}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2 text-xs font-bold text-slate-500">
+                    <span>
+                      지원일 {new Date(application.applied_at).toLocaleString("ko-KR")}
+                    </span>
+                    <span>최근 수정 {formatLastAction(application)}</span>
+                  </div>
+
+                  <Link
+                    className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
+                    href={`/company/applications/${application.id}`}
+                  >
+                    상세 보기
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+          <div className="hidden md:block">
             <table className="w-full min-w-[760px] table-fixed text-left">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs font-black text-slate-500">
                 <tr>
@@ -756,6 +865,7 @@ export default async function CompanyApplicationsPage({
               </tbody>
             </table>
           </div>
+          </>
         ) : (
           <div>
             <div className="px-5 py-8">

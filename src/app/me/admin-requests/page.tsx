@@ -92,7 +92,7 @@ export default async function SeekerAdminRequestsPage({
         </p>
       </div>
 
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(420px,0.95fr)_minmax(0,1.05fr)]">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
         <AdminRequestForm locale={locale} />
 
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
