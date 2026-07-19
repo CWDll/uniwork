@@ -2,16 +2,18 @@ import Link from "next/link";
 import { BriefcaseBusiness, LayoutDashboard, LogOut, Menu, UserRound } from "lucide-react";
 
 import { logoutAction } from "@/app/auth/actions";
+import { LanguageToggle } from "@/components/navigation/language-toggle";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { getLocalizedPath, publicCopy, type Locale } from "@/lib/i18n";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/jobs", label: "채용공고" },
-  { href: "/corp", label: "기업 서비스" },
-  { href: "/auth", label: "로그인" },
-  { href: "/admin", label: "운영자" },
+  { href: "/jobs", labelKey: "jobs" },
+  { href: "/corp", labelKey: "companyService" },
+  { href: "/auth", labelKey: "auth" },
+  { href: "/admin", labelKey: "admin" },
 ];
 
 const dashboardByRole = {
@@ -21,7 +23,8 @@ const dashboardByRole = {
   seeker: "/me",
 } as const;
 
-export async function SiteHeader() {
+export async function SiteHeader({ locale = "ko" }: { locale?: Locale }) {
+  const copy = publicCopy[locale];
   const supabase = await createClient();
   const {
     data: { user },
@@ -47,12 +50,15 @@ export async function SiteHeader() {
     profile?.role && profile.role in dashboardByRole
       ? dashboardByRole[profile.role as keyof typeof dashboardByRole]
       : "/me";
-  const displayName = profile?.name || user?.email || "내 계정";
+  const displayName = profile?.name || user?.email || copy.myAccount;
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:h-16 sm:px-6 lg:px-8">
-        <Link className="flex min-w-0 items-center gap-2 sm:gap-3" href="/">
+        <Link
+          className="flex min-w-0 items-center gap-2 sm:gap-3"
+          href={getLocalizedPath("/", locale)}
+        >
           <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-blue-600 text-white sm:size-10">
             <BriefcaseBusiness className="size-5" />
           </div>
@@ -61,24 +67,29 @@ export async function SiteHeader() {
               Uniwork
             </p>
             <p className="hidden text-xs font-semibold text-slate-500 sm:block">
-              외국인 유학생 채용 플랫폼
+              {copy.tagline}
             </p>
           </div>
         </Link>
 
         <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-700 md:flex">
           {navItems.map((item) => (
-            <Link className="transition hover:text-blue-700" href={item.href} key={item.href}>
-              {item.label}
+            <Link
+              className="transition hover:text-blue-700"
+              href={getLocalizedPath(item.href, locale)}
+              key={item.href}
+            >
+              {copy[item.labelKey as keyof typeof copy]}
             </Link>
           ))}
         </nav>
 
         {user ? (
           <div className="hidden min-w-0 items-center gap-2 md:flex">
+            <LanguageToggle locale={locale} />
             <Link
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-              href={dashboardHref}
+              href={getLocalizedPath(dashboardHref, locale)}
             >
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -95,21 +106,25 @@ export async function SiteHeader() {
             <form action={logoutAction}>
               <Button size="sm" type="submit" variant="ghost">
                 <LogOut className="size-4" />
-                로그아웃
+                {copy.logout}
               </Button>
             </form>
           </div>
         ) : (
           <div className="hidden items-center gap-2 md:flex">
+            <LanguageToggle locale={locale} />
             <Link
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-              href="/login"
+              href={getLocalizedPath("/login", locale)}
             >
               <UserRound className="size-4" />
-              로그인
+              {copy.login}
             </Link>
-            <Link className={cn(buttonVariants({ size: "sm" }))} href="/signup">
-              회원가입
+            <Link
+              className={cn(buttonVariants({ size: "sm" }))}
+              href={getLocalizedPath("/signup", locale)}
+            >
+              {copy.signUp}
             </Link>
           </div>
         )}
@@ -117,8 +132,8 @@ export async function SiteHeader() {
         {user ? (
           <Link
             className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
-            href={dashboardHref}
-            aria-label="내 대시보드"
+            href={getLocalizedPath(dashboardHref, locale)}
+            aria-label={copy.dashboard}
           >
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element

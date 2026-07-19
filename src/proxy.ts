@@ -44,10 +44,40 @@ function dashboardForRole(role?: string | null) {
   return "/me";
 }
 
+function getLocalePath(pathname: string) {
+  if (pathname === "/en") {
+    return { locale: "en", pathname: "/" };
+  }
+
+  if (pathname.startsWith("/en/")) {
+    return { locale: "en", pathname: pathname.slice(3) || "/" };
+  }
+
+  return { locale: "ko", pathname };
+}
+
+function localizePath(pathname: string, locale: string) {
+  return locale === "en" ? `/en${pathname === "/" ? "" : pathname}` : pathname;
+}
+
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({
-    request,
-  });
+  const localePath = getLocalePath(request.nextUrl.pathname);
+
+  function createResponse() {
+    if (localePath.locale === "en") {
+      const rewriteUrl = request.nextUrl.clone();
+      rewriteUrl.pathname = localePath.pathname;
+      rewriteUrl.searchParams.set("locale", "en");
+
+      return NextResponse.rewrite(rewriteUrl, { request });
+    }
+
+    return NextResponse.next({
+      request,
+    });
+  }
+
+  let response = createResponse();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -59,9 +89,7 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({
-            request,
-          });
+          response = createResponse();
           cookiesToSet.forEach(({ name, options, value }) => {
             response.cookies.set(name, value, options);
           });
@@ -70,7 +98,7 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const pathname = request.nextUrl.pathname;
+  const pathname = localePath.pathname;
 
   if (!isProtectedPath(pathname)) {
     return response;
@@ -82,8 +110,8 @@ export async function proxy(request: NextRequest) {
 
   if (!user) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/login";
-    redirectUrl.searchParams.set("next", pathname);
+    redirectUrl.pathname = localizePath("/login", localePath.locale);
+    redirectUrl.searchParams.set("next", localizePath(pathname, localePath.locale));
     return NextResponse.redirect(redirectUrl);
   }
 
@@ -97,7 +125,7 @@ export async function proxy(request: NextRequest) {
 
   if (!allowedForPath(pathname, role)) {
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = dashboardForRole(role);
+    redirectUrl.pathname = localizePath(dashboardForRole(role), localePath.locale);
     redirectUrl.search = "";
     return NextResponse.redirect(redirectUrl);
   }
@@ -106,5 +134,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/me/:path*", "/company/:path*", "/admin/:path*"],
+  matcher: ["/me/:path*", "/company/:path*", "/admin/:path*", "/en", "/en/:path*"],
 };

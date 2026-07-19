@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BriefcaseBusiness, Building2, Home, ShieldCheck, UserRound } from "lucide-react";
 
+import { getLocalizedPath, type Locale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
 const dashboardByRole = {
@@ -11,12 +12,12 @@ const dashboardByRole = {
 } as const;
 
 const publicItems = [
-  { href: "/", label: "홈", icon: Home },
-  { href: "/jobs", label: "공고", icon: BriefcaseBusiness },
-  { href: "/corp", label: "기업", icon: Building2 },
+  { href: "/", labels: { en: "Home", ko: "홈" }, icon: Home },
+  { href: "/jobs", labels: { en: "Jobs", ko: "공고" }, icon: BriefcaseBusiness },
+  { href: "/corp", labels: { en: "Corp", ko: "기업" }, icon: Building2 },
 ];
 
-export async function MobileBottomNav() {
+export async function MobileBottomNav({ locale = "ko" }: { locale?: Locale }) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -29,15 +30,19 @@ export async function MobileBottomNav() {
       ? dashboardByRole[profile.role as keyof typeof dashboardByRole]
       : "/me";
   const items = [
-    ...publicItems,
+    ...publicItems.map((item) => ({
+      href: item.href,
+      icon: item.icon,
+      label: item.labels[locale],
+    })),
     {
       href: user ? "/me/applications" : "/auth",
-      label: user ? "지원" : "로그인",
+      label: user ? (locale === "en" ? "Applied" : "지원") : locale === "en" ? "Log in" : "로그인",
       icon: UserRound,
     },
     {
       href: user ? dashboardHref : "/login",
-      label: user ? "내 정보" : "로그인",
+      label: user ? (locale === "en" ? "My" : "내 정보") : locale === "en" ? "Log in" : "로그인",
       icon: ShieldCheck,
     },
   ];
@@ -51,7 +56,7 @@ export async function MobileBottomNav() {
           return (
             <Link
               className="flex flex-col items-center gap-1 rounded-md px-2 py-1.5 text-[11px] font-bold text-slate-500 transition hover:bg-slate-50 hover:text-blue-700"
-              href={item.href}
+              href={getLocalizedPath(item.href, locale)}
               key={item.href}
             >
               <Icon className="size-5" />

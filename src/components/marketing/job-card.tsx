@@ -4,6 +4,7 @@ import Link from "next/link";
 import { toggleSavedJobAction } from "@/app/jobs/saved-actions";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
+import { getLocalizedPath, type Locale } from "@/lib/i18n";
 import type { JobEligibility } from "@/lib/jobs/eligibility";
 import { cn } from "@/lib/utils";
 
@@ -27,14 +28,18 @@ type Job = {
 
 export function JobCard({
   job,
+  locale = "ko",
   returnTo = "/jobs",
   viewerSignedIn = false,
 }: {
   job: Job;
+  locale?: Locale;
   returnTo?: string;
   viewerSignedIn?: boolean;
 }) {
-  const href = job.id ? `/jobs/${job.id}` : "/jobs";
+  const copy = jobCardCopy[locale];
+  const href = getLocalizedPath(job.id ? `/jobs/${job.id}` : "/jobs", locale);
+  const localizedReturnTo = getLocalizedPath(returnTo, locale);
 
   return (
     <article className="grid min-w-0 grid-cols-[48px_minmax(0,1fr)] gap-3 px-4 py-4 transition hover:bg-slate-50 sm:grid-cols-[64px_minmax(0,1fr)_auto] sm:gap-4 sm:py-5">
@@ -68,7 +73,7 @@ export function JobCard({
           {job.company}
           {job.companyVerified ? (
             <span className="ml-2 rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
-              인증 기업
+              {copy.verifiedCompany}
             </span>
           ) : null}
         </p>
@@ -96,11 +101,14 @@ export function JobCard({
                 : "bg-amber-50 text-amber-700",
             )}
           >
-            {job.descriptionQuality === "complete" ? "정보 충분" : "상세 확인"}
+            {job.descriptionQuality === "complete" ? copy.complete : copy.needsDetail}
           </span>
           {job.publishedAt ? (
             <span className="rounded-md bg-slate-100 px-2 py-1 text-slate-500">
-              공개 {new Date(job.publishedAt).toLocaleDateString("ko-KR")}
+              {copy.published}{" "}
+              {new Date(job.publishedAt).toLocaleDateString(
+                locale === "en" ? "en-US" : "ko-KR",
+              )}
             </span>
           ) : null}
         </div>
@@ -115,11 +123,11 @@ export function JobCard({
           viewerSignedIn ? (
             <form action={toggleSavedJobAction}>
               <input name="job_id" type="hidden" value={job.id} />
-              <input name="return_to" type="hidden" value={returnTo} />
+              <input name="return_to" type="hidden" value={localizedReturnTo} />
               <Button
-                aria-label={job.saved ? "즐겨찾기 해제" : "즐겨찾기 저장"}
+                aria-label={job.saved ? copy.unsave : copy.save}
                 size="icon"
-                title={job.saved ? "즐겨찾기 해제" : "즐겨찾기 저장"}
+                title={job.saved ? copy.unsave : copy.save}
                 type="submit"
                 variant="outline"
               >
@@ -133,25 +141,53 @@ export function JobCard({
             </form>
           ) : (
             <Link
-              aria-label="로그인하고 즐겨찾기 저장"
+              aria-label={copy.signInToSave}
               className={cn(
                 buttonVariants({ size: "icon", variant: "outline" }),
                 "shrink-0",
               )}
-              href={`/login?next=${encodeURIComponent(returnTo)}`}
-              title="로그인하고 즐겨찾기 저장"
+              href={getLocalizedPath(
+                `/login?next=${encodeURIComponent(localizedReturnTo)}`,
+                locale,
+              )}
+              title={copy.signInToSave}
             >
               <Heart className="size-4" />
             </Link>
           )
         ) : null}
         <Link className={cn(buttonVariants({ size: "sm" }), "min-w-20")} href={href}>
-          {job.eligibility?.status === "blocked" ? "Details" : "Apply"}
+          {job.eligibility?.status === "blocked" ? copy.details : copy.apply}
         </Link>
       </div>
     </article>
   );
 }
+
+const jobCardCopy = {
+  ko: {
+    apply: "지원하기",
+    complete: "정보 충분",
+    details: "상세 보기",
+    needsDetail: "상세 확인",
+    published: "공개",
+    save: "즐겨찾기 저장",
+    signInToSave: "로그인하고 즐겨찾기 저장",
+    unsave: "즐겨찾기 해제",
+    verifiedCompany: "인증 기업",
+  },
+  en: {
+    apply: "Apply",
+    complete: "Complete",
+    details: "Details",
+    needsDetail: "Check details",
+    published: "Published",
+    save: "Save job",
+    signInToSave: "Log in to save",
+    unsave: "Remove saved job",
+    verifiedCompany: "Verified",
+  },
+} satisfies Record<Locale, Record<string, string>>;
 
 function EligibilityBadge({ eligibility }: { eligibility: JobEligibility }) {
   return (

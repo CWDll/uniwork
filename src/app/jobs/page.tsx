@@ -12,6 +12,14 @@ import { JobCategoryFilters } from "@/components/jobs/job-category-filters";
 import { PublicShell } from "@/components/layout/public-shell";
 import { JobCard } from "@/components/marketing/job-card";
 import { PageHeading } from "@/components/marketing/page-heading";
+import {
+  formatWage,
+  getEmploymentTypeLabel,
+  getJobFallbackLabel,
+  getLocale,
+  getLocalizedPath,
+  type Locale,
+} from "@/lib/i18n";
 import { getJobEligibility } from "@/lib/jobs/eligibility";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -21,6 +29,7 @@ type JobsSearchParams = {
   employment_type?: string;
   korean_requirement?: string;
   location?: string;
+  locale?: string;
   min_wage?: string;
   profile_fit?: string;
   q?: string;
@@ -53,9 +62,13 @@ function getFilterText(value: string) {
   return value.replace(/[%(),]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function buildJobsHref(params: JobsSearchParams, updates: JobsSearchParams) {
+function buildJobsHref(
+  params: JobsSearchParams,
+  updates: JobsSearchParams,
+  locale: Locale,
+) {
   const nextParams = new URLSearchParams();
-  const merged = { ...params, ...updates };
+  const merged = { ...params, locale: "", ...updates };
 
   for (const [key, value] of Object.entries(merged)) {
     const normalized = getParam(value);
@@ -67,11 +80,11 @@ function buildJobsHref(params: JobsSearchParams, updates: JobsSearchParams) {
 
   const query = nextParams.toString();
 
-  return query ? `/jobs?${query}` : "/jobs";
+  return getLocalizedPath(query ? `/jobs?${query}` : "/jobs", locale);
 }
 
-function buildCurrentJobsHref(params: JobsSearchParams) {
-  return buildJobsHref(params, {});
+function buildCurrentJobsHref(params: JobsSearchParams, locale: Locale) {
+  return buildJobsHref(params, {}, locale);
 }
 
 function getValidPage(value: string | undefined) {
@@ -86,6 +99,8 @@ export default async function JobsPage({
   searchParams: Promise<JobsSearchParams>;
 }) {
   const params = await searchParams;
+  const locale = getLocale(params.locale);
+  const copy = jobsCopy[locale];
   const q = getParam(params.q);
   const location = getParam(params.location);
   const queryFilter = getFilterText(q);
@@ -118,7 +133,7 @@ export default async function JobsPage({
         .maybeSingle()
     : { data: null };
   const effectiveProfileFit = user ? profileFit : "";
-  const currentJobsHref = buildCurrentJobsHref(params);
+  const currentJobsHref = buildCurrentJobsHref(params, locale);
 
   let companyIdsMatchingKeyword: string[] = [];
 
@@ -231,7 +246,9 @@ export default async function JobsPage({
 
   const jobsWithEligibility =
     activeDbJobs.map((job) => {
-      const company = companyNameById.get(String(job.company_id)) ?? "Company";
+      const company =
+        companyNameById.get(String(job.company_id)) ??
+        getJobFallbackLabel("company", locale);
       const initials = company
         .split(/\s+/)
         .map((part: string) => part[0])
@@ -248,17 +265,14 @@ export default async function JobsPage({
             ? ("complete" as const)
             : ("needs_detail" as const),
         featured: false,
-        koreanRequirement: job.korean_requirement || "한국어 조건 협의",
+        koreanRequirement: job.korean_requirement || getJobFallbackLabel("korean", locale),
         location: job.location || "-",
         logo: initials || "UW",
         publishedAt: job.published_at,
         title: job.title,
-        type: job.employment_type || "-",
-        visa: job.visa_support_type || "D-2/D-4 review",
-        wage:
-          job.wage_amount && job.wage_type
-            ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
-            : "Wage negotiable",
+        type: getEmploymentTypeLabel(job.employment_type, locale),
+        visa: job.visa_support_type || getJobFallbackLabel("visa", locale),
+        wage: formatWage(job.wage_amount, job.wage_type, locale),
         saved: savedJobIds.has(String(job.id)),
         status: job.status,
         closedAt: job.closed_at,
@@ -294,9 +308,13 @@ export default async function JobsPage({
       savedOnly ||
       (Number.isFinite(minWage) && minWage > 0),
   );
-  const eligibleOnlyHref = buildJobsHref(params, {
-    profile_fit: effectiveProfileFit === "eligible" ? "" : "eligible",
-  });
+  const eligibleOnlyHref = buildJobsHref(
+    params,
+    {
+      profile_fit: effectiveProfileFit === "eligible" ? "" : "eligible",
+    },
+    locale,
+  );
   const eligibleOnlyEnabled = effectiveProfileFit === "eligible";
   const savedJobs = jobsWithEligibility.filter((job) => job.saved);
   const savedPageSize = 10;
@@ -320,26 +338,26 @@ export default async function JobsPage({
   });
 
   return (
-    <PublicShell>
+    <PublicShell locale={locale}>
       <section className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
         <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="min-w-0">
             <PageHeading
-              eyebrow="Jobs"
-              title="지원 가능성을 먼저 확인하는 채용공고"
-              description="D-2/D-4 유학생의 시간제 취업 조건과 기업 요구사항을 함께 확인할 수 있도록 공고 구조를 설계합니다."
+              eyebrow={copy.eyebrow}
+              title={copy.title}
+              description={copy.description}
             />
 
             {user ? (
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="min-w-0">
                   <p className="text-sm font-black text-slate-900">
-                    내가 지원 가능한 공고만 보기
+                    {copy.eligibleOnlyTitle}
                   </p>
                   <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
                     {seekerProfile?.visa_type
-                      ? `${seekerProfile.visa_type} 프로필 기준으로 지원 가능하거나 확인이 필요한 공고를 봅니다.`
-                      : "비자 프로필을 입력하면 지원 가능한 공고만 빠르게 볼 수 있습니다."}
+                      ? copy.eligibleOnlyDescription(seekerProfile.visa_type)
+                      : copy.eligibleOnlyEmpty}
                   </p>
                 </div>
                 <Link
@@ -356,19 +374,19 @@ export default async function JobsPage({
                   ) : (
                     <ToggleLeft className="size-5" />
                   )}
-                  {eligibleOnlyEnabled ? "켜짐" : "꺼짐"}
+                  {eligibleOnlyEnabled ? copy.on : copy.off}
                 </Link>
               </div>
             ) : (
               <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
                 <p className="text-sm font-black text-blue-900">
-                  로그인하면 내 비자 기준 필터를 사용할 수 있습니다.
+                  {copy.loginFilterTitle}
                 </p>
                 <Link
                   className="mt-2 inline-flex text-sm font-black text-blue-700 hover:text-blue-900"
-                  href="/login?next=/jobs"
+                  href={getLocalizedPath("/login?next=/jobs", locale)}
                 >
-                  로그인하고 맞춤 공고 보기
+                  {copy.loginFilterCta}
                 </Link>
               </div>
             )}
@@ -393,6 +411,7 @@ export default async function JobsPage({
               }
               q={q}
               showAdvanced
+              locale={locale}
             />
           </div>
 
@@ -402,8 +421,8 @@ export default async function JobsPage({
                 <h2 className="text-lg font-black">Jobs {jobs.length}</h2>
                 <p className="mt-1 text-sm font-semibold text-slate-500">
                   {hasFilters
-                    ? "필터가 적용된 결과입니다."
-                    : "최신 공개 공고를 지원 가능성 기준으로 확인하세요."}
+                    ? copy.filteredSummary
+                    : copy.defaultSummary}
                 </p>
               </div>
             </div>
@@ -413,6 +432,7 @@ export default async function JobsPage({
                   <JobCard
                     job={job}
                     key={job.id}
+                    locale={locale}
                     returnTo={currentJobsHref}
                     viewerSignedIn={Boolean(user)}
                   />
@@ -420,26 +440,29 @@ export default async function JobsPage({
               ) : (
                 <div className="px-5 py-10">
                   <p className="text-sm font-black text-slate-700">
-                    조건에 맞는 공개 공고가 없습니다.
+                    {copy.noJobsTitle}
                   </p>
                   <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                    검색어 또는 필터를 조정해보세요. 비자 프로필을 입력하면 맞춤
-                    공고 필터도 사용할 수 있습니다.
+                    {copy.noJobsDescription}
                   </p>
                   <div className="mt-4 flex flex-wrap gap-2">
                     {hasFilters ? (
                       <Link
                         className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
-                        href="/jobs"
+                        href={getLocalizedPath("/jobs", locale)}
                       >
-                        필터 초기화
+                        {copy.reset}
                       </Link>
                     ) : null}
                     <Link
                       className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
-                      href={user ? "/me/profile" : "/login?next=/me/profile"}
+                      href={
+                        user
+                          ? getLocalizedPath("/me/profile", locale)
+                          : getLocalizedPath("/login?next=/me/profile", locale)
+                      }
                     >
-                      프로필 보완
+                      {copy.completeProfile}
                     </Link>
                   </div>
                 </div>
@@ -454,9 +477,9 @@ export default async function JobsPage({
                 <div className="border-b border-slate-200 px-4 py-4">
                   <div className="flex items-center justify-between gap-3">
                     <div>
-                      <h2 className="text-base font-black">즐겨찾기 한 공고</h2>
+                      <h2 className="text-base font-black">{copy.savedTitle}</h2>
                       <p className="mt-1 text-xs font-bold text-slate-500">
-                        저장한 공고 {savedJobs.length}개
+                        {copy.savedCount(savedJobs.length)}
                       </p>
                     </div>
                     <Heart className="size-5 text-blue-700" />
@@ -471,9 +494,9 @@ export default async function JobsPage({
                     href={buildJobsHref(params, {
                       saved: savedOnly ? "" : "1",
                       saved_page: "",
-                    })}
+                    }, locale)}
                   >
-                    {savedOnly ? "전체 공고 보기" : "즐겨찾기만 보기"}
+                    {savedOnly ? copy.viewAllJobs : copy.viewSavedOnly}
                   </Link>
                 </div>
                 <div className="divide-y divide-slate-100">
@@ -481,7 +504,7 @@ export default async function JobsPage({
                     visibleSavedJobs.map((job) => (
                       <Link
                         className="block px-4 py-3 transition hover:bg-blue-50"
-                        href={`/jobs/${job.id}`}
+                        href={getLocalizedPath(`/jobs/${job.id}`, locale)}
                         key={job.id}
                       >
                         <div className="flex items-start justify-between gap-2">
@@ -496,7 +519,7 @@ export default async function JobsPage({
                                 : "bg-slate-100 text-slate-500",
                             )}
                           >
-                            {isActiveJob(job) ? "진행 중" : "종료"}
+                            {isActiveJob(job) ? copy.open : copy.closed}
                           </span>
                         </div>
                         <p className="mt-1 line-clamp-1 text-xs font-bold text-slate-500">
@@ -507,10 +530,10 @@ export default async function JobsPage({
                   ) : (
                     <div className="px-4 py-6">
                       <p className="text-sm font-black text-slate-700">
-                        아직 저장한 공고가 없습니다.
+                        {copy.noSavedTitle}
                       </p>
                       <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-                        하트를 누르면 이 영역에서 다시 확인할 수 있습니다.
+                        {copy.noSavedDescription}
                       </p>
                     </div>
                   )}
@@ -527,7 +550,7 @@ export default async function JobsPage({
                       )}
                       href={buildJobsHref(params, {
                         saved_page: String(clampedSavedPage - 1),
-                      })}
+                      }, locale)}
                     >
                       <ChevronLeft className="size-4" />
                     </Link>
@@ -544,7 +567,7 @@ export default async function JobsPage({
                       )}
                       href={buildJobsHref(params, {
                         saved_page: String(clampedSavedPage + 1),
-                      })}
+                      }, locale)}
                     >
                       <ChevronRight className="size-4" />
                     </Link>
@@ -562,3 +585,64 @@ export default async function JobsPage({
 function isActiveJob(job: { closedAt?: string | null; status?: string | null }) {
   return job.status === "published";
 }
+
+const jobsCopy = {
+  ko: {
+    closed: "종료",
+    completeProfile: "프로필 보완",
+    defaultSummary: "최신 공개 공고를 지원 가능성 기준으로 확인하세요.",
+    description:
+      "D-2/D-4 유학생의 시간제 취업 조건과 기업 요구사항을 함께 확인할 수 있도록 공고 구조를 설계합니다.",
+    eligibleOnlyDescription: (visaType: string) =>
+      `${visaType} 프로필 기준으로 지원 가능하거나 확인이 필요한 공고를 봅니다.`,
+    eligibleOnlyEmpty: "비자 프로필을 입력하면 지원 가능한 공고만 빠르게 볼 수 있습니다.",
+    eligibleOnlyTitle: "내가 지원 가능한 공고만 보기",
+    eyebrow: "Jobs",
+    filteredSummary: "필터가 적용된 결과입니다.",
+    loginFilterCta: "로그인하고 맞춤 공고 보기",
+    loginFilterTitle: "로그인하면 내 비자 기준 필터를 사용할 수 있습니다.",
+    noJobsDescription:
+      "검색어 또는 필터를 조정해보세요. 비자 프로필을 입력하면 맞춤 공고 필터도 사용할 수 있습니다.",
+    noJobsTitle: "조건에 맞는 공개 공고가 없습니다.",
+    noSavedDescription: "하트를 누르면 이 영역에서 다시 확인할 수 있습니다.",
+    noSavedTitle: "아직 저장한 공고가 없습니다.",
+    off: "꺼짐",
+    on: "켜짐",
+    open: "진행 중",
+    reset: "필터 초기화",
+    savedCount: (count: number) => `저장한 공고 ${count}개`,
+    savedTitle: "즐겨찾기 한 공고",
+    title: "지원 가능성을 먼저 확인하는 채용공고",
+    viewAllJobs: "전체 공고 보기",
+    viewSavedOnly: "즐겨찾기만 보기",
+  },
+  en: {
+    closed: "Closed",
+    completeProfile: "Complete profile",
+    defaultSummary: "Browse the latest published jobs with fit signals.",
+    description:
+      "Explore part-time jobs in Korea with visa, workplace, wage, and Korean requirement checks.",
+    eligibleOnlyDescription: (visaType: string) =>
+      `Showing jobs available or reviewable for your ${visaType} profile.`,
+    eligibleOnlyEmpty: "Add your visa profile to quickly filter eligible jobs.",
+    eligibleOnlyTitle: "Show jobs I can apply for",
+    eyebrow: "Jobs",
+    filteredSummary: "Showing filtered results.",
+    loginFilterCta: "Log in for matched jobs",
+    loginFilterTitle: "Log in to use filters based on your visa profile.",
+    noJobsDescription:
+      "Try changing the keyword or filters. Add your visa profile for better matching.",
+    noJobsTitle: "No published jobs match these conditions.",
+    noSavedDescription: "Tap the heart on a job to keep it here.",
+    noSavedTitle: "No saved jobs yet.",
+    off: "Off",
+    on: "On",
+    open: "Open",
+    reset: "Reset filters",
+    savedCount: (count: number) => `${count} saved`,
+    savedTitle: "Saved jobs",
+    title: "Jobs with eligibility checks first",
+    viewAllJobs: "View all jobs",
+    viewSavedOnly: "Saved only",
+  },
+};

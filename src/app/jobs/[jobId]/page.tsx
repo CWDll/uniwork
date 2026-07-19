@@ -19,6 +19,13 @@ import { JobApplicationForm } from "@/components/jobs/job-application-form";
 import { PublicShell } from "@/components/layout/public-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getApplicationCompletion } from "@/lib/applications/completeness";
+import {
+  formatWage,
+  getEmploymentTypeLabel,
+  getJobFallbackLabel,
+  getLocale,
+  getLocalizedPath,
+} from "@/lib/i18n";
 import { getJobEligibility, type JobEligibility } from "@/lib/jobs/eligibility";
 import { getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
@@ -68,11 +75,16 @@ export async function generateMetadata({
 }
 
 export default async function JobDetailPage({
+  searchParams,
   params,
 }: {
+  searchParams?: Promise<{ locale?: string }>;
   params: Promise<{ jobId: string }>;
 }) {
   const { jobId } = await params;
+  const search = searchParams ? await searchParams : {};
+  const locale = getLocale(search.locale);
+  const copy = jobDetailCopy[locale];
   const supabase = await createClient();
   const {
     data: { user },
@@ -141,10 +153,7 @@ export default async function JobDetailPage({
     visaType: seekerProfile?.visa_type,
   });
 
-  const wage =
-    job.wage_amount && job.wage_type
-      ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
-      : "협의";
+  const wage = formatWage(job.wage_amount, job.wage_type, locale);
   const existingApplicationStatus = getStatusMeta(
     "application",
     existingApplication?.status,
@@ -163,70 +172,73 @@ export default async function JobDetailPage({
   });
 
   return (
-    <PublicShell>
+    <PublicShell locale={locale}>
       <section className="mx-auto grid w-full max-w-6xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
         <div className="min-w-0">
           <Link
             className="inline-flex items-center gap-2 text-sm font-black text-slate-500 hover:text-blue-700"
-            href="/jobs"
+            href={getLocalizedPath("/jobs", locale)}
           >
             <ArrowLeft className="size-4" />
-            Jobs
+            {copy.backToJobs}
           </Link>
 
           <article className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
             <div className="flex flex-wrap gap-2">
               <span className="rounded-md bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
-                {job.category || "Part-time"}
+                {job.category || copy.defaultCategory}
               </span>
               <span className="rounded-md bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
-                {job.visa_support_type || "Visa review"}
+                {job.visa_support_type || getJobFallbackLabel("visa", locale)}
               </span>
             </div>
             <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
               {job.title}
             </h1>
             <p className="mt-3 text-base font-semibold text-slate-600">
-              {company?.name ?? "Company"}
+              {company?.name ?? getJobFallbackLabel("company", locale)}
               {company?.verification_status === "verified" ? (
                 <span className="ml-2 rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
-                  인증 기업
+                  {copy.verifiedCompany}
                 </span>
               ) : null}
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
               <DecisionSignal
-                label="지원 가능성"
+                label={copy.eligibility}
                 tone={getEligibilityTone(eligibility)}
                 value={eligibility.label}
               />
               <DecisionSignal
-                label="공고 정보"
+                label={copy.jobInfo}
                 tone={postingQuality.isComplete ? "green" : "amber"}
                 value={`${postingQuality.completed}/${postingQuality.total}`}
               />
               <DecisionSignal
-                label="기업 신뢰"
+                label={copy.companyTrust}
                 tone={
                   company?.verification_status === "verified" ? "green" : "slate"
                 }
                 value={
                   company?.verification_status === "verified"
-                    ? "인증 기업"
-                    : "확인 필요"
+                    ? copy.verifiedCompany
+                    : copy.needsCheck
                 }
               />
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <Info label="Location" value={job.location || "-"} />
-              <Info label="Type" value={job.employment_type || "-"} />
-              <Info label="Wage" value={wage} />
+              <Info label={copy.location} value={job.location || "-"} />
+              <Info
+                label={copy.type}
+                value={getEmploymentTypeLabel(job.employment_type, locale)}
+              />
+              <Info label={copy.wage} value={wage} />
             </div>
 
             <div className="mt-8 border-t border-slate-100 pt-6">
-              <h2 className="text-xl font-black">공고 설명</h2>
+              <h2 className="text-xl font-black">{copy.descriptionTitle}</h2>
               <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-7 text-slate-700">
                 {job.description}
               </p>
@@ -234,17 +246,17 @@ export default async function JobDetailPage({
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <Info
-                label="Korean requirement"
-                value={job.korean_requirement || "별도 협의"}
+                label={copy.koreanRequirement}
+                value={job.korean_requirement || copy.negotiable}
               />
               <Info
-                label="Company address"
+                label={copy.companyAddress}
                 value={company?.address || job.location || "-"}
               />
             </div>
 
             <div className="mt-6 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-              <p className="text-sm font-black text-slate-900">지원 전 확인할 점</p>
+              <p className="text-sm font-black text-slate-900">{copy.beforeApply}</p>
               {postingQuality.missing.length > 0 ? (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {postingQuality.missing.map((item) => (
@@ -258,12 +270,11 @@ export default async function JobDetailPage({
                 </div>
               ) : (
                 <p className="mt-2 text-sm font-semibold text-slate-600">
-                  지원 판단에 필요한 주요 정보가 입력되어 있습니다.
+                  {copy.readyInfo}
                 </p>
               )}
               <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-                비자 조건과 실제 근무 가능 시간은 지원 후 기업/운영자 확인이
-                필요할 수 있습니다.
+                {copy.reviewDisclaimer}
               </p>
             </div>
           </article>
@@ -275,9 +286,11 @@ export default async function JobDetailPage({
               {(company?.name ?? "UW").slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="truncate font-black">{company?.name ?? "Company"}</p>
+              <p className="truncate font-black">
+                {company?.name ?? getJobFallbackLabel("company", locale)}
+              </p>
               <p className="text-sm font-semibold text-slate-500">
-                {company?.industry || "Industry"}
+                {company?.industry || copy.industry}
               </p>
             </div>
           </div>
@@ -286,7 +299,7 @@ export default async function JobDetailPage({
             {company?.verification_status === "verified" ? (
               <span className="flex items-center gap-2 text-emerald-700">
                 <CheckCircle2 className="size-4" />
-                운영자 인증 기업
+                {copy.verifiedByAdmin}
               </span>
             ) : null}
             <span className="flex items-center gap-2">
@@ -300,14 +313,17 @@ export default async function JobDetailPage({
             {job.published_at ? (
               <span className="flex items-center gap-2 text-slate-500">
                 <FileText className="size-4 text-slate-400" />
-                공개일 {new Date(job.published_at).toLocaleDateString("ko-KR")}
+                {copy.publishedAt}{" "}
+                {new Date(job.published_at).toLocaleDateString(
+                  locale === "en" ? "en-US" : "ko-KR",
+                )}
               </span>
             ) : null}
           </div>
 
           {existingApplication ? (
             <div className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm font-bold text-emerald-800">
-              이미 지원한 공고입니다. 상태: {existingApplicationStatus.label}
+              {copy.alreadyApplied(existingApplicationStatus.label)}
             </div>
           ) : user && eligibility.canApply && completion.isComplete ? (
             <>
@@ -328,15 +344,16 @@ export default async function JobDetailPage({
               ) : (
                 <Link
                   className={cn(buttonVariants({ className: "mt-4 w-full" }))}
-                  href={
+                  href={getLocalizedPath(
                     eligibility.status === "profile_required"
                       ? "/me/profile"
-                      : "/me/admin-requests"
-                  }
+                      : "/me/admin-requests",
+                    locale,
+                  )}
                 >
                   {eligibility.status === "profile_required"
-                    ? "프로필 입력하기"
-                    : "행정 검토 요청하기"}
+                    ? copy.completeProfile
+                    : copy.requestAdminReview}
                 </Link>
               )}
             </>
@@ -345,9 +362,9 @@ export default async function JobDetailPage({
               <EligibilityPanel eligibility={eligibility} />
               <Link
                 className={cn(buttonVariants({ className: "mt-5 w-full" }))}
-                href={`/login?next=/jobs/${job.id}`}
+                href={getLocalizedPath(`/login?next=/jobs/${job.id}`, locale)}
               >
-                로그인 후 지원하기
+                {copy.loginToApply}
               </Link>
             </>
           )}
@@ -723,3 +740,60 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+const jobDetailCopy = {
+  ko: {
+    alreadyApplied: (status: string) => `이미 지원한 공고입니다. 상태: ${status}`,
+    backToJobs: "채용공고",
+    beforeApply: "지원 전 확인할 점",
+    companyAddress: "회사 주소",
+    companyTrust: "기업 신뢰",
+    completeProfile: "프로필 입력하기",
+    defaultCategory: "시간제",
+    descriptionTitle: "공고 설명",
+    eligibility: "지원 가능성",
+    industry: "업종",
+    jobInfo: "공고 정보",
+    koreanRequirement: "한국어 조건",
+    location: "근무지",
+    loginToApply: "로그인 후 지원하기",
+    needsCheck: "확인 필요",
+    negotiable: "별도 협의",
+    publishedAt: "공개일",
+    readyInfo: "지원 판단에 필요한 주요 정보가 입력되어 있습니다.",
+    requestAdminReview: "행정 검토 요청하기",
+    reviewDisclaimer:
+      "비자 조건과 실제 근무 가능 시간은 지원 후 기업/운영자 확인이 필요할 수 있습니다.",
+    type: "고용 형태",
+    verifiedByAdmin: "운영자 인증 기업",
+    verifiedCompany: "인증 기업",
+    wage: "급여",
+  },
+  en: {
+    alreadyApplied: (status: string) => `You already applied. Status: ${status}`,
+    backToJobs: "Jobs",
+    beforeApply: "Before applying",
+    companyAddress: "Company address",
+    companyTrust: "Company trust",
+    completeProfile: "Complete profile",
+    defaultCategory: "Part-time",
+    descriptionTitle: "Job description",
+    eligibility: "Eligibility",
+    industry: "Industry",
+    jobInfo: "Job info",
+    koreanRequirement: "Korean requirement",
+    location: "Location",
+    loginToApply: "Log in to apply",
+    needsCheck: "Needs check",
+    negotiable: "Negotiable",
+    publishedAt: "Published",
+    readyInfo: "The key information needed to decide is included.",
+    requestAdminReview: "Request admin review",
+    reviewDisclaimer:
+      "Visa conditions and actual work hours may still require confirmation after applying.",
+    type: "Type",
+    verifiedByAdmin: "Admin-verified company",
+    verifiedCompany: "Verified company",
+    wage: "Wage",
+  },
+};
