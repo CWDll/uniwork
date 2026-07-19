@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getLocale } from "@/lib/i18n";
 import { normalizeNotificationEmail } from "@/lib/notifications/recipients";
 import { createClient } from "@/lib/supabase/server";
 
@@ -40,6 +41,29 @@ export async function saveSeekerProfileAction(
   _prevState: ProfileState,
   formData: FormData,
 ): Promise<ProfileState> {
+  const locale = getLocale(String(formData.get("locale") ?? ""));
+  const text = {
+    en: {
+      email: "Please check the notification email format.",
+      language: "Please select your Korean and English levels.",
+      required:
+        "Nationality, visa status, alien registration status, school, and major are required.",
+      signIn: "Please log in.",
+      success: "Your profile has been saved.",
+      time: "Please enter weekday or weekend availability.",
+      workPreference:
+        "Please select at least one preferred work location and one preferred job type.",
+    },
+    ko: {
+      email: "알림 이메일 형식을 확인해주세요.",
+      language: "한국어와 영어 수준을 선택해주세요.",
+      required: "국적, 비자, 외국인등록 상태, 학교, 전공은 필수입니다.",
+      signIn: "로그인이 필요합니다.",
+      success: "프로필이 저장되었습니다.",
+      time: "평일 또는 주말 근무 가능 시간을 입력해주세요.",
+      workPreference: "희망 근무 지역과 희망 직무를 최소 1개 이상 선택해주세요.",
+    },
+  }[locale];
   const supabase = await createClient();
   const {
     data: { user },
@@ -47,7 +71,7 @@ export async function saveSeekerProfileAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "로그인이 필요합니다." };
+    return { error: text.signIn };
   }
 
   const visaType = getAllowedValue(formData.get("visa_type"), allowedVisaTypes);
@@ -75,23 +99,23 @@ export async function saveSeekerProfileAction(
     formData.get("email_notifications_enabled") === "on";
 
   if (!nationality || !visaType || !alienRegistrationStatus || !school || !major) {
-    return { error: "국적, 비자, 외국인등록 상태, 학교, 전공은 필수입니다." };
+    return { error: text.required };
   }
 
   if (!koreanLevel || !englishLevel) {
-    return { error: "한국어와 영어 수준을 선택해주세요." };
+    return { error: text.language };
   }
 
   if (preferredLocations.length === 0 || preferredJobTypes.length === 0) {
-    return { error: "희망 근무 지역과 희망 직무를 최소 1개 이상 선택해주세요." };
+    return { error: text.workPreference };
   }
 
   if (!weekdayAvailability && !weekendAvailability) {
-    return { error: "평일 또는 주말 근무 가능 시간을 입력해주세요." };
+    return { error: text.time };
   }
 
   if (notificationEmail === null) {
-    return { error: "알림 이메일 형식을 확인해주세요." };
+    return { error: text.email };
   }
 
   const [{ error }, { error: profileError }] = await Promise.all([
@@ -136,5 +160,5 @@ export async function saveSeekerProfileAction(
   revalidatePath("/jobs");
   revalidatePath("/me/applications");
 
-  return { message: "프로필이 저장되었습니다." };
+  return { message: text.success };
 }

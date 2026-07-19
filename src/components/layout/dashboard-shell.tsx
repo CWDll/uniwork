@@ -12,20 +12,29 @@ import {
 
 import { MobileBottomNav } from "@/components/navigation/mobile-bottom-nav";
 import { SiteHeader } from "@/components/navigation/site-header";
+import { getLocalizedPath, type Locale } from "@/lib/i18n";
 
 type NavItem = {
   href: string;
-  label: string;
+  label: string | Record<Locale, string>;
   icon: React.ComponentType<{ className?: string }>;
 };
 
 const navByArea: Record<"me" | "company" | "admin", NavItem[]> = {
   me: [
-    { href: "/me", label: "내 대시보드", icon: LayoutDashboard },
-    { href: "/me/profile", label: "프로필", icon: ShieldCheck },
-    { href: "/me/resume", label: "이력서", icon: FileText },
-    { href: "/me/applications", label: "지원 내역", icon: ClipboardList },
-    { href: "/me/admin-requests", label: "행정 요청", icon: FileText },
+    { href: "/me", label: { en: "Dashboard", ko: "내 대시보드" }, icon: LayoutDashboard },
+    { href: "/me/profile", label: { en: "Profile", ko: "프로필" }, icon: ShieldCheck },
+    { href: "/me/resume", label: { en: "Resume", ko: "이력서" }, icon: FileText },
+    {
+      href: "/me/applications",
+      label: { en: "Applications", ko: "지원 내역" },
+      icon: ClipboardList,
+    },
+    {
+      href: "/me/admin-requests",
+      label: { en: "Admin requests", ko: "행정 요청" },
+      icon: FileText,
+    },
   ],
   company: [
     { href: "/company", label: "기업 대시보드", icon: LayoutDashboard },
@@ -43,27 +52,29 @@ const navByArea: Record<"me" | "company" | "admin", NavItem[]> = {
 };
 
 const titleByArea = {
-  me: "구직자 공간",
-  company: "기업 공간",
-  admin: "운영자 콘솔",
+  me: { en: "Seeker workspace", ko: "구직자 공간" },
+  company: { en: "기업 공간", ko: "기업 공간" },
+  admin: { en: "운영자 콘솔", ko: "운영자 콘솔" },
 };
 
 export function DashboardShell({
   area,
   children,
+  locale = "ko",
 }: {
   area: "me" | "company" | "admin";
   children: React.ReactNode;
+  locale?: Locale;
 }) {
   const navItems = navByArea[area];
 
   return (
     <main className="min-h-screen bg-slate-50 pb-24 text-slate-950 md:pb-0">
-      <SiteHeader />
+      <SiteHeader locale={locale} />
       <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:px-8">
         <aside className="hidden rounded-2xl border border-slate-200 bg-white p-3 lg:block">
           <p className="px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-400">
-            {titleByArea[area]}
+            {titleByArea[area][locale]}
           </p>
           <nav className="mt-2 grid gap-1">
             {navItems.map((item) => {
@@ -72,11 +83,11 @@ export function DashboardShell({
               return (
                 <Link
                   className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
-                  href={item.href}
+                  href={getLocalizedPath(item.href, locale)}
                   key={item.href}
                 >
                   <Icon className="size-4" />
-                  {item.label}
+                  {typeof item.label === "string" ? item.label : item.label[locale]}
                 </Link>
               );
             })}
@@ -85,7 +96,7 @@ export function DashboardShell({
 
         <section className="min-w-0">{children}</section>
       </div>
-      <MobileBottomNav />
+      <MobileBottomNav locale={locale} />
     </main>
   );
 }

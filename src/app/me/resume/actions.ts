@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { getLocale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
 type ResumeState = {
@@ -59,6 +60,21 @@ export async function saveResumeAction(
   _prevState: ResumeState,
   formData: FormData,
 ): Promise<ResumeState> {
+  const locale = getLocale(String(formData.get("locale") ?? ""));
+  const text = {
+    en: {
+      intro: "Please enter at least 20 characters for your self introduction.",
+      language: "Please add at least one language ability.",
+      signIn: "Please log in.",
+      success: "Your resume and introduction have been saved.",
+    },
+    ko: {
+      intro: "자기소개는 최소 20자 이상 입력해주세요.",
+      language: "언어 능력을 최소 1개 이상 입력해주세요.",
+      signIn: "로그인이 필요합니다.",
+      success: "이력/소개 정보가 저장되었습니다.",
+    },
+  }[locale];
   const supabase = await createClient();
   const {
     data: { user },
@@ -66,7 +82,7 @@ export async function saveResumeAction(
   } = await supabase.auth.getUser();
 
   if (userError || !user) {
-    return { error: "로그인이 필요합니다." };
+    return { error: text.signIn };
   }
 
   const title = compact(formData.get("title")) || "Uniwork Resume";
@@ -76,11 +92,11 @@ export async function saveResumeAction(
   const languages = parseLanguages(formData);
 
   if (intro.length < 20) {
-    return { error: "자기소개는 최소 20자 이상 입력해주세요." };
+    return { error: text.intro };
   }
 
   if (languages.length === 0) {
-    return { error: "언어 능력을 최소 1개 이상 입력해주세요." };
+    return { error: text.language };
   }
 
   const { data: existing } = await supabase
@@ -116,5 +132,5 @@ export async function saveResumeAction(
   revalidatePath("/me/applications");
   revalidatePath("/company/applications");
 
-  return { message: "이력/소개 정보가 저장되었습니다." };
+  return { message: text.success };
 }

@@ -7,16 +7,17 @@ import {
   getApplicationSnapshotMeta,
   getResumeForApplication,
 } from "@/lib/applications/snapshot";
+import { getEmploymentTypeLabel, getLocalizedPath, getLocale, type Locale } from "@/lib/i18n";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
 const applicationStatusOptions = [
-  { value: "", label: "전체" },
-  { value: "submitted", label: "지원 완료" },
-  { value: "reviewing", label: "검토 중" },
-  { value: "accepted", label: "합격" },
-  { value: "rejected", label: "불합격" },
+  { value: "", labels: { en: "All", ko: "전체" } },
+  { value: "submitted", labels: { en: "Submitted", ko: "지원 완료" } },
+  { value: "reviewing", labels: { en: "In review", ko: "검토 중" } },
+  { value: "accepted", labels: { en: "Accepted", ko: "합격" } },
+  { value: "rejected", labels: { en: "Rejected", ko: "불합격" } },
 ];
 
 type StatusEvent = {
@@ -38,16 +39,19 @@ type SeekerStatusGuidance = {
 export default async function SeekerApplicationsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ applied?: string; status?: string }>;
+  searchParams: Promise<{ applied?: string; locale?: string; status?: string }>;
 }) {
-  const { applied, status: activeStatus = "" } = await searchParams;
+  const params = await searchParams;
+  const { applied, status: activeStatus = "" } = params;
+  const locale = getLocale(params.locale);
+  const t = applicationsCopy[locale];
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/me/applications");
+    redirect(getLocalizedPath("/login?next=/me/applications", locale));
   }
 
   const { data: applications } = user
@@ -135,38 +139,36 @@ export default async function SeekerApplicationsPage({
   const hasActiveFilters = Boolean(activeStatus);
 
   return (
-    <DashboardShell area="me">
+    <DashboardShell area="me" locale={locale}>
       <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-          지원 내역
+          {t.eyebrow}
         </p>
         <h1 className="mt-3 text-3xl font-black tracking-tight">
-          내가 지원한 공고를 확인합니다
+          {t.title}
         </h1>
         <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
-          기업이 지원 상태를 변경하면 이 목록에서 진행 상황을 확인할 수
-          있습니다.
+          {t.description}
         </p>
       </div>
 
       {applied ? (
         <div className="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
           <p className="text-sm font-black text-emerald-900">
-            지원이 완료되었습니다.
+            {t.appliedTitle}
           </p>
           <p className="mt-1 text-sm font-semibold leading-6 text-emerald-800">
-            제출 시점의 프로필/이력서가 고정 저장되었습니다. 기업이 상태를
-            변경하거나 안내 메모를 남기면 이 화면에서 바로 확인할 수 있습니다.
+            {t.appliedDescription}
           </p>
           <div className="mt-3 grid gap-2 text-xs font-bold leading-5 text-emerald-900 sm:grid-cols-3">
             <span className="rounded-lg bg-white/70 px-3 py-2">
-              1. 지원 상태 확인
+              1. {t.appliedSteps.status}
             </span>
             <span className="rounded-lg bg-white/70 px-3 py-2">
-              2. 기업 안내 메모 확인
+              2. {t.appliedSteps.note}
             </span>
             <span className="rounded-lg bg-white/70 px-3 py-2">
-              3. 프로필/이력서 최신화 유지
+              3. {t.appliedSteps.keepUpdated}
             </span>
           </div>
         </div>
@@ -187,10 +189,15 @@ export default async function SeekerApplicationsPage({
                   ? "border-blue-200 bg-blue-50"
                   : "border-slate-200 bg-white hover:bg-slate-50",
               )}
-              href={isActive ? "/me/applications" : `/me/applications?status=${option.value}`}
+              href={getLocalizedPath(
+                isActive ? "/me/applications" : `/me/applications?status=${option.value}`,
+                locale,
+              )}
               key={option.value}
             >
-              <p className="text-sm font-black text-slate-500">{option.label}</p>
+              <p className="text-sm font-black text-slate-500">
+                {option.labels[locale]}
+              </p>
               <p className="mt-1 text-2xl font-black">{count}</p>
             </Link>
           );
@@ -200,12 +207,12 @@ export default async function SeekerApplicationsPage({
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
         <div className="border-b border-slate-200 px-5 py-4">
           <h2 className="text-lg font-black">
-            지원 내역 {visibleApplications.length}
+            {t.listTitle} {visibleApplications.length}
           </h2>
           <p className="mt-1 text-sm font-semibold text-slate-500">
             {hasActiveFilters
-              ? "현재 상태 필터에 맞는 지원 내역"
-              : "최근 지원한 공고와 진행 상태"}
+              ? t.filteredSubtitle
+              : t.listSubtitle}
           </p>
         </div>
         <div className="divide-y divide-slate-100">
@@ -213,8 +220,8 @@ export default async function SeekerApplicationsPage({
             visibleApplications.map((item) => {
               const { application, company, job, resume, snapshotMeta, statusEvents } =
                 item;
-              const status = getStatusMeta("application", application.status);
-              const guidance = getApplicationStatusGuidance(application.status);
+              const status = getStatusMeta("application", application.status, locale);
+              const guidance = getApplicationStatusGuidance(application.status, locale);
               const isRecentlyApplied = applied === application.job_id;
 
               return (
@@ -230,7 +237,7 @@ export default async function SeekerApplicationsPage({
                       {job ? (
                         <Link
                           className="font-black text-slate-950 hover:text-blue-700"
-                          href={`/jobs/${job.id}`}
+                          href={getLocalizedPath(`/jobs/${job.id}`, locale)}
                         >
                           {job.title}
                         </Link>
@@ -239,32 +246,36 @@ export default async function SeekerApplicationsPage({
                       )}
                       {isRecentlyApplied ? (
                         <span className="rounded-md bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-700">
-                          방금 지원
+                          {t.justApplied}
                         </span>
                       ) : null}
                     </div>
                     <p className="mt-1 text-sm font-semibold text-slate-500">
                       {company?.name ?? "Company"} · {job?.location ?? "-"} ·{" "}
-                      {job?.employment_type ?? "-"}
+                      {getEmploymentTypeLabel(job?.employment_type, locale)}
                     </p>
                     <p className="mt-1 text-xs font-bold text-slate-400">
-                      지원일{" "}
-                      {new Date(application.applied_at).toLocaleString("ko-KR")}
+                      {t.appliedAt}{" "}
+                      {new Date(application.applied_at).toLocaleString(
+                        locale === "en" ? "en-US" : "ko-KR",
+                      )}
                     </p>
                     {application.status_updated_at ? (
                       <p className="mt-1 text-xs font-bold text-slate-400">
-                        상태 변경{" "}
-                        {new Date(application.status_updated_at).toLocaleString("ko-KR")}
+                        {t.statusChanged}{" "}
+                        {new Date(application.status_updated_at).toLocaleString(
+                          locale === "en" ? "en-US" : "ko-KR",
+                        )}
                       </p>
                     ) : null}
                     <div className="mt-3 grid gap-2 text-sm font-semibold text-slate-600 sm:grid-cols-2">
                       <Info
                         label="Resume"
-                        value={resume?.title || "연결된 이력서 없음"}
+                        value={resume?.title || t.noResume}
                       />
                       <Info
                         label="Submission"
-                        value={`${snapshotMeta.label} · ${formatSnapshotTime(snapshotMeta.capturedAt)}`}
+                        value={`${getSnapshotLabel(snapshotMeta.label, locale)} · ${formatSnapshotTime(snapshotMeta.capturedAt, locale)}`}
                       />
                     </div>
                     {application.message ? (
@@ -274,7 +285,7 @@ export default async function SeekerApplicationsPage({
                     ) : null}
                     <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">
-                        기업 메모
+                        {t.companyMemo}
                       </p>
                       {application.company_note ? (
                         <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-blue-900">
@@ -282,8 +293,7 @@ export default async function SeekerApplicationsPage({
                         </p>
                       ) : (
                         <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
-                          아직 기업이 남긴 안내 메모가 없습니다. 면접 안내,
-                          추가 서류 요청, 결과 안내가 있으면 이 영역에 표시됩니다.
+                          {t.noCompanyMemo}
                         </p>
                       )}
                     </div>
@@ -294,7 +304,7 @@ export default async function SeekerApplicationsPage({
                         </p>
                         <div className="mt-2 grid gap-2">
                           {statusEvents.slice(0, 3).map((event) => (
-                            <StatusEventItem event={event} key={event.id} />
+                            <StatusEventItem event={event} key={event.id} locale={locale} />
                           ))}
                         </div>
                       </div>
@@ -303,7 +313,7 @@ export default async function SeekerApplicationsPage({
                   <div className="grid h-max gap-2 rounded-xl bg-slate-50 p-3">
                     <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
                       <p className="text-xs font-black uppercase tracking-wide text-blue-700">
-                        현재 상태
+                        {t.currentStatus}
                       </p>
                       <span
                         className={cn(
@@ -336,14 +346,14 @@ export default async function SeekerApplicationsPage({
                       </p>
                     </div>
                     <p className="text-xs font-bold leading-5 text-slate-500">
-                      다음 할 일: {guidance.nextStep}
+                      {t.nextStep}: {guidance.nextStep}
                     </p>
                     {job ? (
                       <Link
                         className="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 hover:bg-slate-50"
-                        href={`/jobs/${job.id}`}
+                        href={getLocalizedPath(`/jobs/${job.id}`, locale)}
                       >
-                        공고 보기
+                        {t.viewJob}
                       </Link>
                     ) : null}
                   </div>
@@ -354,34 +364,34 @@ export default async function SeekerApplicationsPage({
             <div className="px-5 py-8">
               <p className="text-sm font-black text-slate-700">
                 {hasActiveFilters
-                  ? "현재 필터에 맞는 지원 내역이 없습니다."
-                  : "아직 지원한 공고가 없습니다."}
+                  ? t.emptyFiltered
+                  : t.empty}
               </p>
               <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
                 {hasActiveFilters
-                  ? "다른 상태를 선택하거나 필터를 초기화해 전체 지원 내역을 확인해보세요."
-                  : "관심 있는 공고를 찾고, 프로필과 이력서를 완성한 뒤 지원해보세요."}
+                  ? t.emptyFilteredBody
+                  : t.emptyBody}
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {hasActiveFilters ? (
                   <Link
                     className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
-                    href="/me/applications"
+                    href={getLocalizedPath("/me/applications", locale)}
                   >
-                    필터 초기화
+                    {t.resetFilter}
                   </Link>
                 ) : null}
                 <Link
                   className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-black text-white hover:bg-blue-700"
-                  href="/jobs"
+                  href={getLocalizedPath("/jobs", locale)}
                 >
-                  공고 찾기
+                  {t.findJobs}
                 </Link>
                 <Link
                   className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-black text-slate-700 hover:bg-slate-50"
-                  href="/me/resume"
+                  href={getLocalizedPath("/me/resume", locale)}
                 >
-                  이력서 보완
+                  {t.updateResume}
                 </Link>
               </div>
             </div>
@@ -394,13 +404,17 @@ export default async function SeekerApplicationsPage({
 
 function StatusEventItem({
   event,
+  locale,
 }: {
   event: StatusEvent;
+  locale: Locale;
 }) {
   const fromStatus = event.from_status
-    ? getStatusMeta("application", event.from_status).label
-    : "이전 상태 없음";
-  const toStatus = getStatusMeta("application", event.to_status).label;
+    ? getStatusMeta("application", event.from_status, locale).label
+    : locale === "en"
+      ? "No previous status"
+      : "이전 상태 없음";
+  const toStatus = getStatusMeta("application", event.to_status, locale).label;
 
   return (
     <div className="rounded-lg bg-white px-3 py-2">
@@ -408,7 +422,7 @@ function StatusEventItem({
         {fromStatus} → {toStatus}
       </p>
       <p className="mt-1 text-xs font-bold text-slate-400">
-        {new Date(event.created_at).toLocaleString("ko-KR")}
+        {new Date(event.created_at).toLocaleString(locale === "en" ? "en-US" : "ko-KR")}
       </p>
       {event.note ? (
         <p className="mt-1 whitespace-pre-wrap text-sm font-semibold leading-6 text-slate-600">
@@ -419,7 +433,49 @@ function StatusEventItem({
   );
 }
 
-function getApplicationStatusGuidance(status?: string | null): SeekerStatusGuidance {
+function getApplicationStatusGuidance(
+  status?: string | null,
+  locale: Locale = "ko",
+): SeekerStatusGuidance {
+  if (locale === "en") {
+    if (status === "reviewing") {
+      return {
+        detail: "The employer is reviewing your profile and resume.",
+        nextStep: "Watch for employer notes and keep your profile/resume up to date.",
+        title: "Review is in progress",
+        tone: "blue",
+      };
+    }
+
+    if (status === "accepted") {
+      return {
+        detail: "The employer marked this application as accepted.",
+        nextStep:
+          "Check employer notes and keep your phone and email ready for contact.",
+        title: "Accepted",
+        tone: "green",
+      };
+    }
+
+    if (status === "rejected") {
+      return {
+        detail: "This application was marked as rejected.",
+        nextStep:
+          "Review other jobs and update any missing profile/resume information.",
+        title: "Rejected",
+        tone: "red",
+      };
+    }
+
+    return {
+      detail: "Your application was submitted to the employer and is not reviewed yet.",
+      nextStep:
+        "The status will change when the employer starts review. Keep your information current.",
+      title: "Application submitted",
+      tone: "slate",
+    };
+  }
+
   if (status === "reviewing") {
     return {
       detail: "기업 담당자가 프로필과 이력서를 확인하는 단계입니다.",
@@ -455,6 +511,22 @@ function getApplicationStatusGuidance(status?: string | null): SeekerStatusGuida
   };
 }
 
+function getSnapshotLabel(label: string, locale: Locale) {
+  if (locale !== "en") {
+    return label;
+  }
+
+  if (label === "지원 시점 제출본") {
+    return "Submitted snapshot";
+  }
+
+  if (label === "현재 정보 fallback") {
+    return "Current information fallback";
+  }
+
+  return label;
+}
+
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2">
@@ -465,3 +537,104 @@ function Info({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
+
+const applicationsCopy = {
+  en: {
+    appliedAt: "Applied",
+    appliedDescription:
+      "Your profile/resume snapshot was saved at submission. If the employer changes status or leaves notes, you can check them here.",
+    appliedSteps: {
+      keepUpdated: "Keep profile/resume updated",
+      note: "Check employer notes",
+      status: "Check application status",
+    },
+    appliedTitle: "Application submitted.",
+    companyMemo: "Employer note",
+    currentStatus: "Current status",
+    description: "When employers update application status, you can track progress here.",
+    empty: "You have not applied to any jobs yet.",
+    emptyBody:
+      "Find jobs you are interested in, complete your profile and resume, then apply.",
+    emptyFiltered: "No applications match the current status filter.",
+    emptyFilteredBody:
+      "Choose another status or reset the filter to view all applications.",
+    eyebrow: "Applications",
+    filteredSubtitle: "Applications matching the current status filter",
+    findJobs: "Find jobs",
+    justApplied: "Just applied",
+    listSubtitle: "Recent applications and progress",
+    listTitle: "Applications",
+    nextStep: "Next step",
+    noCompanyMemo:
+      "No employer note yet. Interview notices, additional document requests, and results will appear here.",
+    noResume: "No linked resume",
+    resetFilter: "Reset filter",
+    statusChanged: "Status changed",
+    title: "Check your applications",
+    updateResume: "Update resume",
+    viewJob: "View job",
+  },
+  ko: {
+    appliedAt: "지원일",
+    appliedDescription:
+      "제출 시점의 프로필/이력서가 고정 저장되었습니다. 기업이 상태를 변경하거나 안내 메모를 남기면 이 화면에서 바로 확인할 수 있습니다.",
+    appliedSteps: {
+      keepUpdated: "프로필/이력서 최신화 유지",
+      note: "기업 안내 메모 확인",
+      status: "지원 상태 확인",
+    },
+    appliedTitle: "지원이 완료되었습니다.",
+    companyMemo: "기업 메모",
+    currentStatus: "현재 상태",
+    description: "기업이 지원 상태를 변경하면 이 목록에서 진행 상황을 확인할 수 있습니다.",
+    empty: "아직 지원한 공고가 없습니다.",
+    emptyBody: "관심 있는 공고를 찾고, 프로필과 이력서를 완성한 뒤 지원해보세요.",
+    emptyFiltered: "현재 필터에 맞는 지원 내역이 없습니다.",
+    emptyFilteredBody:
+      "다른 상태를 선택하거나 필터를 초기화해 전체 지원 내역을 확인해보세요.",
+    eyebrow: "지원 내역",
+    filteredSubtitle: "현재 상태 필터에 맞는 지원 내역",
+    findJobs: "공고 찾기",
+    justApplied: "방금 지원",
+    listSubtitle: "최근 지원한 공고와 진행 상태",
+    listTitle: "지원 내역",
+    nextStep: "다음 할 일",
+    noCompanyMemo:
+      "아직 기업이 남긴 안내 메모가 없습니다. 면접 안내, 추가 서류 요청, 결과 안내가 있으면 이 영역에 표시됩니다.",
+    noResume: "연결된 이력서 없음",
+    resetFilter: "필터 초기화",
+    statusChanged: "상태 변경",
+    title: "내가 지원한 공고를 확인합니다",
+    updateResume: "이력서 보완",
+    viewJob: "공고 보기",
+  },
+} satisfies Record<
+  Locale,
+  {
+    appliedAt: string;
+    appliedDescription: string;
+    appliedSteps: { keepUpdated: string; note: string; status: string };
+    appliedTitle: string;
+    companyMemo: string;
+    currentStatus: string;
+    description: string;
+    empty: string;
+    emptyBody: string;
+    emptyFiltered: string;
+    emptyFilteredBody: string;
+    eyebrow: string;
+    filteredSubtitle: string;
+    findJobs: string;
+    justApplied: string;
+    listSubtitle: string;
+    listTitle: string;
+    nextStep: string;
+    noCompanyMemo: string;
+    noResume: string;
+    resetFilter: string;
+    statusChanged: string;
+    title: string;
+    updateResume: string;
+    viewJob: string;
+  }
+>;

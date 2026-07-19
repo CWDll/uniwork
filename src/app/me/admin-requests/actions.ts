@@ -8,6 +8,7 @@ import {
   getAdminRequestFiles,
   getAdminRequestFileValidationError,
 } from "@/lib/admin-request-files";
+import { getLocale, type Locale } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/server";
 
 type AdminRequestState = {
@@ -28,12 +29,14 @@ export async function createAdminRequestAction(
   formData: FormData,
 ): Promise<AdminRequestState> {
   const supabase = await createClient();
+  const locale = getLocale(compact(formData.get("locale")));
+  const copy = actionCopy[locale];
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { error: "로그인이 필요합니다." };
+    return { error: copy.loginRequired };
   }
 
   const type = compact(formData.get("type"));
@@ -55,7 +58,7 @@ export async function createAdminRequestAction(
   const fileValidationError = getAdminRequestFileValidationError(requestFiles);
 
   if (!type) {
-    return { error: "요청 유형을 선택해주세요." };
+    return { error: copy.typeRequired };
   }
 
   if (fileValidationError) {
@@ -64,16 +67,16 @@ export async function createAdminRequestAction(
 
   if (!currentVisaType || !alienRegistrationStatus || !school || !contactEmail) {
     return {
-      error: "현재 체류자격, 외국인등록 상태, 학교/기관, 연락 이메일은 필수입니다.",
+      error: copy.requiredFields,
     };
   }
 
   if (!contactEmail.includes("@")) {
-    return { error: "연락 이메일 형식을 확인해주세요." };
+    return { error: copy.invalidEmail };
   }
 
   if (!handoffConsent) {
-    return { error: "운영자 검토 및 외부 행정사 전달 동의가 필요합니다." };
+    return { error: copy.consentRequired };
   }
 
   const { data: profile } = await supabase
@@ -83,7 +86,7 @@ export async function createAdminRequestAction(
     .maybeSingle();
 
   if (profile?.role !== "seeker") {
-    return { error: "구직자 계정으로만 행정 요청을 생성할 수 있습니다." };
+    return { error: copy.seekerOnly };
   }
 
   const { data: consent, error: consentError } = await supabase
@@ -158,7 +161,7 @@ export async function createAdminRequestAction(
   revalidatePath("/me/admin-requests");
   revalidatePath("/admin/admin-requests");
 
-  return { message: "행정 요청이 접수되었습니다." };
+  return { message: copy.requestSubmitted };
 }
 
 export async function createAdminRequestSupplementAction(
@@ -166,12 +169,14 @@ export async function createAdminRequestSupplementAction(
   formData: FormData,
 ): Promise<AdminRequestState> {
   const supabase = await createClient();
+  const locale = getLocale(compact(formData.get("locale")));
+  const copy = actionCopy[locale];
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return { error: "로그인이 필요합니다." };
+    return { error: copy.loginRequired };
   }
 
   const requestId = compact(formData.get("request_id"));
@@ -186,7 +191,7 @@ export async function createAdminRequestSupplementAction(
   const fileValidationError = getAdminRequestFileValidationError(supplementFiles);
 
   if (!requestId) {
-    return { error: "보완할 행정 요청을 확인해주세요." };
+    return { error: copy.supplementRequestRequired };
   }
 
   if (fileValidationError) {
@@ -199,11 +204,11 @@ export async function createAdminRequestSupplementAction(
     !missingDocumentsNote &&
     supplementFiles.length === 0
   ) {
-    return { error: "보완 내용, 준비된 서류, 첨부 파일 중 하나 이상을 입력해주세요." };
+    return { error: copy.supplementRequired };
   }
 
   if (contactEmail && !contactEmail.includes("@")) {
-    return { error: "연락 이메일 형식을 확인해주세요." };
+    return { error: copy.invalidEmail };
   }
 
   const { data: request, error: requestError } = await supabase
@@ -217,11 +222,11 @@ export async function createAdminRequestSupplementAction(
   }
 
   if (!request || request.seeker_id !== user.id) {
-    return { error: "보완할 수 있는 행정 요청을 찾지 못했습니다." };
+    return { error: copy.supplementNotFound };
   }
 
   if (request.status === "completed" || request.status === "rejected") {
-    return { error: "완료 또는 반려된 요청은 보완 내용을 추가할 수 없습니다." };
+    return { error: copy.supplementClosed };
   }
 
   const { data: supplement, error } = await supabase
@@ -266,8 +271,41 @@ export async function createAdminRequestSupplementAction(
   revalidatePath("/admin/admin-requests");
   revalidatePath(`/admin/admin-requests/${requestId}/handoff`);
 
-  return { message: "보완 내용이 제출되었습니다." };
+  return { message: copy.supplementSubmitted };
 }
+
+const actionCopy = {
+  en: {
+    consentRequired: "Please agree to operator review and possible external specialist handoff.",
+    invalidEmail: "Please check the contact email format.",
+    loginRequired: "Please log in first.",
+    requestSubmitted: "Your administrative request has been submitted.",
+    requiredFields:
+      "Current visa status, alien registration status, school/institution, and contact email are required.",
+    seekerOnly: "Only seeker accounts can create administrative requests.",
+    supplementClosed: "Completed or rejected requests cannot receive more supplement details.",
+    supplementNotFound: "We could not find a request you can supplement.",
+    supplementRequestRequired: "Please check which administrative request you are supplementing.",
+    supplementRequired:
+      "Please enter at least one supplement detail, prepared document, or attached file.",
+    supplementSubmitted: "Your supplement has been submitted.",
+    typeRequired: "Please select a request type.",
+  },
+  ko: {
+    consentRequired: "운영자 검토 및 외부 행정사 전달 동의가 필요합니다.",
+    invalidEmail: "연락 이메일 형식을 확인해주세요.",
+    loginRequired: "로그인이 필요합니다.",
+    requestSubmitted: "행정 요청이 접수되었습니다.",
+    requiredFields: "현재 체류자격, 외국인등록 상태, 학교/기관, 연락 이메일은 필수입니다.",
+    seekerOnly: "구직자 계정으로만 행정 요청을 생성할 수 있습니다.",
+    supplementClosed: "완료 또는 반려된 요청은 보완 내용을 추가할 수 없습니다.",
+    supplementNotFound: "보완할 수 있는 행정 요청을 찾지 못했습니다.",
+    supplementRequestRequired: "보완할 행정 요청을 확인해주세요.",
+    supplementRequired: "보완 내용, 준비된 서류, 첨부 파일 중 하나 이상을 입력해주세요.",
+    supplementSubmitted: "보완 내용이 제출되었습니다.",
+    typeRequired: "요청 유형을 선택해주세요.",
+  },
+} satisfies Record<Locale, Record<string, string>>;
 
 async function uploadAdminRequestFiles({
   files,

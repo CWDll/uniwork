@@ -2,6 +2,7 @@ import type {
   ResumeSnapshot,
   SeekerProfileSnapshot,
 } from "@/lib/applications/completeness";
+import type { Locale } from "@/lib/i18n";
 
 export type ApplicationProfileSnapshot = NonNullable<SeekerProfileSnapshot> & {
   captured_at?: string;
@@ -167,10 +168,10 @@ export function getApplicationSnapshotMeta({
   };
 }
 
-export function formatSnapshotTime(value?: string | null) {
+export function formatSnapshotTime(value?: string | null, locale: Locale = "ko") {
   if (!value) {
-    return "캡처 시각 없음";
+    return locale === "en" ? "No capture time" : "캡처 시각 없음";
   }
 
-  return new Date(value).toLocaleString("ko-KR");
+  return new Date(value).toLocaleString(locale === "en" ? "en-US" : "ko-KR");
 }

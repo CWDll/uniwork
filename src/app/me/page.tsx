@@ -12,6 +12,14 @@ import { redirect } from "next/navigation";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
 import { getApplicationCompletion } from "@/lib/applications/completeness";
+import { translateCompletionItems } from "@/lib/applications/completion-labels";
+import {
+  formatWage,
+  getEmploymentTypeLabel,
+  getLocalizedPath,
+  getLocale,
+  type Locale,
+} from "@/lib/i18n";
 import { getProfilePhotoUrl } from "@/lib/profile-photo";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
@@ -55,14 +63,92 @@ function getProfileCompletion(profile: SeekerProfile | null) {
   return Math.round((completed / checks.length) * 100);
 }
 
-export default async function MePage() {
+const meText = {
+  en: {
+    adminRequests: "Admin requests",
+    allApplications: "View all",
+    applicationCountNote: "Applications submitted",
+    applications: "Applications",
+    appliedAt: "Applied",
+    companyNote: "Employer note",
+    dashboardEyebrow: "Seeker dashboard",
+    emptyApplicationsBody:
+      "Complete your readiness information, then find jobs you can apply to.",
+    emptyApplicationsTitle: "You have not applied to any jobs yet.",
+    findJobs: "Find jobs",
+    jobsAfterReady:
+      "Once your profile and resume are complete, you can apply directly from job detail pages.",
+    moreJobs: "View more jobs",
+    noJobs: "No published jobs yet.",
+    profile: "Profile",
+    profileReady: "Basic application information is complete",
+    profileReview: "Basic information for D-2/D-4 eligibility review",
+    readiness: "Application readiness",
+    readyJobs: "View eligible jobs",
+    readyStart: "Start readiness",
+    recentApplications: "Recent applications",
+    recentApplicationsBody: "Track employer status changes and notes.",
+    recentJobs: "Recently published jobs",
+    resume: "Resume",
+    resumeReady: "Resume information for employers is complete",
+    resumeReview: "Add your introduction and language information",
+    statusDone: "Done",
+    statusNeeded: "Needed",
+    title: "Manage your application readiness and administrative requests",
+    subtitle:
+      "Check profile readiness, applications, and administrative requests from your account data.",
+    verifiedCompany: "Verified company",
+  },
+  ko: {
+    adminRequests: "행정 요청",
+    allApplications: "전체 보기",
+    applicationCountNote: "내가 지원한 공고 수",
+    applications: "지원 내역",
+    appliedAt: "지원일",
+    companyNote: "기업 안내",
+    dashboardEyebrow: "Seeker dashboard",
+    emptyApplicationsBody: "준비 정보를 채운 뒤 지원 가능한 공고를 찾아보세요.",
+    emptyApplicationsTitle: "아직 지원한 공고가 없습니다.",
+    findJobs: "공고 찾기",
+    jobsAfterReady: "프로필과 이력서를 채우면 공고 상세에서 바로 지원할 수 있습니다.",
+    moreJobs: "더 많은 공고 보기",
+    noJobs: "아직 공개 공고가 없습니다.",
+    profile: "프로필",
+    profileReady: "지원 기본 정보 입력 완료",
+    profileReview: "D-2/D-4 지원 검토를 위한 기본 정보",
+    readiness: "지원 준비도",
+    readyJobs: "지원 가능 공고 보기",
+    readyStart: "준비 시작",
+    recentApplications: "최근 지원 현황",
+    recentApplicationsBody: "기업 상태 변경과 안내 메모를 바로 확인합니다.",
+    recentJobs: "최근 공개 공고",
+    resume: "이력서",
+    resumeReady: "기업에게 보여줄 이력 정보 입력 완료",
+    resumeReview: "자기소개와 언어 정보를 입력해주세요",
+    statusDone: "완료",
+    statusNeeded: "필요",
+    title: "지원 준비 상태와 행정 요청을 관리합니다",
+    subtitle:
+      "프로필 완성도, 지원 내역, 행정 요청 현황을 실제 계정 데이터 기준으로 확인합니다.",
+    verifiedCompany: "인증 기업",
+  },
+} satisfies Record<Locale, Record<string, string>>;
+
+export default async function MePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ locale?: string }>;
+}) {
+  const params = await searchParams;
+  const locale = getLocale(params.locale);
+  const t = meText[locale];
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login?next=/me");
+    redirect(getLocalizedPath("/login?next=/me", locale));
   }
 
   const [
@@ -158,56 +244,69 @@ export default async function MePage() {
     {
       complete: applicationCompletion.profile.isComplete,
       href: "/me/profile",
-      label: "프로필 입력",
+      label: locale === "en" ? "Complete profile" : "프로필 입력",
       note: applicationCompletion.profile.isComplete
-        ? "비자/학교/근무 가능 시간 준비 완료"
-        : `${applicationCompletion.profile.missing.slice(0, 2).join(", ")} 보완 필요`,
+        ? locale === "en"
+          ? "Visa, school, and availability are ready"
+          : "비자/학교/근무 가능 시간 준비 완료"
+        : `${translateCompletionItems(applicationCompletion.profile.missing.slice(0, 2), locale).join(", ")} ${
+            locale === "en" ? "needed" : "보완 필요"
+          }`,
     },
     {
       complete: applicationCompletion.resume.isComplete,
       href: "/me/resume",
-      label: "이력서 입력",
+      label: locale === "en" ? "Complete resume" : "이력서 입력",
       note: applicationCompletion.resume.isComplete
-        ? "자기소개/언어 정보 준비 완료"
-        : `${applicationCompletion.resume.missing.slice(0, 2).join(", ")} 보완 필요`,
+        ? locale === "en"
+          ? "Introduction and language information are ready"
+          : "자기소개/언어 정보 준비 완료"
+        : `${translateCompletionItems(applicationCompletion.resume.missing.slice(0, 2), locale).join(", ")} ${
+            locale === "en" ? "needed" : "보완 필요"
+          }`,
     },
     {
       complete: applicationCompletion.isComplete,
       href: applicationCompletion.isComplete ? "/jobs?profile_fit=eligible" : "/jobs",
-      label: "공고 찾기",
+      label: locale === "en" ? "Find jobs" : "공고 찾기",
       note: applicationCompletion.isComplete
-        ? "내 프로필 기준 지원 가능 공고 확인"
-        : "정보 보완 후 지원 가능성이 더 정확해집니다",
+        ? locale === "en"
+          ? "View jobs based on your profile"
+          : "내 프로필 기준 지원 가능 공고 확인"
+        : locale === "en"
+          ? "Update your information for more accurate eligibility checks"
+          : "정보 보완 후 지원 가능성이 더 정확해집니다",
     },
   ];
   const cards = [
     {
-      label: "프로필",
+      label: t.profile,
       value: `${profileCompletion}%`,
       note:
         profileCompletion === 100
-          ? "지원 기본 정보 입력 완료"
-          : "D-2/D-4 지원 검토를 위한 기본 정보",
+          ? t.profileReady
+          : t.profileReview,
       icon: ShieldCheck,
     },
     {
-      label: "지원 내역",
+      label: t.applications,
       value: String(applicationCount ?? 0),
-      note: "내가 지원한 공고 수",
+      note: t.applicationCountNote,
       icon: Send,
     },
     {
-      label: "이력서",
+      label: t.resume,
       value: `${applicationCompletion.resume.completedCount}/${applicationCompletion.resume.totalCount}`,
       note: applicationCompletion.resume.isComplete
-        ? "기업에게 보여줄 이력 정보 입력 완료"
-        : "자기소개와 언어 정보를 입력해주세요",
+        ? t.resumeReady
+        : t.resumeReview,
       icon: FileText,
     },
     {
-      label: "행정 요청",
+      label: t.adminRequests,
       value: String(adminRequestCount ?? 0),
-      note: "접수한 행정 요청 수",
+      note:
+        locale === "en" ? "Administrative requests submitted" : "접수한 행정 요청 수",
       icon: FileText,
     },
   ];
@@ -231,7 +330,7 @@ export default async function MePage() {
       ? [
           {
             href: `/me/admin-requests#request-${latestFollowupRequest.id}`,
-            label: "행정 요청 보완 필요",
+            label: locale === "en" ? "Admin request needs follow-up" : "행정 요청 보완 필요",
             note: `${getAdminRequestTypeLabel(latestFollowupRequest.type)} · ${
               latestFollowupRequest.seeker_followup_note
             }`,
@@ -243,8 +342,11 @@ export default async function MePage() {
       ? [
           {
             href: "/me/profile",
-            label: "프로필 보완 필요",
-            note: applicationCompletion.profile.missing.slice(0, 3).join(", "),
+            label: locale === "en" ? "Profile needs update" : "프로필 보완 필요",
+            note: translateCompletionItems(
+              applicationCompletion.profile.missing.slice(0, 3),
+              locale,
+            ).join(", "),
             tone: "slate",
           },
         ]
@@ -253,8 +355,11 @@ export default async function MePage() {
       ? [
           {
             href: "/me/resume",
-            label: "이력서 보완 필요",
-            note: applicationCompletion.resume.missing.slice(0, 3).join(", "),
+            label: locale === "en" ? "Resume needs update" : "이력서 보완 필요",
+            note: translateCompletionItems(
+              applicationCompletion.resume.missing.slice(0, 3),
+              locale,
+            ).join(", "),
             tone: "slate",
           },
         ]
@@ -263,8 +368,11 @@ export default async function MePage() {
       ? [
           {
             href: "/me/applications?status=accepted",
-            label: "합격 처리된 지원",
-            note: `${applicationStatusCounts.get("accepted")}건의 합격 상태를 확인하세요`,
+            label: locale === "en" ? "Accepted application" : "합격 처리된 지원",
+            note:
+              locale === "en"
+                ? `Check ${applicationStatusCounts.get("accepted")} accepted application(s).`
+                : `${applicationStatusCounts.get("accepted")}건의 합격 상태를 확인하세요`,
             tone: "green",
           },
         ]
@@ -272,7 +380,7 @@ export default async function MePage() {
   ].slice(0, 3);
 
   return (
-    <DashboardShell area="me">
+    <DashboardShell area="me" locale={locale}>
       <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-7">
         <div className="flex flex-wrap items-center gap-4">
           <div className="grid size-20 shrink-0 place-items-center overflow-hidden rounded-2xl bg-slate-100 text-xl font-black text-blue-700">
@@ -289,14 +397,13 @@ export default async function MePage() {
           </div>
           <div className="min-w-0">
             <p className="text-sm font-black uppercase tracking-wide text-blue-700">
-              Seeker dashboard
+              {t.dashboardEyebrow}
             </p>
             <h1 className="mt-3 text-3xl font-black tracking-tight">
-              지원 준비 상태와 행정 요청을 관리합니다
+              {t.title}
             </h1>
             <p className="mt-3 text-sm font-medium leading-6 text-slate-600">
-              프로필 완성도, 지원 내역, 행정 요청 현황을 실제 계정 데이터
-              기준으로 확인합니다.
+              {t.subtitle}
             </p>
           </div>
         </div>
@@ -304,18 +411,23 @@ export default async function MePage() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-sm font-black text-blue-950">
-                지원 준비도 {applicationCompletion.completedCount}/
+                {t.readiness} {applicationCompletion.completedCount}/
                 {applicationCompletion.totalCount}
               </p>
               <p className="mt-1 text-sm font-semibold leading-6 text-blue-900">
-                프로필과 이력서를 채우면 공고 상세에서 바로 지원할 수 있습니다.
+                {t.jobsAfterReady}
               </p>
             </div>
             <Link
               className={cn(buttonVariants({ className: "w-full sm:w-auto" }))}
-              href={applicationCompletion.isComplete ? "/jobs?profile_fit=eligible" : "/me/profile"}
+              href={getLocalizedPath(
+                applicationCompletion.isComplete
+                  ? "/jobs?profile_fit=eligible"
+                  : "/me/profile",
+                locale,
+              )}
             >
-              {applicationCompletion.isComplete ? "지원 가능 공고 보기" : "준비 시작"}
+              {applicationCompletion.isComplete ? t.readyJobs : t.readyStart}
             </Link>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-3">
@@ -327,7 +439,7 @@ export default async function MePage() {
                     ? "border-emerald-100 bg-white/80"
                     : "border-blue-100 bg-white hover:bg-blue-50",
                 )}
-                href={step.href}
+                href={getLocalizedPath(step.href, locale)}
                 key={step.label}
               >
                 <div className="flex items-center justify-between gap-2">
@@ -340,7 +452,7 @@ export default async function MePage() {
                         : "bg-amber-50 text-amber-700",
                     )}
                   >
-                    {step.complete ? "완료" : "필요"}
+                    {step.complete ? t.statusDone : t.statusNeeded}
                   </span>
                 </div>
                 <p className="mt-2 text-xs font-semibold leading-5 text-slate-600">
@@ -376,16 +488,16 @@ export default async function MePage() {
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
             <div>
-              <h2 className="text-lg font-black">최근 지원 현황</h2>
+              <h2 className="text-lg font-black">{t.recentApplications}</h2>
               <p className="mt-1 text-sm font-semibold text-slate-500">
-                기업 상태 변경과 안내 메모를 바로 확인합니다.
+                {t.recentApplicationsBody}
               </p>
             </div>
             <Link
               className="text-sm font-black text-blue-700 hover:text-blue-900"
-              href="/me/applications"
+              href={getLocalizedPath("/me/applications", locale)}
             >
-              전체 보기
+              {t.allApplications}
             </Link>
           </div>
           <div className="divide-y divide-slate-100">
@@ -399,23 +511,26 @@ export default async function MePage() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="break-words text-sm font-black text-slate-950">
-                          {job?.title ?? "공고"}
+                          {job?.title ?? (locale === "en" ? "Job" : "공고")}
                         </p>
                         <p className="mt-1 text-sm font-semibold text-slate-500">
                           {company?.name ?? "Company"} · {job?.location ?? "-"} ·{" "}
-                          {job?.employment_type ?? "-"}
+                          {getEmploymentTypeLabel(job?.employment_type, locale)}
                         </p>
                       </div>
                       <span className={getStatusBadgeClassName("application", application.status)}>
-                        {getStatusMeta("application", application.status).label}
+                        {getStatusMeta("application", application.status, locale).label}
                       </span>
                     </div>
                     <p className="mt-2 text-xs font-bold text-slate-400">
-                      지원일 {new Date(application.applied_at).toLocaleString("ko-KR")}
+                      {t.appliedAt}{" "}
+                      {new Date(application.applied_at).toLocaleString(
+                        locale === "en" ? "en-US" : "ko-KR",
+                      )}
                     </p>
                     {application.company_note ? (
                       <p className="mt-2 line-clamp-2 rounded-xl bg-blue-50 p-3 text-sm font-semibold leading-6 text-blue-900">
-                        기업 안내: {application.company_note}
+                        {t.companyNote}: {application.company_note}
                       </p>
                     ) : null}
                   </article>
@@ -424,16 +539,16 @@ export default async function MePage() {
             ) : (
               <div className="px-5 py-8">
                 <p className="text-sm font-black text-slate-700">
-                  아직 지원한 공고가 없습니다.
+                  {t.emptyApplicationsTitle}
                 </p>
                 <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
-                  준비 정보를 채운 뒤 지원 가능한 공고를 찾아보세요.
+                  {t.emptyApplicationsBody}
                 </p>
                 <Link
                   className={cn(buttonVariants({ className: "mt-4", size: "sm" }))}
-                  href="/jobs"
+                  href={getLocalizedPath("/jobs", locale)}
                 >
-                  공고 찾기
+                  {t.findJobs}
                 </Link>
               </div>
             )}
@@ -442,7 +557,9 @@ export default async function MePage() {
 
         <div className="grid gap-5">
           <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-lg font-black">확인 사항</h2>
+            <h2 className="text-lg font-black">
+              {locale === "en" ? "Things to check" : "확인 사항"}
+            </h2>
             <div className="mt-4 grid gap-2">
               {dashboardAlerts.length > 0 ? (
                 dashboardAlerts.map((alert) => (
@@ -453,7 +570,7 @@ export default async function MePage() {
                       alert.tone === "green" && "border-emerald-100 bg-emerald-50",
                       alert.tone === "slate" && "border-slate-100 bg-slate-50",
                     )}
-                    href={alert.href}
+                    href={getLocalizedPath(alert.href, locale)}
                     key={alert.label}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -467,20 +584,25 @@ export default async function MePage() {
                       )}
                     </div>
                     <p className="mt-1 line-clamp-3 text-xs font-semibold leading-5 text-slate-600">
-                      {alert.note || "상세 내용을 확인해주세요."}
+                      {alert.note ||
+                        (locale === "en" ? "Check the details." : "상세 내용을 확인해주세요.")}
                     </p>
                     <p className="mt-2 text-xs font-black text-blue-700 group-hover:text-blue-900">
-                      확인하기
+                      {locale === "en" ? "Review" : "확인하기"}
                     </p>
                   </Link>
                 ))
               ) : (
                 <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
                   <p className="text-sm font-black text-emerald-900">
-                    지원 준비가 정리되어 있습니다.
+                    {locale === "en"
+                      ? "Your application readiness is organized."
+                      : "지원 준비가 정리되어 있습니다."}
                   </p>
                   <p className="mt-1 text-xs font-semibold leading-5 text-emerald-800">
-                    맞춤 공고를 확인하고 지원을 이어가세요.
+                    {locale === "en"
+                      ? "Explore matched jobs and continue applying."
+                      : "맞춤 공고를 확인하고 지원을 이어가세요."}
                   </p>
                 </div>
               )}
@@ -489,21 +611,18 @@ export default async function MePage() {
 
           <section className="rounded-2xl border border-slate-200 bg-white p-5">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-lg font-black">최근 공개 공고</h2>
+              <h2 className="text-lg font-black">{t.recentJobs}</h2>
               <BriefcaseBusiness className="size-5 text-blue-700" />
             </div>
             <div className="mt-4 grid gap-3">
               {(recommendedJobs ?? []).slice(0, 3).map((job) => {
                 const company = recommendedCompanyById.get(job.company_id);
-                const wage =
-                  job.wage_amount && job.wage_type
-                    ? `${Number(job.wage_amount).toLocaleString("ko-KR")} KRW / ${job.wage_type}`
-                    : "급여 협의";
+                const wage = formatWage(job.wage_amount, job.wage_type, locale);
 
                 return (
                   <Link
                     className="rounded-xl border border-slate-100 bg-slate-50 p-3 transition hover:bg-blue-50"
-                    href={`/jobs/${job.id}`}
+                    href={getLocalizedPath(`/jobs/${job.id}`, locale)}
                     key={job.id}
                   >
                     <p className="line-clamp-1 text-sm font-black text-slate-950">
@@ -514,7 +633,7 @@ export default async function MePage() {
                     </p>
                     {company?.verification_status === "verified" ? (
                       <span className="mt-2 inline-flex rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
-                        인증 기업
+                        {t.verifiedCompany}
                       </span>
                     ) : null}
                   </Link>
@@ -523,17 +642,18 @@ export default async function MePage() {
               {recommendedJobs && recommendedJobs.length > 0 ? (
                 <Link
                   className={cn(buttonVariants({ className: "w-full", size: "sm" }))}
-                  href={
+                  href={getLocalizedPath(
                     applicationCompletion.isComplete
                       ? "/jobs?profile_fit=eligible"
-                      : "/jobs"
-                  }
+                      : "/jobs",
+                    locale,
+                  )}
                 >
-                  더 많은 공고 보기
+                  {t.moreJobs}
                 </Link>
               ) : (
                 <p className="text-sm font-semibold text-slate-500">
-                  아직 공개 공고가 없습니다.
+                  {t.noJobs}
                 </p>
               )}
             </div>

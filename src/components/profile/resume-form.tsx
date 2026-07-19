@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 
 import { saveResumeAction } from "@/app/me/resume/actions";
 import { Button } from "@/components/ui/button";
+import type { Locale } from "@/lib/i18n";
 
 type EducationItem = {
   major?: string;
@@ -33,7 +34,14 @@ type Resume = {
   title: string | null;
 };
 
-export function ResumeForm({ resume }: { resume: Resume | null }) {
+export function ResumeForm({
+  locale = "ko",
+  resume,
+}: {
+  locale?: Locale;
+  resume: Resume | null;
+}) {
+  const copy = resumeFormCopy[locale];
   const [state, formAction] = useActionState(saveResumeAction, {});
   const education = resume?.education ?? [];
   const experience = resume?.experience ?? [];
@@ -46,22 +54,22 @@ export function ResumeForm({ resume }: { resume: Resume | null }) {
       action={formAction}
       className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6"
     >
+      <input name="locale" type="hidden" value={locale} />
       <div>
-        <h2 className="text-xl font-black">이력과 자기소개</h2>
+        <h2 className="text-xl font-black">{copy.title}</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-          기업이 지원자를 판단할 때 볼 수 있는 소개, 학력, 경력, 언어 정보를
-          입력합니다.
+          {copy.description}
         </p>
       </div>
       <div className="mt-4 grid gap-2 rounded-2xl bg-blue-50 p-3 text-xs font-bold text-blue-900 sm:grid-cols-3">
         <span className="rounded-lg bg-white/70 px-3 py-2">
-          자기소개 {introReady ? "완료" : "필수"}
+          {copy.introCheck} {introReady ? copy.done : copy.required}
         </span>
         <span className="rounded-lg bg-white/70 px-3 py-2">
-          언어 {languageReady ? "완료" : "필수"}
+          {copy.languageCheck} {languageReady ? copy.done : copy.required}
         </span>
         <span className="rounded-lg bg-white/70 px-3 py-2">
-          학력/경력은 선택 입력
+          {copy.optionalCheck}
         </span>
       </div>
 
@@ -73,16 +81,16 @@ export function ResumeForm({ resume }: { resume: Resume | null }) {
           value={resume?.title}
         />
         <label className="grid gap-2 text-sm font-bold text-slate-700">
-          Self introduction
+          {copy.selfIntro}
           <textarea
             className="min-h-32 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
             defaultValue={resume?.intro ?? ""}
             name="intro"
-            placeholder="지원 직무와 관련된 경험, 성격, 근무 태도, 강점을 적어주세요."
+            placeholder={copy.selfIntroPlaceholder}
             required
           />
           <span className="text-xs font-semibold text-slate-400">
-            최소 20자 이상 입력해주세요.
+            {copy.selfIntroHelp}
           </span>
         </label>
       </div>
@@ -137,7 +145,7 @@ export function ResumeForm({ resume }: { resume: Resume | null }) {
                 className="min-h-20 rounded-md border border-slate-200 px-3 py-3 outline-none focus:border-blue-400"
                 defaultValue={experience[index]?.description ?? ""}
                 name={`experience_${index}_description`}
-                placeholder="담당 업무와 성과를 간단히 적어주세요."
+                placeholder={copy.experienceDescriptionPlaceholder}
               />
             </label>
           </div>
@@ -181,14 +189,14 @@ export function ResumeForm({ resume }: { resume: Resume | null }) {
       ) : null}
       {state.message ? (
         <div className="mt-4 rounded-md bg-emerald-50 px-3 py-3">
-          <p className="text-sm font-semibold text-emerald-700">{state.message}</p>
+        <p className="text-sm font-semibold text-emerald-700">{state.message}</p>
           <p className="mt-1 text-xs font-bold leading-5 text-emerald-800">
-            프로필도 완성되어 있다면 공고 상세에서 제출 정보 확인 후 바로 지원할 수 있습니다.
+            {copy.successHelp}
           </p>
         </div>
       ) : null}
 
-      <SubmitButton />
+      <SubmitButton copy={copy.submit} />
     </form>
   );
 }
@@ -232,12 +240,52 @@ function Field({
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ copy }: { copy: { pending: string; save: string } }) {
   const { pending } = useFormStatus();
 
   return (
     <Button className="mt-6 h-11 w-full sm:w-auto" disabled={pending}>
-      {pending ? "저장 중..." : "이력/소개 저장"}
+      {pending ? copy.pending : copy.save}
     </Button>
   );
 }
+
+const resumeFormCopy = {
+  en: {
+    description:
+      "Add the introduction, education, experience, and language information that employers review.",
+    done: "done",
+    experienceDescriptionPlaceholder:
+      "Briefly describe your responsibilities, results, or work scope.",
+    introCheck: "Introduction",
+    languageCheck: "Language",
+    optionalCheck: "Education / experience are optional",
+    required: "required",
+    selfIntro: "Self introduction",
+    selfIntroHelp: "Please enter at least 20 characters.",
+    selfIntroPlaceholder:
+      "Describe your relevant experience, strengths, work attitude, and availability.",
+    submit: { pending: "Saving...", save: "Save resume" },
+    successHelp:
+      "If your profile is also complete, you can apply from job detail pages after reviewing your submitted information.",
+    title: "Resume and introduction",
+  },
+  ko: {
+    description:
+      "기업이 지원자를 판단할 때 볼 수 있는 소개, 학력, 경력, 언어 정보를 입력합니다.",
+    done: "완료",
+    experienceDescriptionPlaceholder: "담당 업무와 성과를 간단히 적어주세요.",
+    introCheck: "자기소개",
+    languageCheck: "언어",
+    optionalCheck: "학력/경력은 선택 입력",
+    required: "필수",
+    selfIntro: "자기소개",
+    selfIntroHelp: "최소 20자 이상 입력해주세요.",
+    selfIntroPlaceholder:
+      "지원 직무와 관련된 경험, 성격, 근무 태도, 강점을 적어주세요.",
+    submit: { pending: "저장 중...", save: "이력/소개 저장" },
+    successHelp:
+      "프로필도 완성되어 있다면 공고 상세에서 제출 정보 확인 후 바로 지원할 수 있습니다.",
+    title: "이력과 자기소개",
+  },
+} satisfies Record<Locale, Record<string, unknown>>;

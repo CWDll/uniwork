@@ -6,6 +6,7 @@ import type { ChangeEvent } from "react";
 import { useRef, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import type { Locale } from "@/lib/i18n";
 import { profilePhotoBucket } from "@/lib/profile-photo";
 import { createClient } from "@/lib/supabase/browser";
 
@@ -26,11 +27,33 @@ function getFileExtension(file: File) {
 
 export function ProfilePhotoUploader({
   avatarUrl,
+  locale = "ko",
   userId,
 }: {
   avatarUrl: string | null;
+  locale?: Locale;
   userId: string;
 }) {
+  const copy = {
+    en: {
+      button: "Choose photo",
+      description:
+        "Upload a clear face photo so employers can recognize your application more easily.",
+      fileError: "Only JPG, PNG, and WebP images can be uploaded.",
+      sizeError: "Profile photos must be 5MB or smaller.",
+      title: "Profile photo",
+      uploading: "Uploading...",
+    },
+    ko: {
+      button: "사진 선택",
+      description:
+        "구인자가 지원자를 더 쉽게 확인할 수 있도록 얼굴이 잘 보이는 사진을 등록해주세요.",
+      fileError: "JPG, PNG, WebP 이미지만 업로드할 수 있습니다.",
+      sizeError: "프로필 사진은 5MB 이하로 업로드해주세요.",
+      title: "프로필 사진",
+      uploading: "업로드 중...",
+    },
+  }[locale];
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -47,12 +70,12 @@ export function ProfilePhotoUploader({
     setError(null);
 
     if (!allowedTypes.includes(file.type)) {
-      setError("JPG, PNG, WebP 이미지만 업로드할 수 있습니다.");
+      setError(copy.fileError);
       return;
     }
 
     if (file.size > maxPhotoSize) {
-      setError("프로필 사진은 5MB 이하로 업로드해주세요.");
+      setError(copy.sizeError);
       return;
     }
 
@@ -105,10 +128,9 @@ export function ProfilePhotoUploader({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-black">프로필 사진</h2>
+          <h2 className="text-lg font-black">{copy.title}</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">
-            구인자가 지원자를 더 쉽게 확인할 수 있도록 얼굴이 잘 보이는 사진을
-            등록해주세요.
+            {copy.description}
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <input
@@ -128,10 +150,12 @@ export function ProfilePhotoUploader({
               ) : (
                 <Camera className="size-4" />
               )}
-              {isPending ? "업로드 중..." : "사진 선택"}
+              {isPending ? copy.uploading : copy.button}
             </Button>
             <span className="text-xs font-bold text-slate-400">
-              JPG, PNG, WebP · 최대 5MB
+              {locale === "en"
+                ? "JPG, PNG, WebP · Max 5MB"
+                : "JPG, PNG, WebP · 최대 5MB"}
             </span>
           </div>
           {error ? (
