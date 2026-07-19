@@ -81,6 +81,11 @@ export async function createCompanyJobAction(
   const title = String(formData.get("title") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
+  const enTitle = String(formData.get("en_title") ?? "").trim();
+  const enLocation = String(formData.get("en_location") ?? "").trim();
+  const enDescription = String(formData.get("en_description") ?? "").trim();
+  const enVisaSupportType = String(formData.get("en_visa_support_type") ?? "").trim();
+  const enKoreanRequirement = String(formData.get("en_korean_requirement") ?? "").trim();
   const employmentType = getAllowedValue(
     formData.get("employment_type"),
     allowedEmploymentTypes,
@@ -112,6 +117,18 @@ export async function createCompanyJobAction(
     return { error: "공고 설명은 업무, 근무시간, 유의사항을 포함해 최소 60자 이상 입력해주세요." };
   }
 
+  const hasEnglishTranslation = Boolean(
+    enTitle || enLocation || enDescription || enVisaSupportType || enKoreanRequirement,
+  );
+
+  if (hasEnglishTranslation && !enTitle) {
+    return { error: "영문 번역을 입력할 때는 영문 공고 제목을 함께 입력해주세요." };
+  }
+
+  if (enDescription && enDescription.length < 60) {
+    return { error: "영문 공고 설명은 60자 이상 입력하거나 비워주세요." };
+  }
+
   const rawWageAmount = String(formData.get("wage_amount") ?? "").trim();
   const wageAmount = rawWageAmount ? Number(rawWageAmount) : null;
   const rawClosedAt = String(formData.get("closed_at") ?? "").trim();
@@ -129,29 +146,54 @@ export async function createCompanyJobAction(
     return { error: "공고 마감일시는 현재 이후로 입력해주세요." };
   }
 
-  const { error } = await supabase.from("jobs").insert({
-    company_id: company.id,
-    title,
-    description,
-    employment_type: employmentType,
-    category,
-    location,
-    wage_type: wageType,
-    wage_amount: wageAmount,
-    visa_support_type: visaSupportType,
-    korean_requirement: koreanRequirement,
-    closed_at: closedAt ? closedAt.toISOString() : null,
-    published_at: new Date().toISOString(),
-    status: "published",
-  });
+  const { data: createdJob, error } = await supabase
+    .from("jobs")
+    .insert({
+      company_id: company.id,
+      title,
+      description,
+      employment_type: employmentType,
+      category,
+      location,
+      wage_type: wageType,
+      wage_amount: wageAmount,
+      visa_support_type: visaSupportType,
+      korean_requirement: koreanRequirement,
+      closed_at: closedAt ? closedAt.toISOString() : null,
+      published_at: new Date().toISOString(),
+      status: "published",
+    })
+    .select("id")
+    .single();
 
   if (error) {
     return { error: error.message };
   }
 
+  if (hasEnglishTranslation && createdJob?.id) {
+    const { error: translationError } = await supabase
+      .from("job_translations")
+      .insert({
+        description: enDescription || null,
+        job_id: createdJob.id,
+        korean_requirement: enKoreanRequirement || null,
+        locale: "en",
+        location: enLocation || null,
+        title: enTitle,
+        visa_support_type: enVisaSupportType || null,
+      });
+
+    if (translationError) {
+      return {
+        error: `공고는 등록되었지만 영문 번역 저장에 실패했습니다: ${translationError.message}`,
+      };
+    }
+  }
+
   revalidatePath("/company");
   revalidatePath("/company/jobs");
   revalidatePath("/jobs");
+  revalidatePath("/en/jobs");
 
   return {
     message: "채용공고가 공개되었습니다.",

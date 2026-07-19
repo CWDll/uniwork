@@ -27,6 +27,7 @@ import {
   getLocalizedPath,
 } from "@/lib/i18n";
 import { getJobEligibility, type JobEligibility } from "@/lib/jobs/eligibility";
+import { localizedJobValue, type JobTranslation } from "@/lib/jobs/translations";
 import { getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -112,6 +113,37 @@ export default async function JobDetailPage({
     .select("id, name, industry, address, verification_status")
     .eq("id", job.company_id)
     .maybeSingle();
+  const { data: translation } =
+    locale === "en"
+      ? await supabase
+          .from("job_translations")
+          .select(
+            "job_id, locale, title, description, location, visa_support_type, korean_requirement",
+          )
+          .eq("job_id", job.id)
+          .eq("locale", "en")
+          .maybeSingle()
+      : { data: null };
+  const jobTranslation = translation as JobTranslation | null;
+  const localizedTitle =
+    localizedJobValue(job.title, jobTranslation?.title, locale) || job.title;
+  const localizedDescription =
+    localizedJobValue(job.description, jobTranslation?.description, locale) ||
+    job.description;
+  const localizedLocation =
+    localizedJobValue(job.location, jobTranslation?.location, locale) || "-";
+  const localizedVisa =
+    localizedJobValue(
+      job.visa_support_type,
+      jobTranslation?.visa_support_type,
+      locale,
+    ) || getJobFallbackLabel("visa", locale);
+  const localizedKoreanRequirement =
+    localizedJobValue(
+      job.korean_requirement,
+      jobTranslation?.korean_requirement,
+      locale,
+    ) || copy.negotiable;
 
   const { data: existingApplication } = user
     ? await supabase
@@ -189,11 +221,11 @@ export default async function JobDetailPage({
                 {job.category || copy.defaultCategory}
               </span>
               <span className="rounded-md bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
-                {job.visa_support_type || getJobFallbackLabel("visa", locale)}
+                {localizedVisa}
               </span>
             </div>
             <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">
-              {job.title}
+              {localizedTitle}
             </h1>
             <p className="mt-3 text-base font-semibold text-slate-600">
               {company?.name ?? getJobFallbackLabel("company", locale)}
@@ -229,7 +261,7 @@ export default async function JobDetailPage({
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <Info label={copy.location} value={job.location || "-"} />
+              <Info label={copy.location} value={localizedLocation} />
               <Info
                 label={copy.type}
                 value={getEmploymentTypeLabel(job.employment_type, locale)}
@@ -240,18 +272,18 @@ export default async function JobDetailPage({
             <div className="mt-8 border-t border-slate-100 pt-6">
               <h2 className="text-xl font-black">{copy.descriptionTitle}</h2>
               <p className="mt-3 whitespace-pre-wrap text-sm font-medium leading-7 text-slate-700">
-                {job.description}
+                {localizedDescription}
               </p>
             </div>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
               <Info
                 label={copy.koreanRequirement}
-                value={job.korean_requirement || copy.negotiable}
+                value={localizedKoreanRequirement}
               />
               <Info
                 label={copy.companyAddress}
-                value={company?.address || job.location || "-"}
+                value={company?.address || localizedLocation}
               />
             </div>
 
@@ -304,7 +336,7 @@ export default async function JobDetailPage({
             ) : null}
             <span className="flex items-center gap-2">
               <MapPin className="size-4 text-slate-400" />
-              {job.location || "-"}
+              {localizedLocation}
             </span>
             <span className="flex items-center gap-2">
               <BriefcaseBusiness className="size-4 text-slate-400" />

@@ -30,6 +30,11 @@ import {
   type Locale,
 } from "@/lib/i18n";
 import { getJobEligibility } from "@/lib/jobs/eligibility";
+import {
+  getTranslationByJobId,
+  localizedJobValue,
+  type JobTranslation,
+} from "@/lib/jobs/translations";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -108,15 +113,30 @@ export default async function Home({
   const companyIds = Array.from(
     new Set(activeDbJobs.map((job) => job.company_id)),
   );
+  const jobIds = activeDbJobs.map((job) => job.id);
   const { data: companies } =
     companyIds.length > 0
       ? await supabase.from("companies").select("id, name").in("id", companyIds)
       : { data: [] };
+  const { data: translations } =
+    locale === "en" && jobIds.length > 0
+      ? await supabase
+          .from("job_translations")
+          .select(
+            "job_id, locale, title, description, location, visa_support_type, korean_requirement",
+          )
+          .eq("locale", "en")
+          .in("job_id", jobIds)
+      : { data: [] };
   const companyNameById = new Map(
     companies?.map((company) => [String(company.id), String(company.name)]) ?? [],
   );
+  const translationByJobId = getTranslationByJobId(
+    translations as JobTranslation[] | null,
+  );
   const featuredJobs =
     activeDbJobs.map((job) => {
+      const translation = translationByJobId.get(String(job.id));
       const company =
         companyNameById.get(String(job.company_id)) ??
         getJobFallbackLabel("company", locale);
@@ -131,11 +151,16 @@ export default async function Home({
         id: job.id,
         company,
         featured: Boolean(job.published_at),
-        location: job.location || "-",
+        location: localizedJobValue(job.location, translation?.location, locale) || "-",
         logo: logo || "UW",
-        title: job.title,
+        title: localizedJobValue(job.title, translation?.title, locale) || job.title,
         type: getEmploymentTypeLabel(job.employment_type, locale),
-        visa: job.visa_support_type || getJobFallbackLabel("visa", locale),
+        visa:
+          localizedJobValue(
+            job.visa_support_type,
+            translation?.visa_support_type,
+            locale,
+          ) || getJobFallbackLabel("visa", locale),
         wage: formatWage(job.wage_amount, job.wage_type, locale),
         eligibility: getJobEligibility({
           isSignedIn: Boolean(user),

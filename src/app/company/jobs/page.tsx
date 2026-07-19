@@ -5,6 +5,11 @@ import { closeCompanyJobAction } from "@/app/company/jobs/actions";
 import { CompanyJobForm } from "@/components/company/company-job-form";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { buttonVariants } from "@/components/ui/button";
+import {
+  getTranslationByJobId,
+  hasUsefulTranslation,
+  type JobTranslation,
+} from "@/lib/jobs/translations";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -126,6 +131,19 @@ export default async function CompanyJobsPage({
   const clampedPage = Math.min(activePage, totalPages);
   const visibleJobs = jobs.slice((clampedPage - 1) * pageSize, clampedPage * pageSize);
   const allJobIds = allJobs?.map((job) => job.id) ?? [];
+  const { data: translations } =
+    allJobIds.length > 0
+      ? await supabase
+          .from("job_translations")
+          .select(
+            "job_id, locale, title, description, location, visa_support_type, korean_requirement",
+          )
+          .eq("locale", "en")
+          .in("job_id", allJobIds)
+      : { data: [] };
+  const translationByJobId = getTranslationByJobId(
+    translations as JobTranslation[] | null,
+  );
   const { data: applications } =
     allJobIds.length > 0
       ? await supabase
@@ -291,6 +309,9 @@ export default async function CompanyJobsPage({
             visibleJobs.map((job) => {
               const status = getStatusMeta("job", job.status);
               const applicationCount = applicationCountByJobId.get(job.id) ?? 0;
+              const hasEnglish = hasUsefulTranslation(
+                translationByJobId.get(String(job.id)),
+              );
 
               return (
                 <article
@@ -329,6 +350,10 @@ export default async function CompanyJobsPage({
                             ? new Date(job.closed_at).toLocaleString("ko-KR")
                             : "상시"
                         }
+                      />
+                      <Info
+                        label="English"
+                        value={hasEnglish ? "번역 있음" : "번역 없음"}
                       />
                     </div>
                     {job.review_note ? (

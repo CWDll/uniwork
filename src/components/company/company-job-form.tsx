@@ -64,6 +64,11 @@ export function CompanyJobForm({
     closed_at: "",
     description: "",
     employment_type: employmentTypeOptions[0].value,
+    en_description: "",
+    en_korean_requirement: "",
+    en_location: "",
+    en_title: "",
+    en_visa_support_type: "",
     korean_requirement: koreanRequirementOptions[0].value,
     location: "",
     title: "",
@@ -212,6 +217,85 @@ export function CompanyJobForm({
             60자 이상 적어주세요.
           </span>
         </label>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 md:col-span-2">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-base font-black text-slate-950">
+                영문 공고 정보
+              </h3>
+              <p className="mt-1 text-sm font-semibold leading-6 text-slate-500">
+                선택 입력입니다. 입력하면 /en 공고 화면에서 영문 내용이 먼저
+                표시되고, 비워둔 항목은 한국어 원문으로 보입니다.
+              </p>
+            </div>
+            <span className="rounded-md bg-white px-2 py-1 text-xs font-black text-slate-500">
+              Optional
+            </span>
+          </div>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <Field
+              disabled={disabled}
+              help="예: Weekend Cafe Crew in Hongdae"
+              label="영문 공고 제목"
+              name="en_title"
+              onChange={(value) => updateValue("en_title", value)}
+              placeholder="Weekend Cafe Crew in Hongdae"
+              value={values.en_title}
+            />
+            <Field
+              disabled={disabled}
+              help="예: Seoul Mapo-gu, Hongdae"
+              label="영문 근무 지역"
+              name="en_location"
+              onChange={(value) => updateValue("en_location", value)}
+              placeholder="Seoul Mapo-gu, Hongdae"
+              value={values.en_location}
+            />
+            <Field
+              disabled={disabled}
+              help="예: D-2/D-4 student work permission review required"
+              label="영문 비자 조건"
+              name="en_visa_support_type"
+              onChange={(value) => updateValue("en_visa_support_type", value)}
+              placeholder="D-2/D-4 student work permission review required"
+              value={values.en_visa_support_type}
+            />
+            <Field
+              disabled={disabled}
+              help="예: Basic Korean conversation preferred"
+              label="영문 한국어 조건"
+              name="en_korean_requirement"
+              onChange={(value) => updateValue("en_korean_requirement", value)}
+              placeholder="Basic Korean conversation preferred"
+              value={values.en_korean_requirement}
+            />
+            <label className="grid content-start gap-2 text-sm font-bold text-slate-700 md:col-span-2">
+              영문 공고 설명
+              <textarea
+                className="min-h-32 rounded-md border border-slate-200 bg-white px-3 py-3 outline-none focus:border-blue-400 disabled:bg-slate-50"
+                disabled={disabled}
+                name="en_description"
+                onChange={(event) =>
+                  updateValue("en_description", event.target.value)
+                }
+                placeholder={`Responsibilities:
+- Customer support and store assistance
+
+Working hours:
+- Weekday evenings or weekends
+
+Notes:
+- D-2/D-4 students should confirm work permission before starting.`}
+                value={values.en_description}
+              />
+              <span className="text-xs font-semibold leading-5 text-slate-500">
+                입력한다면 60자 이상 적어주세요. 기계 번역 느낌보다 실제 지원자가
+                이해할 수 있는 자연스러운 표현을 권장합니다.
+              </span>
+            </label>
+          </div>
+        </div>
       </div>
 
       {state.error ? (

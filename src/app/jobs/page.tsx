@@ -21,6 +21,11 @@ import {
   type Locale,
 } from "@/lib/i18n";
 import { getJobEligibility } from "@/lib/jobs/eligibility";
+import {
+  getTranslationByJobId,
+  localizedJobValue,
+  type JobTranslation,
+} from "@/lib/jobs/translations";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
@@ -216,6 +221,7 @@ export default async function JobsPage({
   const companyIds = Array.from(
     new Set(activeDbJobs.map((job) => job.company_id) ?? []),
   );
+  const jobIds = activeDbJobs.map((job) => job.id);
   const { data: companies } =
     companyIds.length > 0
       ? await supabase
@@ -223,10 +229,23 @@ export default async function JobsPage({
           .select("id, name, verification_status")
           .in("id", companyIds)
       : { data: [] };
+  const { data: translations } =
+    locale === "en" && jobIds.length > 0
+      ? await supabase
+          .from("job_translations")
+          .select(
+            "job_id, locale, title, description, location, visa_support_type, korean_requirement",
+          )
+          .eq("locale", "en")
+          .in("job_id", jobIds)
+      : { data: [] };
 
   const companyNameById = new Map<string, string>(
     companies?.map((company) => [String(company.id), String(company.name)]) ??
       [],
+  );
+  const translationByJobId = getTranslationByJobId(
+    translations as JobTranslation[] | null,
   );
   const companyVerifiedById = new Map<string, boolean>(
     companies?.map((company) => [
@@ -246,6 +265,7 @@ export default async function JobsPage({
 
   const jobsWithEligibility =
     activeDbJobs.map((job) => {
+      const translation = translationByJobId.get(String(job.id));
       const company =
         companyNameById.get(String(job.company_id)) ??
         getJobFallbackLabel("company", locale);
@@ -265,13 +285,23 @@ export default async function JobsPage({
             ? ("complete" as const)
             : ("needs_detail" as const),
         featured: false,
-        koreanRequirement: job.korean_requirement || getJobFallbackLabel("korean", locale),
-        location: job.location || "-",
+        koreanRequirement:
+          localizedJobValue(
+            job.korean_requirement,
+            translation?.korean_requirement,
+            locale,
+          ) || getJobFallbackLabel("korean", locale),
+        location: localizedJobValue(job.location, translation?.location, locale) || "-",
         logo: initials || "UW",
         publishedAt: job.published_at,
-        title: job.title,
+        title: localizedJobValue(job.title, translation?.title, locale) || job.title,
         type: getEmploymentTypeLabel(job.employment_type, locale),
-        visa: job.visa_support_type || getJobFallbackLabel("visa", locale),
+        visa:
+          localizedJobValue(
+            job.visa_support_type,
+            translation?.visa_support_type,
+            locale,
+          ) || getJobFallbackLabel("visa", locale),
         wage: formatWage(job.wage_amount, job.wage_type, locale),
         saved: savedJobIds.has(String(job.id)),
         status: job.status,

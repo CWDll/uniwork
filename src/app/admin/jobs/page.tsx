@@ -5,6 +5,11 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { requireAdmin } from "@/lib/admin-auth";
+import {
+  getTranslationByJobId,
+  hasUsefulTranslation,
+  type JobTranslation,
+} from "@/lib/jobs/translations";
 import { getStatusBadgeClassName, getStatusMeta } from "@/lib/status-labels";
 import { cn } from "@/lib/utils";
 
@@ -76,6 +81,19 @@ export default async function AdminJobsPage({
     return true;
   });
   const jobIds = allJobs?.map((job) => job.id) ?? [];
+  const { data: translations } =
+    jobIds.length > 0
+      ? await supabase
+          .from("job_translations")
+          .select(
+            "job_id, locale, title, description, location, visa_support_type, korean_requirement",
+          )
+          .eq("locale", "en")
+          .in("job_id", jobIds)
+      : { data: [] };
+  const translationByJobId = getTranslationByJobId(
+    translations as JobTranslation[] | null,
+  );
   const { data: applications } =
     jobIds.length > 0
       ? await supabase
@@ -196,6 +214,9 @@ export default async function AdminJobsPage({
               const status = getStatusMeta("job", job.status);
               const applicationCount = applicationCountByJobId.get(job.id) ?? 0;
               const readiness = getJobReadiness(job);
+              const hasEnglish = hasUsefulTranslation(
+                translationByJobId.get(String(job.id)),
+              );
               const guidance = getJobReviewGuidance({
                 missingCount: readiness.missing.length,
                 status: job.status,
@@ -241,6 +262,10 @@ export default async function AdminJobsPage({
                         value={`${readiness.completed}/${readiness.total} 항목`}
                       />
                       <Info label="운영 확인" value={guidance.title} />
+                      <Info
+                        label="영문 공고"
+                        value={hasEnglish ? "번역 있음" : "번역 없음"}
+                      />
                     </div>
                     <div className="mt-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
                       <p className="text-xs font-black uppercase tracking-wide text-slate-400">
