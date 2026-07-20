@@ -86,7 +86,7 @@ export async function SiteHeader({ locale = "ko" }: { locale?: Locale }) {
 
         {user ? (
           <div className="hidden min-w-0 items-center gap-2 md:flex">
-            <LanguageToggle locale={locale} />
+            <LanguageToggle className="hidden md:inline-flex" locale={locale} />
             <Link
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
               href={getLocalizedPath(dashboardHref, locale)}
@@ -112,7 +112,7 @@ export async function SiteHeader({ locale = "ko" }: { locale?: Locale }) {
           </div>
         ) : (
           <div className="hidden items-center gap-2 md:flex">
-            <LanguageToggle locale={locale} />
+            <LanguageToggle className="hidden md:inline-flex" locale={locale} />
             <Link
               className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
               href={getLocalizedPath("/login", locale)}
@@ -131,6 +131,7 @@ export async function SiteHeader({ locale = "ko" }: { locale?: Locale }) {
 
         {user ? (
           <div className="flex items-center gap-1 md:hidden">
+            <LanguageToggle locale={locale} />
             <Link
               className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
               href={getLocalizedPath(dashboardHref, locale)}
@@ -154,9 +155,12 @@ export async function SiteHeader({ locale = "ko" }: { locale?: Locale }) {
             </form>
           </div>
         ) : (
-          <Button className="md:hidden" variant="ghost" size="icon">
-            <Menu className="size-5" />
-          </Button>
+          <div className="flex items-center gap-1 md:hidden">
+            <LanguageToggle locale={locale} />
+            <Button variant="ghost" size="icon">
+              <Menu className="size-5" />
+            </Button>
+          </div>
         )}
       </div>
     </header>

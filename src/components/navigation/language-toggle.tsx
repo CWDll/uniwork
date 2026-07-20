@@ -11,7 +11,13 @@ import {
 } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
-export function LanguageToggle({ locale }: { locale?: Locale }) {
+export function LanguageToggle({
+  className,
+  locale,
+}: {
+  className?: string;
+  locale?: Locale;
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentLocale = locale ?? getLocaleFromPathname(pathname);
@@ -27,7 +33,10 @@ export function LanguageToggle({ locale }: { locale?: Locale }) {
   return (
     <div
       aria-label="Language"
-      className="hidden rounded-full border border-slate-200 bg-slate-100 p-0.5 text-xs font-black md:inline-flex"
+      className={cn(
+        "inline-flex rounded-full border border-slate-200 bg-slate-100 p-0.5 text-xs font-black",
+        className,
+      )}
     >
       {(["ko", "en"] as const).map((item) => (
         <Link

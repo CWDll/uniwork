@@ -398,7 +398,7 @@ export default async function CompanyJobsPage({
                           className={cn(buttonVariants({ size: "sm" }))}
                           href={`/jobs/${job.id}`}
                         >
-                          한글 페이지
+                          공고 보기
                         </Link>
                         {hasEnglish ? (
                           <Link
