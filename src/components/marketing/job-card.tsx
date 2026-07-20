@@ -62,7 +62,7 @@ export function JobCard({
           )}
           {job.featured ? (
             <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-black text-emerald-700">
-              Pick
+              {copy.featured}
             </span>
           ) : null}
           {job.eligibility ? (
@@ -169,6 +169,7 @@ const jobCardCopy = {
     apply: "지원하기",
     complete: "정보 충분",
     details: "상세 보기",
+    featured: "추천 공고",
     needsDetail: "상세 확인",
     published: "공개",
     save: "즐겨찾기 저장",
@@ -180,6 +181,7 @@ const jobCardCopy = {
     apply: "Apply",
     complete: "Complete",
     details: "Details",
+    featured: "Featured",
     needsDetail: "Check details",
     published: "Published",
     save: "Save job",
