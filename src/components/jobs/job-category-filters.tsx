@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 export function JobCategoryFilters({
   activeFilters,
-  defaultOpen = true,
+  defaultOpen = false,
   hasFilters = false,
   locale = "ko",
   minWage,

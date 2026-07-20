@@ -130,22 +130,29 @@ export async function SiteHeader({ locale = "ko" }: { locale?: Locale }) {
         )}
 
         {user ? (
-          <Link
-            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "md:hidden")}
-            href={getLocalizedPath(dashboardHref, locale)}
-            aria-label={copy.dashboard}
-          >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                alt=""
-                className="size-7 rounded-full object-cover"
-                src={avatarUrl}
-              />
-            ) : (
-              <UserRound className="size-5" />
-            )}
-          </Link>
+          <div className="flex items-center gap-1 md:hidden">
+            <Link
+              className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+              href={getLocalizedPath(dashboardHref, locale)}
+              aria-label={copy.dashboard}
+            >
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  alt=""
+                  className="size-7 rounded-full object-cover"
+                  src={avatarUrl}
+                />
+              ) : (
+                <UserRound className="size-5" />
+              )}
+            </Link>
+            <form action={logoutAction}>
+              <Button aria-label={copy.logout} size="icon" type="submit" variant="ghost">
+                <LogOut className="size-5" />
+              </Button>
+            </form>
+          </div>
         ) : (
           <Button className="md:hidden" variant="ghost" size="icon">
             <Menu className="size-5" />

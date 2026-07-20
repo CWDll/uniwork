@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Fragment } from "react";
 
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import {
@@ -225,9 +226,135 @@ export default async function SeekerApplicationsPage({
               const isRecentlyApplied = applied === application.job_id;
 
               return (
+                <Fragment key={application.id}>
+                <details
+                  className={cn(
+                    "group px-5 py-4 lg:hidden",
+                    isRecentlyApplied && "bg-emerald-50/70",
+                  )}
+                  key={`${application.id}-mobile`}
+                >
+                  <summary className="cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <h3 className="min-w-0 truncate text-base font-black text-slate-950">
+                            {job?.title ?? "Job"}
+                          </h3>
+                          {isRecentlyApplied ? (
+                            <span className="rounded-md bg-emerald-100 px-2 py-1 text-xs font-black text-emerald-700">
+                              {t.justApplied}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-500">
+                          {company?.name ?? "Company"} · {job?.location ?? "-"} ·{" "}
+                          {getEmploymentTypeLabel(job?.employment_type, locale)}
+                        </p>
+                        <p className="mt-1 text-xs font-bold text-slate-400">
+                          {t.appliedAt}{" "}
+                          {new Date(application.applied_at).toLocaleString(
+                            locale === "en" ? "en-US" : "ko-KR",
+                          )}
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          getStatusBadgeClassName(
+                            "application",
+                            application.status,
+                          ),
+                          "shrink-0 whitespace-nowrap",
+                        )}
+                      >
+                        {status.label}
+                      </span>
+                    </div>
+                    <p className="mt-3 text-sm font-black text-blue-700 group-open:hidden">
+                      {locale === "en" ? "View details" : "상세 보기"}
+                    </p>
+                    <p className="mt-3 hidden text-sm font-black text-slate-500 group-open:block">
+                      {locale === "en" ? "Close details" : "접기"}
+                    </p>
+                  </summary>
+
+                  <div className="mt-4 grid gap-3">
+                    <div className="grid gap-2 text-sm font-semibold text-slate-600">
+                      <Info
+                        label="Resume"
+                        value={resume?.title || t.noResume}
+                      />
+                      <Info
+                        label="Submission"
+                        value={`${getSnapshotLabel(snapshotMeta.label, locale)} · ${formatSnapshotTime(snapshotMeta.capturedAt, locale)}`}
+                      />
+                    </div>
+                    {application.message ? (
+                      <p className="line-clamp-3 rounded-xl bg-slate-50 p-3 text-sm font-medium leading-6 text-slate-600">
+                        {application.message}
+                      </p>
+                    ) : null}
+                    <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                      <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                        {t.companyMemo}
+                      </p>
+                      {application.company_note ? (
+                        <p className="mt-2 whitespace-pre-wrap text-sm font-semibold leading-6 text-blue-900">
+                          {application.company_note}
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-500">
+                          {t.noCompanyMemo}
+                        </p>
+                      )}
+                    </div>
+                    {statusEvents.length > 0 ? (
+                      <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <p className="text-xs font-black uppercase tracking-wide text-slate-400">
+                          Status history
+                        </p>
+                        <div className="mt-2 grid gap-2">
+                          {statusEvents.slice(0, 3).map((event) => (
+                            <StatusEventItem event={event} key={event.id} locale={locale} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    <div
+                      className={cn(
+                        "rounded-xl border p-3",
+                        guidance.tone === "blue" &&
+                          "border-blue-100 bg-blue-50 text-blue-950",
+                        guidance.tone === "green" &&
+                          "border-emerald-100 bg-emerald-50 text-emerald-950",
+                        guidance.tone === "red" &&
+                          "border-red-100 bg-red-50 text-red-950",
+                        guidance.tone === "slate" &&
+                          "border-slate-200 bg-white text-slate-800",
+                      )}
+                    >
+                      <p className="text-sm font-black">{guidance.title}</p>
+                      <p className="mt-1 text-sm font-semibold leading-6">
+                        {guidance.detail}
+                      </p>
+                      <p className="mt-2 text-xs font-bold leading-5 text-slate-500">
+                        {t.nextStep}: {guidance.nextStep}
+                      </p>
+                    </div>
+                    {job ? (
+                      <Link
+                        className="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 hover:bg-slate-50"
+                        href={getLocalizedPath(`/jobs/${job.id}`, locale)}
+                      >
+                        {t.viewJob}
+                      </Link>
+                    ) : null}
+                  </div>
+                </details>
+
                 <article
                   className={cn(
-                    "grid gap-4 px-5 py-4 lg:grid-cols-[minmax(0,1fr)_220px]",
+                    "hidden gap-4 px-5 py-4 lg:grid lg:grid-cols-[minmax(0,1fr)_220px]",
                     isRecentlyApplied && "bg-emerald-50/70",
                   )}
                   key={application.id}
@@ -358,6 +485,7 @@ export default async function SeekerApplicationsPage({
                     ) : null}
                   </div>
                 </article>
+                </Fragment>
               );
             })
           ) : (

@@ -72,6 +72,25 @@ export function DashboardShell({
     <main className="min-h-screen bg-slate-50 pb-24 text-slate-950 md:pb-0">
       <SiteHeader locale={locale} />
       <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:px-8">
+        <nav className="flex flex-wrap gap-2 lg:hidden">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const label =
+              typeof item.label === "string" ? item.label : item.label[locale];
+
+            return (
+              <Link
+                className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 shadow-sm transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+                href={getLocalizedPath(item.href, locale)}
+                key={item.href}
+              >
+                <Icon className="size-4" />
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
+
         <aside className="hidden rounded-2xl border border-slate-200 bg-white p-3 lg:block">
           <p className="px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-400">
             {titleByArea[area][locale]}
